@@ -1,13 +1,13 @@
 package com.otilm.mcp.config;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import java.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClient;
-import java.time.Instant;
 
 public class OAuthTokenProvider {
     private static final Logger logger = LoggerFactory.getLogger(OAuthTokenProvider.class);
@@ -20,9 +20,7 @@ public class OAuthTokenProvider {
 
     public OAuthTokenProvider(IlmApiProperties.OAuthProperties oauthProperties) {
         this.oauthProperties = oauthProperties;
-        this.tokenClient = RestClient.builder()
-                .baseUrl(oauthProperties.getTokenUrl())
-                .build();
+        this.tokenClient = RestClient.builder().baseUrl(oauthProperties.getTokenUrl()).build();
     }
 
     public synchronized String getAccessToken() {
@@ -45,7 +43,8 @@ public class OAuthTokenProvider {
             formData.add("audience", oauthProperties.getAudience());
         }
 
-        TokenResponse tokenResponse = tokenClient.post()
+        TokenResponse tokenResponse = tokenClient
+                .post()
                 .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                 .body(formData)
                 .retrieve()
@@ -60,9 +59,7 @@ public class OAuthTokenProvider {
         logger.debug("OAuth token refreshed, expires at {}", tokenExpiry);
     }
 
-    record TokenResponse(
-            @JsonProperty("access_token") String accessToken,
-            @JsonProperty("expires_in") long expiresIn,
+    record TokenResponse(@JsonProperty("access_token") String accessToken, @JsonProperty("expires_in") long expiresIn,
             @JsonProperty("token_type") String tokenType) {
     }
 }

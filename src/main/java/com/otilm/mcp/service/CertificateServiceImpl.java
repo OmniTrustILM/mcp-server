@@ -7,16 +7,14 @@ import com.czertainly.api.model.core.certificate.CertificateChainResponseDto;
 import com.czertainly.api.model.core.certificate.CertificateDetailDto;
 import com.czertainly.api.model.core.certificate.CertificateDto;
 import com.czertainly.api.model.core.certificate.CertificateEventHistoryDto;
-import com.czertainly.api.model.core.certificate.CertificateValidationCheckDto;
 import com.czertainly.api.model.core.certificate.CertificateValidationResultDto;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.otilm.mcp.client.IlmApiClient;
+import java.util.List;
+import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-
-import java.util.List;
-import java.util.Map;
 
 @Service
 public class CertificateServiceImpl implements CertificateService {
@@ -46,8 +44,12 @@ public class CertificateServiceImpl implements CertificateService {
     public String searchCertificates(String filters, Integer itemsPerPage, Integer pageNumber) {
         try {
             CertificateSearchRequestDto request = new CertificateSearchRequestDto();
-            if (itemsPerPage != null) request.setItemsPerPage(itemsPerPage);
-            if (pageNumber != null) request.setPageNumber(pageNumber);
+            if (itemsPerPage != null) {
+                request.setItemsPerPage(itemsPerPage);
+            }
+            if (pageNumber != null) {
+                request.setPageNumber(pageNumber);
+            }
             request.setFilters(SearchFilterParser.parseFilters(filters, objectMapper));
 
             CertificateResponseDto response = ilmApiClient.searchCertificates(request);
@@ -151,15 +153,22 @@ public class CertificateServiceImpl implements CertificateService {
     private String formatCertificateList(CertificateResponseDto response) {
         StringBuilder sb = new StringBuilder();
         sb.append("Found ").append(response.getTotalItems()).append(" certificates");
-        sb.append(" (page ").append(response.getPageNumber())
-          .append(" of ").append(response.getTotalPages()).append(")\n\n");
+        sb
+                .append(" (page ")
+                .append(response.getPageNumber())
+                .append(" of ")
+                .append(response.getTotalPages())
+                .append(")\n\n");
 
         for (CertificateDto cert : response.getCertificates()) {
             sb.append("- ").append(cert.getCommonName() != null ? cert.getCommonName() : "N/A");
             sb.append(" [").append(cert.getUuid()).append("]\n");
             sb.append("  Serial: ").append(cert.getSerialNumber()).append("\n");
             sb.append("  Status: ").append(cert.getState() != null ? cert.getState().getCode() : "N/A").append("\n");
-            sb.append("  Validation: ").append(cert.getValidationStatus() != null ? cert.getValidationStatus().getCode() : "N/A").append("\n");
+            sb
+                    .append("  Validation: ")
+                    .append(cert.getValidationStatus() != null ? cert.getValidationStatus().getCode() : "N/A")
+                    .append("\n");
             sb.append("  Algorithm: ").append(cert.getPublicKeyAlgorithm());
             if (cert.getKeySize() != null) {
                 sb.append(" ").append(cert.getKeySize());
@@ -180,13 +189,19 @@ public class CertificateServiceImpl implements CertificateService {
         sb.append("  UUID: ").append(cert.getUuid()).append("\n");
         sb.append("  Serial: ").append(cert.getSerialNumber()).append("\n");
         sb.append("  Subject DN: ").append(cert.getSubjectDn()).append("\n");
-        sb.append("  Issuer: ").append(cert.getIssuerCommonName() != null ? cert.getIssuerCommonName() : "N/A").append("\n");
+        sb
+                .append("  Issuer: ")
+                .append(cert.getIssuerCommonName() != null ? cert.getIssuerCommonName() : "N/A")
+                .append("\n");
         sb.append("  Issuer DN: ").append(cert.getIssuerDn()).append("\n");
         if (cert.getNotBefore() != null && cert.getNotAfter() != null) {
             sb.append("  Valid: ").append(cert.getNotBefore()).append(" to ").append(cert.getNotAfter()).append("\n");
         }
         sb.append("  State: ").append(cert.getState() != null ? cert.getState().getCode() : "N/A").append("\n");
-        sb.append("  Validation: ").append(cert.getValidationStatus() != null ? cert.getValidationStatus().getCode() : "N/A").append("\n");
+        sb
+                .append("  Validation: ")
+                .append(cert.getValidationStatus() != null ? cert.getValidationStatus().getCode() : "N/A")
+                .append("\n");
         sb.append("  Key Algorithm: ").append(cert.getPublicKeyAlgorithm());
         if (cert.getKeySize() != null) {
             sb.append(" ").append(cert.getKeySize());
@@ -195,7 +210,10 @@ public class CertificateServiceImpl implements CertificateService {
         if (cert.getSignatureAlgorithm() != null) {
             sb.append("  Signature Algorithm: ").append(cert.getSignatureAlgorithm()).append("\n");
         }
-        sb.append("  Compliance: ").append(cert.getComplianceStatus() != null ? cert.getComplianceStatus().getCode() : "N/A").append("\n");
+        sb
+                .append("  Compliance: ")
+                .append(cert.getComplianceStatus() != null ? cert.getComplianceStatus().getCode() : "N/A")
+                .append("\n");
         if (cert.getFingerprint() != null) {
             sb.append("  Fingerprint: ").append(cert.getFingerprint()).append("\n");
         }
@@ -221,10 +239,15 @@ public class CertificateServiceImpl implements CertificateService {
 
         if (result.getValidationChecks() != null) {
             sb.append("\nValidation Checks:\n");
-            result.getValidationChecks().forEach((check, checkDto) ->
-                    sb.append("  ").append(check).append(": ").append(checkDto.getStatus())
-                      .append(checkDto.getMessage() != null ? " - " + checkDto.getMessage() : "")
-                      .append("\n"));
+            result
+                    .getValidationChecks()
+                    .forEach((check, checkDto) -> sb
+                            .append("  ")
+                            .append(check)
+                            .append(": ")
+                            .append(checkDto.getStatus())
+                            .append(checkDto.getMessage() != null ? " - " + checkDto.getMessage() : "")
+                            .append("\n"));
         }
         return sb.toString();
     }

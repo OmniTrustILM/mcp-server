@@ -18,14 +18,16 @@ public final class SearchFilterParser {
             return Collections.emptyList();
         }
         try {
-            return objectMapper.readValue(filtersJson, new TypeReference<>() {});
+            return objectMapper.readValue(filtersJson, new TypeReference<>() {
+            });
         } catch (JsonProcessingException e) {
             throw new IllegalArgumentException(
-                    "Invalid filters JSON. Expected a JSON array of filter objects with fields: " +
-                    "fieldSource (property, meta, custom, data), fieldIdentifier, " +
-                    "condition (EQUALS, CONTAINS, GREATER, etc.), value. " +
-                    "Example: [{\"fieldSource\":\"property\",\"fieldIdentifier\":\"commonName\"," +
-                    "\"condition\":\"CONTAINS\",\"value\":\"example.com\"}]. Error: " + e.getMessage(), e);
+                    "Invalid filters JSON. Expected a JSON array of filter objects with fields: "
+                            + "fieldSource (property, meta, custom, data), fieldIdentifier, "
+                            + "condition (EQUALS, CONTAINS, GREATER, etc.), value. "
+                            + "Example: [{\"fieldSource\":\"property\",\"fieldIdentifier\":\"commonName\","
+                            + "\"condition\":\"CONTAINS\",\"value\":\"example.com\"}]. Error: " + e.getMessage(),
+                    e);
         }
     }
 }

@@ -7,13 +7,12 @@ import com.czertainly.api.model.core.secret.SecretDto;
 import com.czertainly.api.model.core.secret.SecretVersionDto;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.otilm.mcp.client.IlmApiClient;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Service;
-
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
 
 @Service
 public class SecretServiceImpl implements SecretService {
@@ -33,8 +32,12 @@ public class SecretServiceImpl implements SecretService {
     public String searchSecrets(String filters, Integer itemsPerPage, Integer pageNumber) {
         try {
             SearchRequestDto request = new SearchRequestDto();
-            if (itemsPerPage != null) request.setItemsPerPage(itemsPerPage);
-            if (pageNumber != null) request.setPageNumber(pageNumber);
+            if (itemsPerPage != null) {
+                request.setItemsPerPage(itemsPerPage);
+            }
+            if (pageNumber != null) {
+                request.setPageNumber(pageNumber);
+            }
             request.setFilters(SearchFilterParser.parseFilters(filters, objectMapper));
 
             PaginationResponseDto<SecretDto> response = ilmApiClient.searchSecrets(request);
@@ -72,8 +75,12 @@ public class SecretServiceImpl implements SecretService {
     private String formatSecretList(PaginationResponseDto<SecretDto> response) {
         StringBuilder sb = new StringBuilder();
         sb.append("Found ").append(response.getTotalItems()).append(" secrets");
-        sb.append(" (page ").append(response.getPageNumber())
-          .append(" of ").append(response.getTotalPages()).append(")\n\n");
+        sb
+                .append(" (page ")
+                .append(response.getPageNumber())
+                .append(" of ")
+                .append(response.getTotalPages())
+                .append(")\n\n");
 
         for (SecretDto secret : response.getItems()) {
             sb.append("- ").append(secret.getName() != null ? secret.getName() : "N/A");
@@ -124,7 +131,10 @@ public class SecretServiceImpl implements SecretService {
             sb.append(String.join(", ", secret.getGroups().stream().map(g -> g.getName()).toList()));
             sb.append("\n");
         }
-        sb.append("  Compliance: ").append(secret.getComplianceStatus() != null ? secret.getComplianceStatus().getCode() : "N/A").append("\n");
+        sb
+                .append("  Compliance: ")
+                .append(secret.getComplianceStatus() != null ? secret.getComplianceStatus().getCode() : "N/A")
+                .append("\n");
         if (secret.getCreatedAt() != null) {
             sb.append("  Created: ").append(formatDateTime(secret.getCreatedAt())).append("\n");
         }
@@ -134,8 +144,14 @@ public class SecretServiceImpl implements SecretService {
 
         if (secret.getSyncVaultProfiles() != null && !secret.getSyncVaultProfiles().isEmpty()) {
             sb.append("\n  Sync Vault Profiles:\n");
-            secret.getSyncVaultProfiles().forEach(svp ->
-                    sb.append("    - ").append(svp.getName()).append(" [").append(svp.getUuid()).append("]\n"));
+            secret
+                    .getSyncVaultProfiles()
+                    .forEach(svp -> sb
+                            .append("    - ")
+                            .append(svp.getName())
+                            .append(" [")
+                            .append(svp.getUuid())
+                            .append("]\n"));
         }
 
         return sb.toString();

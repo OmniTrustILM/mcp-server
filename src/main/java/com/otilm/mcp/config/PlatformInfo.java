@@ -41,7 +41,9 @@ public class PlatformInfo {
     }
 
     static boolean isVersionAtLeast(String version, int minMajor, int minMinor) {
-        if (version == null) return false;
+        if (version == null) {
+            return false;
+        }
         try {
             String[] parts = version.split("\\.");
             int major = Integer.parseInt(parts[0]);

@@ -1,8 +1,8 @@
 package com.otilm.mcp.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.otilm.mcp.client.IlmApiClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -10,7 +10,15 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.web.client.RestClient;
 
-import static com.github.tomakehurst.wiremock.client.WireMock.*;
+import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
+import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
+import static com.github.tomakehurst.wiremock.client.WireMock.get;
+import static com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath;
+import static com.github.tomakehurst.wiremock.client.WireMock.post;
+import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
+import static com.github.tomakehurst.wiremock.client.WireMock.verify;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @WireMockTest
@@ -20,7 +28,8 @@ class InfrastructureServiceTest {
 
     @BeforeEach
     void setup(WireMockRuntimeInfo wmInfo) {
-        RestClient restClient = RestClient.builder()
+        RestClient restClient = RestClient
+                .builder()
                 .baseUrl(wmInfo.getHttpBaseUrl())
                 .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                 .defaultHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
@@ -32,26 +41,24 @@ class InfrastructureServiceTest {
     @Test
     void shouldFormatAuthorities() {
         stubFor(get(urlEqualTo("/v1/authorities"))
-                .willReturn(aResponse()
-                        .withHeader("Content-Type", "application/json")
-                        .withBody("""
-                                [
-                                    {
-                                        "uuid": "auth-uuid-1",
-                                        "name": "ADCS Authority",
-                                        "status": "connected",
-                                        "connectorName": "MS-ADCS-Connector",
-                                        "kind": "ADCS"
-                                    },
-                                    {
-                                        "uuid": "auth-uuid-2",
-                                        "name": "EJBCA Authority",
-                                        "status": "connected",
-                                        "connectorName": "EJBCA-Connector",
-                                        "kind": "EJBCA"
-                                    }
-                                ]
-                                """)));
+                .willReturn(aResponse().withHeader("Content-Type", "application/json").withBody("""
+                        [
+                            {
+                                "uuid": "auth-uuid-1",
+                                "name": "ADCS Authority",
+                                "status": "connected",
+                                "connectorName": "MS-ADCS-Connector",
+                                "kind": "ADCS"
+                            },
+                            {
+                                "uuid": "auth-uuid-2",
+                                "name": "EJBCA Authority",
+                                "status": "connected",
+                                "connectorName": "EJBCA-Connector",
+                                "kind": "EJBCA"
+                            }
+                        ]
+                        """)));
 
         String result = service.listAuthorities();
 
@@ -68,22 +75,20 @@ class InfrastructureServiceTest {
     @Test
     void shouldFormatConnectors() {
         stubFor(get(urlEqualTo("/v1/connectors"))
-                .willReturn(aResponse()
-                        .withHeader("Content-Type", "application/json")
-                        .withBody("""
-                                [
-                                    {
-                                        "uuid": "conn-uuid-1",
-                                        "name": "MS-ADCS-Connector",
-                                        "status": "connected",
-                                        "url": "https://adcs.example.com/api",
-                                        "authType": "certificate",
-                                        "functionGroups": [
-                                            {"functionGroupCode": "authorityProvider", "name": "authorityProvider"}
-                                        ]
-                                    }
+                .willReturn(aResponse().withHeader("Content-Type", "application/json").withBody("""
+                        [
+                            {
+                                "uuid": "conn-uuid-1",
+                                "name": "MS-ADCS-Connector",
+                                "status": "connected",
+                                "url": "https://adcs.example.com/api",
+                                "authType": "certificate",
+                                "functionGroups": [
+                                    {"functionGroupCode": "authorityProvider", "name": "authorityProvider"}
                                 ]
-                                """)));
+                            }
+                        ]
+                        """)));
 
         String result = service.listConnectors();
 
@@ -99,23 +104,21 @@ class InfrastructureServiceTest {
     @Test
     void shouldFormatGroups() {
         stubFor(get(urlEqualTo("/v1/groups"))
-                .willReturn(aResponse()
-                        .withHeader("Content-Type", "application/json")
-                        .withBody("""
-                                [
-                                    {
-                                        "uuid": "group-uuid-1",
-                                        "name": "Production Certificates",
-                                        "description": "Group for production certificates",
-                                        "email": "certs@example.com"
-                                    },
-                                    {
-                                        "uuid": "group-uuid-2",
-                                        "name": "Development Certificates",
-                                        "description": "Group for dev certificates"
-                                    }
-                                ]
-                                """)));
+                .willReturn(aResponse().withHeader("Content-Type", "application/json").withBody("""
+                        [
+                            {
+                                "uuid": "group-uuid-1",
+                                "name": "Production Certificates",
+                                "description": "Group for production certificates",
+                                "email": "certs@example.com"
+                            },
+                            {
+                                "uuid": "group-uuid-2",
+                                "name": "Development Certificates",
+                                "description": "Group for dev certificates"
+                            }
+                        ]
+                        """)));
 
         String result = service.listGroups();
 
@@ -131,19 +134,17 @@ class InfrastructureServiceTest {
     @Test
     void shouldFormatCredentials() {
         stubFor(get(urlEqualTo("/v1/credentials"))
-                .willReturn(aResponse()
-                        .withHeader("Content-Type", "application/json")
-                        .withBody("""
-                                [
-                                    {
-                                        "uuid": "cred-uuid-1",
-                                        "name": "ADCS-Service-Credential",
-                                        "enabled": true,
-                                        "kind": "Basic",
-                                        "connectorName": "MS-ADCS-Connector"
-                                    }
-                                ]
-                                """)));
+                .willReturn(aResponse().withHeader("Content-Type", "application/json").withBody("""
+                        [
+                            {
+                                "uuid": "cred-uuid-1",
+                                "name": "ADCS-Service-Credential",
+                                "enabled": true,
+                                "kind": "Basic",
+                                "connectorName": "MS-ADCS-Connector"
+                            }
+                        ]
+                        """)));
 
         String result = service.listCredentials();
 
@@ -158,20 +159,18 @@ class InfrastructureServiceTest {
     @Test
     void shouldFormatTokenInstances() {
         stubFor(get(urlEqualTo("/v1/tokens"))
-                .willReturn(aResponse()
-                        .withHeader("Content-Type", "application/json")
-                        .withBody("""
-                                [
-                                    {
-                                        "uuid": "token-uuid-1",
-                                        "name": "SoftHSM-Instance",
-                                        "status": "Connected",
-                                        "connectorName": "SoftHSM-Connector",
-                                        "kind": "SoftHSM",
-                                        "tokenProfiles": 3
-                                    }
-                                ]
-                                """)));
+                .willReturn(aResponse().withHeader("Content-Type", "application/json").withBody("""
+                        [
+                            {
+                                "uuid": "token-uuid-1",
+                                "name": "SoftHSM-Instance",
+                                "status": "Connected",
+                                "connectorName": "SoftHSM-Connector",
+                                "kind": "SoftHSM",
+                                "tokenProfiles": 3
+                            }
+                        ]
+                        """)));
 
         String result = service.listTokenInstances();
 
@@ -186,28 +185,26 @@ class InfrastructureServiceTest {
     @Test
     void shouldFormatDiscoveries() {
         stubFor(post(urlEqualTo("/v1/discoveries/list"))
-                .willReturn(aResponse()
-                        .withHeader("Content-Type", "application/json")
-                        .withBody("""
+                .willReturn(aResponse().withHeader("Content-Type", "application/json").withBody("""
+                        {
+                            "discoveries": [
                                 {
-                                    "discoveries": [
-                                        {
-                                            "uuid": "disc-uuid-1",
-                                            "name": "Network Scan Q1",
-                                            "status": "completed",
-                                            "kind": "IP-Hostname",
-                                            "connectorName": "Network-Discovery-Connector",
-                                            "startTime": "2025-03-01T08:00:00.000Z",
-                                            "endTime": "2025-03-01T12:00:00.000Z",
-                                            "totalCertificatesDiscovered": 42
-                                        }
-                                    ],
-                                    "itemsPerPage": 10,
-                                    "pageNumber": 1,
-                                    "totalPages": 1,
-                                    "totalItems": 1
+                                    "uuid": "disc-uuid-1",
+                                    "name": "Network Scan Q1",
+                                    "status": "completed",
+                                    "kind": "IP-Hostname",
+                                    "connectorName": "Network-Discovery-Connector",
+                                    "startTime": "2025-03-01T08:00:00.000Z",
+                                    "endTime": "2025-03-01T12:00:00.000Z",
+                                    "totalCertificatesDiscovered": 42
                                 }
-                                """)));
+                            ],
+                            "itemsPerPage": 10,
+                            "pageNumber": 1,
+                            "totalPages": 1,
+                            "totalItems": 1
+                        }
+                        """)));
 
         String result = service.listDiscoveries(null);
 
@@ -223,19 +220,17 @@ class InfrastructureServiceTest {
     @Test
     void shouldFormatRaProfiles() {
         stubFor(get(urlEqualTo("/v1/raProfiles"))
-                .willReturn(aResponse()
-                        .withHeader("Content-Type", "application/json")
-                        .withBody("""
-                                [
-                                    {
-                                        "uuid": "ra-uuid-1",
-                                        "name": "Web Server Profile",
-                                        "enabled": true,
-                                        "description": "Profile for web server certificates",
-                                        "authorityInstanceName": "ADCS Authority"
-                                    }
-                                ]
-                                """)));
+                .willReturn(aResponse().withHeader("Content-Type", "application/json").withBody("""
+                        [
+                            {
+                                "uuid": "ra-uuid-1",
+                                "name": "Web Server Profile",
+                                "enabled": true,
+                                "description": "Profile for web server certificates",
+                                "authorityInstanceName": "ADCS Authority"
+                            }
+                        ]
+                        """)));
 
         String result = service.listRaProfiles();
 
@@ -250,25 +245,23 @@ class InfrastructureServiceTest {
     @Test
     void shouldFormatEntities() {
         stubFor(post(urlEqualTo("/v1/entities/list"))
-                .willReturn(aResponse()
-                        .withHeader("Content-Type", "application/json")
-                        .withBody("""
+                .willReturn(aResponse().withHeader("Content-Type", "application/json").withBody("""
+                        {
+                            "entities": [
                                 {
-                                    "entities": [
-                                        {
-                                            "uuid": "entity-uuid-1",
-                                            "name": "Web Server Entity",
-                                            "status": "connected",
-                                            "connectorName": "Entity-Connector",
-                                            "kind": "Keystore"
-                                        }
-                                    ],
-                                    "itemsPerPage": 10,
-                                    "pageNumber": 1,
-                                    "totalPages": 1,
-                                    "totalItems": 1
+                                    "uuid": "entity-uuid-1",
+                                    "name": "Web Server Entity",
+                                    "status": "connected",
+                                    "connectorName": "Entity-Connector",
+                                    "kind": "Keystore"
                                 }
-                                """)));
+                            ],
+                            "itemsPerPage": 10,
+                            "pageNumber": 1,
+                            "totalPages": 1,
+                            "totalItems": 1
+                        }
+                        """)));
 
         String result = service.listEntities(null);
 
@@ -287,23 +280,21 @@ class InfrastructureServiceTest {
                 .withRequestBody(matchingJsonPath("$.filters[0].fieldIdentifier", equalTo("name")))
                 .withRequestBody(matchingJsonPath("$.filters[0].condition", equalTo("CONTAINS")))
                 .withRequestBody(matchingJsonPath("$.filters[0].value", equalTo("web")))
-                .willReturn(aResponse()
-                        .withHeader("Content-Type", "application/json")
-                        .withBody("""
+                .willReturn(aResponse().withHeader("Content-Type", "application/json").withBody("""
+                        {
+                            "entities": [
                                 {
-                                    "entities": [
-                                        {
-                                            "uuid": "entity-uuid-1",
-                                            "name": "Web Server Entity",
-                                            "status": "connected"
-                                        }
-                                    ],
-                                    "itemsPerPage": 10,
-                                    "pageNumber": 1,
-                                    "totalPages": 1,
-                                    "totalItems": 1
+                                    "uuid": "entity-uuid-1",
+                                    "name": "Web Server Entity",
+                                    "status": "connected"
                                 }
-                                """)));
+                            ],
+                            "itemsPerPage": 10,
+                            "pageNumber": 1,
+                            "totalPages": 1,
+                            "totalItems": 1
+                        }
+                        """)));
 
         String filters = """
                 [{"fieldSource":"property","fieldIdentifier":"name","condition":"CONTAINS","value":"web"}]
@@ -322,24 +313,22 @@ class InfrastructureServiceTest {
                 .withRequestBody(matchingJsonPath("$.filters[0].fieldIdentifier", equalTo("name")))
                 .withRequestBody(matchingJsonPath("$.filters[0].condition", equalTo("CONTAINS")))
                 .withRequestBody(matchingJsonPath("$.filters[0].value", equalTo("scan")))
-                .willReturn(aResponse()
-                        .withHeader("Content-Type", "application/json")
-                        .withBody("""
+                .willReturn(aResponse().withHeader("Content-Type", "application/json").withBody("""
+                        {
+                            "discoveries": [
                                 {
-                                    "discoveries": [
-                                        {
-                                            "uuid": "disc-uuid-1",
-                                            "name": "Network Scan",
-                                            "status": "completed",
-                                            "totalCertificatesDiscovered": 10
-                                        }
-                                    ],
-                                    "itemsPerPage": 10,
-                                    "pageNumber": 1,
-                                    "totalPages": 1,
-                                    "totalItems": 1
+                                    "uuid": "disc-uuid-1",
+                                    "name": "Network Scan",
+                                    "status": "completed",
+                                    "totalCertificatesDiscovered": 10
                                 }
-                                """)));
+                            ],
+                            "itemsPerPage": 10,
+                            "pageNumber": 1,
+                            "totalPages": 1,
+                            "totalItems": 1
+                        }
+                        """)));
 
         String filters = """
                 [{"fieldSource":"property","fieldIdentifier":"name","condition":"CONTAINS","value":"scan"}]
@@ -366,12 +355,9 @@ class InfrastructureServiceTest {
     @Test
     void shouldHandleApiError() {
         stubFor(get(urlEqualTo("/v1/authorities"))
-                .willReturn(aResponse()
-                        .withStatus(500)
-                        .withHeader("Content-Type", "application/json")
-                        .withBody("""
-                                {"message": "Internal Server Error"}
-                                """)));
+                .willReturn(aResponse().withStatus(500).withHeader("Content-Type", "application/json").withBody("""
+                        {"message": "Internal Server Error"}
+                        """)));
 
         String result = service.listAuthorities();
 

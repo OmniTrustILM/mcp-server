@@ -13,11 +13,10 @@ import com.czertainly.api.model.core.entity.EntityInstanceDto;
 import com.czertainly.api.model.core.raprofile.RaProfileDto;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.otilm.mcp.client.IlmApiClient;
+import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-
-import java.util.List;
 
 @Service
 public class InfrastructureServiceImpl implements InfrastructureService {
@@ -196,11 +195,17 @@ public class InfrastructureServiceImpl implements InfrastructureService {
         for (ConnectorDto connector : connectors) {
             sb.append("- ").append(connector.getName() != null ? connector.getName() : "N/A");
             sb.append(" [").append(connector.getUuid()).append("]\n");
-            sb.append("  Status: ").append(connector.getStatus() != null ? connector.getStatus().getCode() : "N/A").append("\n");
+            sb
+                    .append("  Status: ")
+                    .append(connector.getStatus() != null ? connector.getStatus().getCode() : "N/A")
+                    .append("\n");
             if (connector.getUrl() != null) {
                 sb.append("  URL: ").append(connector.getUrl()).append("\n");
             }
-            sb.append("  Auth Type: ").append(connector.getAuthType() != null ? connector.getAuthType().getCode() : "N/A").append("\n");
+            sb
+                    .append("  Auth Type: ")
+                    .append(connector.getAuthType() != null ? connector.getAuthType().getCode() : "N/A")
+                    .append("\n");
             if (connector.getFunctionGroups() != null && !connector.getFunctionGroups().isEmpty()) {
                 sb.append("  Function Groups: ").append(connector.getFunctionGroups().size()).append("\n");
             }
@@ -238,8 +243,12 @@ public class InfrastructureServiceImpl implements InfrastructureService {
     private String formatEntities(EntityInstanceResponseDto response) {
         StringBuilder sb = new StringBuilder();
         sb.append("Entity Instances (").append(response.getTotalItems()).append(" total");
-        sb.append(", page ").append(response.getPageNumber())
-          .append(" of ").append(response.getTotalPages()).append(")\n");
+        sb
+                .append(", page ")
+                .append(response.getPageNumber())
+                .append(" of ")
+                .append(response.getTotalPages())
+                .append(")\n");
         sb.append("=======================\n\n");
 
         if (response.getEntities() == null || response.getEntities().isEmpty()) {
@@ -302,7 +311,10 @@ public class InfrastructureServiceImpl implements InfrastructureService {
         for (TokenInstanceDto token : tokens) {
             sb.append("- ").append(token.getName() != null ? token.getName() : "N/A");
             sb.append(" [").append(token.getUuid()).append("]\n");
-            sb.append("  Status: ").append(token.getStatus() != null ? token.getStatus().getCode() : "N/A").append("\n");
+            sb
+                    .append("  Status: ")
+                    .append(token.getStatus() != null ? token.getStatus().getCode() : "N/A")
+                    .append("\n");
             if (token.getConnectorName() != null) {
                 sb.append("  Connector: ").append(token.getConnectorName()).append("\n");
             }
@@ -321,8 +333,12 @@ public class InfrastructureServiceImpl implements InfrastructureService {
     private String formatDiscoveries(DiscoveryResponseDto response) {
         StringBuilder sb = new StringBuilder();
         sb.append("Discoveries (").append(response.getTotalItems()).append(" total");
-        sb.append(", page ").append(response.getPageNumber())
-          .append(" of ").append(response.getTotalPages()).append(")\n");
+        sb
+                .append(", page ")
+                .append(response.getPageNumber())
+                .append(" of ")
+                .append(response.getTotalPages())
+                .append(")\n");
         sb.append("=======================\n\n");
 
         if (response.getDiscoveries() == null || response.getDiscoveries().isEmpty()) {
@@ -333,7 +349,10 @@ public class InfrastructureServiceImpl implements InfrastructureService {
         for (DiscoveryHistoryDto discovery : response.getDiscoveries()) {
             sb.append("- ").append(discovery.getName() != null ? discovery.getName() : "N/A");
             sb.append(" [").append(discovery.getUuid()).append("]\n");
-            sb.append("  Status: ").append(discovery.getStatus() != null ? discovery.getStatus().getCode() : "N/A").append("\n");
+            sb
+                    .append("  Status: ")
+                    .append(discovery.getStatus() != null ? discovery.getStatus().getCode() : "N/A")
+                    .append("\n");
             if (discovery.getKind() != null) {
                 sb.append("  Kind: ").append(discovery.getKind()).append("\n");
             }
@@ -347,7 +366,10 @@ public class InfrastructureServiceImpl implements InfrastructureService {
                 sb.append("  End Time: ").append(discovery.getEndTime()).append("\n");
             }
             if (discovery.getTotalCertificatesDiscovered() != null) {
-                sb.append("  Certificates Discovered: ").append(discovery.getTotalCertificatesDiscovered()).append("\n");
+                sb
+                        .append("  Certificates Discovered: ")
+                        .append(discovery.getTotalCertificatesDiscovered())
+                        .append("\n");
             }
             sb.append("\n");
         }

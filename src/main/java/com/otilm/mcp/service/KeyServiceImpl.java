@@ -28,8 +28,12 @@ public class KeyServiceImpl implements KeyService {
     public String searchKeys(String filters, Integer itemsPerPage, Integer pageNumber) {
         try {
             SearchRequestDto request = new SearchRequestDto();
-            if (itemsPerPage != null) request.setItemsPerPage(itemsPerPage);
-            if (pageNumber != null) request.setPageNumber(pageNumber);
+            if (itemsPerPage != null) {
+                request.setItemsPerPage(itemsPerPage);
+            }
+            if (pageNumber != null) {
+                request.setPageNumber(pageNumber);
+            }
             request.setFilters(SearchFilterParser.parseFilters(filters, objectMapper));
 
             CryptographicKeyResponseDto response = ilmApiClient.searchKeys(request);
@@ -56,13 +60,20 @@ public class KeyServiceImpl implements KeyService {
     private String formatKeyList(CryptographicKeyResponseDto response) {
         StringBuilder sb = new StringBuilder();
         sb.append("Found ").append(response.getTotalItems()).append(" cryptographic keys");
-        sb.append(" (page ").append(response.getPageNumber())
-          .append(" of ").append(response.getTotalPages()).append(")\n\n");
+        sb
+                .append(" (page ")
+                .append(response.getPageNumber())
+                .append(" of ")
+                .append(response.getTotalPages())
+                .append(")\n\n");
 
         for (KeyItemDto key : response.getCryptographicKeys()) {
             sb.append("- ").append(key.getName() != null ? key.getName() : "N/A");
             sb.append(" [").append(key.getUuid()).append("]\n");
-            sb.append("  Algorithm: ").append(key.getKeyAlgorithm() != null ? key.getKeyAlgorithm().getCode() : "N/A").append("\n");
+            sb
+                    .append("  Algorithm: ")
+                    .append(key.getKeyAlgorithm() != null ? key.getKeyAlgorithm().getCode() : "N/A")
+                    .append("\n");
             sb.append("  Size: ").append(key.getLength()).append(" bits\n");
             sb.append("  Type: ").append(key.getType() != null ? key.getType().getCode() : "N/A").append("\n");
             sb.append("  State: ").append(key.getState() != null ? key.getState().getCode() : "N/A").append("\n");
@@ -101,7 +112,10 @@ public class KeyServiceImpl implements KeyService {
         if (key.getOwner() != null) {
             sb.append("  Owner: ").append(key.getOwner()).append("\n");
         }
-        sb.append("  Compliance: ").append(key.getComplianceStatus() != null ? key.getComplianceStatus().getCode() : "N/A").append("\n");
+        sb
+                .append("  Compliance: ")
+                .append(key.getComplianceStatus() != null ? key.getComplianceStatus().getCode() : "N/A")
+                .append("\n");
 
         if (key.getGroups() != null && !key.getGroups().isEmpty()) {
             sb.append("  Groups: ");
@@ -114,11 +128,23 @@ public class KeyServiceImpl implements KeyService {
             for (KeyItemDetailDto item : key.getItems()) {
                 sb.append("    - ").append(item.getName() != null ? item.getName() : "N/A").append("\n");
                 sb.append("      UUID: ").append(item.getUuid()).append("\n");
-                sb.append("      Type: ").append(item.getType() != null ? item.getType().getCode() : "N/A").append("\n");
-                sb.append("      Algorithm: ").append(item.getKeyAlgorithm() != null ? item.getKeyAlgorithm().getCode() : "N/A").append("\n");
+                sb
+                        .append("      Type: ")
+                        .append(item.getType() != null ? item.getType().getCode() : "N/A")
+                        .append("\n");
+                sb
+                        .append("      Algorithm: ")
+                        .append(item.getKeyAlgorithm() != null ? item.getKeyAlgorithm().getCode() : "N/A")
+                        .append("\n");
                 sb.append("      Size: ").append(item.getLength()).append(" bits\n");
-                sb.append("      Format: ").append(item.getFormat() != null ? item.getFormat().getCode() : "N/A").append("\n");
-                sb.append("      State: ").append(item.getState() != null ? item.getState().getCode() : "N/A").append("\n");
+                sb
+                        .append("      Format: ")
+                        .append(item.getFormat() != null ? item.getFormat().getCode() : "N/A")
+                        .append("\n");
+                sb
+                        .append("      State: ")
+                        .append(item.getState() != null ? item.getState().getCode() : "N/A")
+                        .append("\n");
                 sb.append("      Enabled: ").append(item.isEnabled()).append("\n");
                 if (item.getUsage() != null && !item.getUsage().isEmpty()) {
                     sb.append("      Usage: ").append(item.getUsage()).append("\n");
