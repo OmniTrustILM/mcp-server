@@ -7,6 +7,11 @@ import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 
+import static com.github.tomakehurst.wiremock.client.WireMock.get;
+import static com.github.tomakehurst.wiremock.client.WireMock.okJson;
+import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
+
 public final class IlmTestSupport {
 
     private IlmTestSupport() {
@@ -14,6 +19,12 @@ public final class IlmTestSupport {
 
     public static IlmApiClient client(WireMockRuntimeInfo wmInfo) {
         return new IlmApiClient(IlmApiClient.restClientBuilder(wmInfo.getHttpBaseUrl()).build());
+    }
+
+    public static void stubIlmVersion(String version) {
+        stubFor(get(urlEqualTo("/v1/info")).willReturn(okJson("""
+                {"app": {"name": "ILM Core", "version": "%s"}}
+                """.formatted(version))));
     }
 
     public static String fixture(String name) {

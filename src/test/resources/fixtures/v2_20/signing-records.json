@@ -1,0 +1,50 @@
+{
+  "items": [
+    {
+      "uuid": "2607d7d7-8c8f-4119-97fc-6d220f061f33",
+      "name": "name-23",
+      "signingProfile": {
+        "uuid": "38f6e529-8123-4ead-a5f1-f3e65d8c06a9",
+        "name": "name-24",
+        "version": 1,
+        "signingScheme": "managed",
+        "signingWorkflowType": "timestamping",
+        "enabled": true,
+        "enabledProtocols": [
+          "tsp"
+        ]
+      },
+      "protocol": "tsp",
+      "signingTime": "2026-10-13T13:16:33.234020Z",
+      "createdAt": "2026-10-13T13:16:34.848823Z",
+      "timestampTokenSerialNumbers": [
+        "0000000000000000000000000000000000000001"
+      ]
+    },
+    {
+      "uuid": "00e9d7fa-41b4-4413-a7d6-96ab2b35b0fb",
+      "name": "name-25",
+      "signingProfile": {
+        "uuid": "7d292fae-0e6d-47b3-9fd7-853991d9eb58",
+        "name": "name-26",
+        "version": 1,
+        "signingScheme": "managed",
+        "signingWorkflowType": "timestamping",
+        "enabled": true,
+        "enabledProtocols": [
+          "tsp"
+        ]
+      },
+      "protocol": "tsp",
+      "signingTime": "2026-10-13T13:16:31.783808Z",
+      "createdAt": "2026-10-13T13:16:33.336801Z",
+      "timestampTokenSerialNumbers": [
+        "0000000000000000000000000000000000000002"
+      ]
+    }
+  ],
+  "itemsPerPage": 5,
+  "pageNumber": 1,
+  "totalPages": 30,
+  "totalItems": 147
+}

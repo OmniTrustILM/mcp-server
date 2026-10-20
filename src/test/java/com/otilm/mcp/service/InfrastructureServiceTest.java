@@ -59,6 +59,30 @@ class InfrastructureServiceTest {
     }
 
     @Test
+    void authorityConnectorComesFromConnectorReference() {
+        stubFor(get(urlEqualTo("/v1/authorities"))
+                .willReturn(aResponse()
+                        .withHeader("Content-Type", "application/json")
+                        .withBody(
+                                """
+                                        [
+                                            {
+                                                "uuid": "4a5b6c7d-8e9f-4a0b-9c1d-2e3f4a5b6c7d",
+                                                "name": "issuing-ca",
+                                                "status": "connected",
+                                                "connector": {"uuid": "5b6c7d8e-9f0a-4b1c-8d2e-3f4a5b6c7d8e", "name": "authority-connector"},
+                                                "connectorName": "legacy-connector-name",
+                                                "kind": "EJBCA"
+                                            }
+                                        ]
+                                        """)));
+
+        assertThat(service.listAuthorities())
+                .contains("  Connector: authority-connector")
+                .doesNotContain("legacy-connector-name");
+    }
+
+    @Test
     void shouldFormatConnectors() {
         stubFor(get(urlEqualTo("/v1/connectors"))
                 .willReturn(aResponse().withHeader("Content-Type", "application/json").withBody("""

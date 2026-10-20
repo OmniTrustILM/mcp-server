@@ -1,7 +1,6 @@
 package com.otilm.mcp;
 
 import com.otilm.mcp.client.IlmApiClient;
-import com.otilm.mcp.config.PlatformInfo;
 import com.otilm.mcp.service.CertificateService;
 import com.otilm.mcp.service.InfrastructureService;
 import com.otilm.mcp.service.KeyService;
@@ -64,9 +63,6 @@ class McpServerIntegrationTest {
     @Autowired
     VaultTool vaultTool;
 
-    @Autowired
-    PlatformInfo platformInfo;
-
     @Test
     void contextLoads() {
         assertThat(ilmApiClient).isNotNull();
@@ -82,11 +78,6 @@ class McpServerIntegrationTest {
         assertThat(searchTool).isNotNull();
         assertThat(secretTool).isNotNull();
         assertThat(vaultTool).isNotNull();
-        assertThat(platformInfo).isNotNull();
     }
 
-    @Test
-    void secretsNotSupportedWhenPlatformUnreachable() {
-        assertThat(platformInfo.isSecretsSupported()).isFalse();
-    }
 }

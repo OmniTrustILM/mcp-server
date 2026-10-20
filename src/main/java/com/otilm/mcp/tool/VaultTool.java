@@ -15,7 +15,8 @@ public class VaultTool {
     }
 
     @Tool(name = "list_vault_instances",
-            description = "List vault instances configured in the ILM platform with optional filters and pagination. Use get_searchable_fields('vaults') to discover available filter fields. Returns vault name, UUID, description, and connector for each instance. Available only when connected to ILM platform 2.17 or later.")
+            description = "List vault instances configured in the ILM platform with optional filters and pagination. Use get_searchable_fields('vaults') to discover available filter fields. Returns vault name, UUID, description, and connector for each instance.",
+            resultConverter = PlainTextResult.class)
     public String listVaultInstances(@ToolParam(
             description = "JSON array of search filters. Use get_searchable_fields('vaults') to see available fields and operators.",
             required = false) String filters,
@@ -25,7 +26,8 @@ public class VaultTool {
     }
 
     @Tool(name = "list_vault_profiles",
-            description = "List vault profiles configured in the ILM platform with optional filters and pagination. Use get_searchable_fields('vaultProfiles') to discover available filter fields. Returns profile name, UUID, description, vault instance, and enabled status. Available only when connected to ILM platform 2.17 or later.")
+            description = "List vault profiles configured in the ILM platform with optional filters and pagination. Use get_searchable_fields('vaultProfiles') to discover available filter fields. Returns profile name, UUID, description, vault instance, and enabled status.",
+            resultConverter = PlainTextResult.class)
     public String listVaultProfiles(@ToolParam(
             description = "JSON array of search filters. Use get_searchable_fields('vaultProfiles') to see available fields and operators.",
             required = false) String filters,

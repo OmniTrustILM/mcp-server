@@ -4,6 +4,7 @@ import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;
 import com.otilm.mcp.IlmTestSupport;
 import com.otilm.mcp.client.IlmApiClient;
+import com.otilm.mcp.service.PlatformVersionCheck;
 import com.otilm.mcp.service.SearchServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -22,7 +23,7 @@ class SearchToolTest {
     @BeforeEach
     void setup(WireMockRuntimeInfo wmInfo) {
         IlmApiClient client = IlmTestSupport.client(wmInfo);
-        SearchServiceImpl service = new SearchServiceImpl(client);
+        SearchServiceImpl service = new SearchServiceImpl(client, new PlatformVersionCheck(client));
         tool = new SearchTool(service);
     }
 

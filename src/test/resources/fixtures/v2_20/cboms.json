@@ -1,0 +1,39 @@
+{
+  "items": [
+    {
+      "uuid": "fb2bce9f-99c9-4a71-a6cd-6e4c1a10d843",
+      "createdAt": "2026-10-14T18:00:01.036886Z",
+      "serialNumber": "0000000000000000000000000000000000000002",
+      "version": 3,
+      "specVersion": "1.6",
+      "source": "source-1",
+      "algorithms": 30,
+      "certificates": 0,
+      "protocols": 1,
+      "cryptoMaterial": 34,
+      "totalAssets": 65,
+      "assetSyncState": "synced",
+      "assetSyncedAt": "2026-10-14T18:00:00.941409Z"
+    },
+    {
+      "uuid": "aae9a781-2045-424c-935c-153a437f00b1",
+      "createdAt": "2026-10-14T10:00:01.490209Z",
+      "serialNumber": "0000000000000000000000000000000000000003",
+      "version": 1,
+      "specVersion": "1.6",
+      "timestamp": "2026-10-14T09:41:29Z",
+      "source": "source-2",
+      "algorithms": 1,
+      "certificates": 0,
+      "protocols": 0,
+      "cryptoMaterial": 0,
+      "totalAssets": 1,
+      "assetSyncState": "synced",
+      "assetSyncedAt": "2026-10-14T10:00:01.196692Z"
+    }
+  ],
+  "itemsPerPage": 5,
+  "pageNumber": 1,
+  "totalPages": 15,
+  "totalItems": 71
+}
