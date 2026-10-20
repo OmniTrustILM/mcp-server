@@ -14,15 +14,15 @@ run-name: >-
   • ${{ inputs.head_repo }}@${{ inputs.head_branch }}
   • ${{ inputs.head_sha }}
 
-permissions:
-  contents: read
-  actions: read # download coverage + lint artifacts from the upstream Check PR run
-  pull-requests: read
+permissions: {}
 
 jobs:
   verify:
     name: Verify • PR #${{ inputs.pr_number }}
     runs-on: ubuntu-latest
+    permissions:
+      actions: read # read the upstream Check PR run
+      pull-requests: read
     outputs:
       pr_number: ${{ steps.ctx.outputs.pr_number }}
       head_sha: ${{ steps.ctx.outputs.head_sha }}
@@ -110,6 +110,9 @@ jobs:
     # only a run whose verify job ran in the same attempt proceeds.
     if: needs.verify.outputs.run_attempt == github.run_attempt
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read # download coverage + lint artifacts from the upstream Check PR run
     # One analysis per pull request at a time, so an older run finishing last
     # cannot overwrite the newer result. Only a run verified as the PR's current
     # head gets here, so a delayed dispatch for an older commit fails in verify
