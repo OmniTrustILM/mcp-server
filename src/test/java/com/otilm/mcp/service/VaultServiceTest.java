@@ -10,7 +10,13 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.web.client.RestClient;
 
-import static com.github.tomakehurst.wiremock.client.WireMock.*;
+import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
+import static com.github.tomakehurst.wiremock.client.WireMock.containing;
+import static com.github.tomakehurst.wiremock.client.WireMock.post;
+import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
+import static com.github.tomakehurst.wiremock.client.WireMock.verify;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @WireMockTest
@@ -20,7 +26,8 @@ class VaultServiceTest {
 
     @BeforeEach
     void setup(WireMockRuntimeInfo wmInfo) {
-        RestClient restClient = RestClient.builder()
+        RestClient restClient = RestClient
+                .builder()
                 .baseUrl(wmInfo.getHttpBaseUrl())
                 .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                 .defaultHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
@@ -32,35 +39,33 @@ class VaultServiceTest {
     @Test
     void shouldFormatVaultInstanceList() {
         stubFor(post(urlEqualTo("/v1/vaults/list"))
-                .willReturn(aResponse()
-                        .withHeader("Content-Type", "application/json")
-                        .withBody("""
+                .willReturn(aResponse().withHeader("Content-Type", "application/json").withBody("""
+                        {
+                            "items": [
                                 {
-                                    "items": [
-                                        {
-                                            "uuid": "vault-uuid-1",
-                                            "name": "HashiCorp Vault Production",
-                                            "description": "Primary production vault",
-                                            "connector": {
-                                                "uuid": "conn-1",
-                                                "name": "hcv-connector"
-                                            }
-                                        },
-                                        {
-                                            "uuid": "vault-uuid-2",
-                                            "name": "AWS Secrets Manager",
-                                            "connector": {
-                                                "uuid": "conn-2",
-                                                "name": "aws-connector"
-                                            }
-                                        }
-                                    ],
-                                    "itemsPerPage": 10,
-                                    "pageNumber": 1,
-                                    "totalPages": 1,
-                                    "totalItems": 2
+                                    "uuid": "vault-uuid-1",
+                                    "name": "HashiCorp Vault Production",
+                                    "description": "Primary production vault",
+                                    "connector": {
+                                        "uuid": "conn-1",
+                                        "name": "hcv-connector"
+                                    }
+                                },
+                                {
+                                    "uuid": "vault-uuid-2",
+                                    "name": "AWS Secrets Manager",
+                                    "connector": {
+                                        "uuid": "conn-2",
+                                        "name": "aws-connector"
+                                    }
                                 }
-                                """)));
+                            ],
+                            "itemsPerPage": 10,
+                            "pageNumber": 1,
+                            "totalPages": 1,
+                            "totalItems": 2
+                        }
+                        """)));
 
         String result = service.listVaultInstances(null, null, null);
 
@@ -77,37 +82,35 @@ class VaultServiceTest {
     @Test
     void shouldFormatVaultProfileList() {
         stubFor(post(urlEqualTo("/v1/vaultProfiles/list"))
-                .willReturn(aResponse()
-                        .withHeader("Content-Type", "application/json")
-                        .withBody("""
+                .willReturn(aResponse().withHeader("Content-Type", "application/json").withBody("""
+                        {
+                            "items": [
                                 {
-                                    "items": [
-                                        {
-                                            "uuid": "vp-uuid-1",
-                                            "name": "prod-vault-profile",
-                                            "description": "Production vault profile",
-                                            "vaultInstance": {
-                                                "uuid": "vault-1",
-                                                "name": "HashiCorp Vault"
-                                            },
-                                            "enabled": true
-                                        },
-                                        {
-                                            "uuid": "vp-uuid-2",
-                                            "name": "dev-vault-profile",
-                                            "vaultInstance": {
-                                                "uuid": "vault-2",
-                                                "name": "AWS Secrets Manager"
-                                            },
-                                            "enabled": false
-                                        }
-                                    ],
-                                    "itemsPerPage": 10,
-                                    "pageNumber": 1,
-                                    "totalPages": 1,
-                                    "totalItems": 2
+                                    "uuid": "vp-uuid-1",
+                                    "name": "prod-vault-profile",
+                                    "description": "Production vault profile",
+                                    "vaultInstance": {
+                                        "uuid": "vault-1",
+                                        "name": "HashiCorp Vault"
+                                    },
+                                    "enabled": true
+                                },
+                                {
+                                    "uuid": "vp-uuid-2",
+                                    "name": "dev-vault-profile",
+                                    "vaultInstance": {
+                                        "uuid": "vault-2",
+                                        "name": "AWS Secrets Manager"
+                                    },
+                                    "enabled": false
                                 }
-                                """)));
+                            ],
+                            "itemsPerPage": 10,
+                            "pageNumber": 1,
+                            "totalPages": 1,
+                            "totalItems": 2
+                        }
+                        """)));
 
         String result = service.listVaultProfiles(null, null, null);
 
@@ -126,12 +129,9 @@ class VaultServiceTest {
     @Test
     void shouldHandleApiError() {
         stubFor(post(urlEqualTo("/v1/vaults/list"))
-                .willReturn(aResponse()
-                        .withStatus(500)
-                        .withHeader("Content-Type", "application/json")
-                        .withBody("""
-                                {"message": "Internal Server Error"}
-                                """)));
+                .willReturn(aResponse().withStatus(500).withHeader("Content-Type", "application/json").withBody("""
+                        {"message": "Internal Server Error"}
+                        """)));
 
         String result = service.listVaultInstances(null, null, null);
 
@@ -141,34 +141,31 @@ class VaultServiceTest {
     @Test
     void shouldPassFiltersToVaultInstancesRequest() {
         stubFor(post(urlEqualTo("/v1/vaults/list"))
-                .willReturn(aResponse()
-                        .withHeader("Content-Type", "application/json")
-                        .withBody("""
+                .willReturn(aResponse().withHeader("Content-Type", "application/json").withBody("""
+                        {
+                            "items": [
                                 {
-                                    "items": [
-                                        {
-                                            "uuid": "vault-uuid-1",
-                                            "name": "filtered-vault",
-                                            "connector": {
-                                                "uuid": "conn-1",
-                                                "name": "hcv-connector"
-                                            }
-                                        }
-                                    ],
-                                    "itemsPerPage": 10,
-                                    "pageNumber": 1,
-                                    "totalPages": 1,
-                                    "totalItems": 1
+                                    "uuid": "vault-uuid-1",
+                                    "name": "filtered-vault",
+                                    "connector": {
+                                        "uuid": "conn-1",
+                                        "name": "hcv-connector"
+                                    }
                                 }
-                                """)));
+                            ],
+                            "itemsPerPage": 10,
+                            "pageNumber": 1,
+                            "totalPages": 1,
+                            "totalItems": 1
+                        }
+                        """)));
 
         String filters = """
                 [{"fieldSource":"property","fieldIdentifier":"name","condition":"CONTAINS","value":"filtered"}]
                 """;
         String result = service.listVaultInstances(filters, 10, 1);
 
-        assertThat(result).contains("filtered-vault")
-                .contains("1 vault instances");
+        assertThat(result).contains("filtered-vault").contains("1 vault instances");
 
         verify(postRequestedFor(urlEqualTo("/v1/vaults/list"))
                 .withRequestBody(containing("\"fieldIdentifier\":\"name\""))
@@ -186,35 +183,32 @@ class VaultServiceTest {
     @Test
     void shouldPassFiltersToVaultProfilesRequest() {
         stubFor(post(urlEqualTo("/v1/vaultProfiles/list"))
-                .willReturn(aResponse()
-                        .withHeader("Content-Type", "application/json")
-                        .withBody("""
+                .willReturn(aResponse().withHeader("Content-Type", "application/json").withBody("""
+                        {
+                            "items": [
                                 {
-                                    "items": [
-                                        {
-                                            "uuid": "vp-uuid-1",
-                                            "name": "filtered-profile",
-                                            "vaultInstance": {
-                                                "uuid": "vault-1",
-                                                "name": "HashiCorp Vault"
-                                            },
-                                            "enabled": true
-                                        }
-                                    ],
-                                    "itemsPerPage": 10,
-                                    "pageNumber": 1,
-                                    "totalPages": 1,
-                                    "totalItems": 1
+                                    "uuid": "vp-uuid-1",
+                                    "name": "filtered-profile",
+                                    "vaultInstance": {
+                                        "uuid": "vault-1",
+                                        "name": "HashiCorp Vault"
+                                    },
+                                    "enabled": true
                                 }
-                                """)));
+                            ],
+                            "itemsPerPage": 10,
+                            "pageNumber": 1,
+                            "totalPages": 1,
+                            "totalItems": 1
+                        }
+                        """)));
 
         String filters = """
                 [{"fieldSource":"property","fieldIdentifier":"name","condition":"CONTAINS","value":"filtered"}]
                 """;
         String result = service.listVaultProfiles(filters, 10, 1);
 
-        assertThat(result).contains("filtered-profile")
-                .contains("1 vault profiles");
+        assertThat(result).contains("filtered-profile").contains("1 vault profiles");
 
         verify(postRequestedFor(urlEqualTo("/v1/vaultProfiles/list"))
                 .withRequestBody(containing("\"fieldIdentifier\":\"name\""))

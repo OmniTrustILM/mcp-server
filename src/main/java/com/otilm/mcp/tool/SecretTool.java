@@ -14,21 +14,24 @@ public class SecretTool {
         this.secretService = secretService;
     }
 
-    @Tool(name = "search_secrets", description = "Search and list secrets in the ILM platform with optional filters and pagination. Use get_searchable_fields('secrets') to discover available filter fields. Returns secret name, UUID, type, state, version, enabled status, owner, vault profile, groups, and compliance status. Available only when connected to ILM platform 2.17 or later.")
-    public String searchSecrets(
-            @ToolParam(description = "JSON array of search filters. Use get_searchable_fields('secrets') to see available fields and operators.", required = false) String filters,
+    @Tool(name = "search_secrets",
+            description = "Search and list secrets in the ILM platform with optional filters and pagination. Use get_searchable_fields('secrets') to discover available filter fields. Returns secret name, UUID, type, state, version, enabled status, owner, vault profile, groups, and compliance status. Available only when connected to ILM platform 2.17 or later.")
+    public String searchSecrets(@ToolParam(
+            description = "JSON array of search filters. Use get_searchable_fields('secrets') to see available fields and operators.",
+            required = false) String filters,
             @ToolParam(description = "Number of items per page (default: 10)", required = false) Integer itemsPerPage,
             @ToolParam(description = "Page number for pagination (default: 1)", required = false) Integer pageNumber) {
         return secretService.searchSecrets(filters, itemsPerPage, pageNumber);
     }
 
-    @Tool(name = "get_secret", description = "Get detailed information about a specific secret by its UUID. Returns full secret details including name, description, type, state, version, enabled status, owner, source vault profile, groups, compliance status, creation/update timestamps, and sync vault profiles. Use this when you need complete details about a particular secret. Does not return the actual secret content for security reasons.")
-    public String getSecret(
-            @ToolParam(description = "The UUID of the secret to retrieve") String uuid) {
+    @Tool(name = "get_secret",
+            description = "Get detailed information about a specific secret by its UUID. Returns full secret details including name, description, type, state, version, enabled status, owner, source vault profile, groups, compliance status, creation/update timestamps, and sync vault profiles. Use this when you need complete details about a particular secret. Does not return the actual secret content for security reasons.")
+    public String getSecret(@ToolParam(description = "The UUID of the secret to retrieve") String uuid) {
         return secretService.getSecret(uuid);
     }
 
-    @Tool(name = "get_secret_versions", description = "Get the version history of a specific secret by its UUID. Returns a list of all versions with version number, creation timestamp, and fingerprint. Use this to inspect how a secret has changed over time or verify secret rotation history.")
+    @Tool(name = "get_secret_versions",
+            description = "Get the version history of a specific secret by its UUID. Returns a list of all versions with version number, creation timestamp, and fingerprint. Use this to inspect how a secret has changed over time or verify secret rotation history.")
     public String getSecretVersions(
             @ToolParam(description = "The UUID of the secret whose versions to retrieve") String uuid) {
         return secretService.getSecretVersions(uuid);

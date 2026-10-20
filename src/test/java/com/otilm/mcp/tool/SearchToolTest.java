@@ -10,7 +10,10 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.web.client.RestClient;
 
-import static com.github.tomakehurst.wiremock.client.WireMock.*;
+import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
+import static com.github.tomakehurst.wiremock.client.WireMock.get;
+import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @WireMockTest
@@ -20,7 +23,8 @@ class SearchToolTest {
 
     @BeforeEach
     void setup(WireMockRuntimeInfo wmInfo) {
-        RestClient restClient = RestClient.builder()
+        RestClient restClient = RestClient
+                .builder()
                 .baseUrl(wmInfo.getHttpBaseUrl())
                 .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                 .defaultHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
@@ -33,28 +37,27 @@ class SearchToolTest {
     @Test
     void getSearchableFieldsDelegatesToService() {
         stubFor(get(urlEqualTo("/v1/certificates/search"))
-                .willReturn(aResponse()
-                        .withHeader("Content-Type", "application/json")
-                        .withBody("""
-                                [
+                .willReturn(aResponse().withHeader("Content-Type", "application/json").withBody("""
+                        [
+                            {
+                                "filterFieldSource": "property",
+                                "searchFieldData": [
                                     {
-                                        "filterFieldSource": "property",
-                                        "searchFieldData": [
-                                            {
-                                                "fieldIdentifier": "commonName",
-                                                "fieldLabel": "Common Name",
-                                                "type": "string",
-                                                "conditions": ["EQUALS", "CONTAINS"],
-                                                "multiValue": false
-                                            }
-                                        ]
+                                        "fieldIdentifier": "commonName",
+                                        "fieldLabel": "Common Name",
+                                        "type": "string",
+                                        "conditions": ["EQUALS", "CONTAINS"],
+                                        "multiValue": false
                                     }
                                 ]
-                                """)));
+                            }
+                        ]
+                        """)));
 
         String result = tool.getSearchableFields("certificates");
 
-        assertThat(result).contains("Available search fields for certificates")
+        assertThat(result)
+                .contains("Available search fields for certificates")
                 .contains("commonName")
                 .contains("STRING")
                 .contains("EQUALS");

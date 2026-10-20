@@ -1,7 +1,5 @@
 package com.otilm.mcp.client;
 
-import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
-import com.github.tomakehurst.wiremock.junit5.WireMockTest;
 import com.czertainly.api.model.client.certificate.CertificateResponseDto;
 import com.czertainly.api.model.client.certificate.SearchRequestDto;
 import com.czertainly.api.model.client.dashboard.StatisticsDto;
@@ -10,16 +8,25 @@ import com.czertainly.api.model.core.certificate.CertificateDetailDto;
 import com.czertainly.api.model.core.info.CoreInfoResponseDto;
 import com.czertainly.api.model.core.secret.SecretDetailDto;
 import com.czertainly.api.model.core.secret.SecretDto;
-import com.czertainly.api.model.core.secret.SecretVersionDto;
 import com.czertainly.api.model.core.vault.VaultInstanceDto;
 import com.czertainly.api.model.core.vaultprofile.VaultProfileDto;
+import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
+import com.github.tomakehurst.wiremock.junit5.WireMockTest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.web.client.RestClient;
 
-import static com.github.tomakehurst.wiremock.client.WireMock.*;
+import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
+import static com.github.tomakehurst.wiremock.client.WireMock.containing;
+import static com.github.tomakehurst.wiremock.client.WireMock.get;
+import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.post;
+import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
+import static com.github.tomakehurst.wiremock.client.WireMock.verify;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @WireMockTest
@@ -29,7 +36,8 @@ class IlmApiClientTest {
 
     @BeforeEach
     void setUp(WireMockRuntimeInfo wmRuntimeInfo) {
-        RestClient restClient = RestClient.builder()
+        RestClient restClient = RestClient
+                .builder()
                 .baseUrl(wmRuntimeInfo.getHttpBaseUrl())
                 .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                 .defaultHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
@@ -40,19 +48,17 @@ class IlmApiClientTest {
     @Test
     void getStatistics_shouldReturnStatistics() {
         stubFor(get(urlEqualTo("/v1/statistics"))
-                .willReturn(aResponse()
-                        .withHeader("Content-Type", "application/json")
-                        .withBody("""
-                                {
-                                    "totalCertificates": 42,
-                                    "totalGroups": 5,
-                                    "totalDiscoveries": 3,
-                                    "totalConnectors": 2,
-                                    "totalRaProfiles": 4,
-                                    "totalCredentials": 1,
-                                    "totalAuthorities": 2
-                                }
-                                """)));
+                .willReturn(aResponse().withHeader("Content-Type", "application/json").withBody("""
+                        {
+                            "totalCertificates": 42,
+                            "totalGroups": 5,
+                            "totalDiscoveries": 3,
+                            "totalConnectors": 2,
+                            "totalRaProfiles": 4,
+                            "totalCredentials": 1,
+                            "totalAuthorities": 2
+                        }
+                        """)));
 
         StatisticsDto stats = client.getStatistics();
 
@@ -69,17 +75,15 @@ class IlmApiClientTest {
     @Test
     void searchCertificates_shouldReturnPaginatedResults() {
         stubFor(post(urlEqualTo("/v1/certificates"))
-                .willReturn(aResponse()
-                        .withHeader("Content-Type", "application/json")
-                        .withBody("""
-                                {
-                                    "certificates": [],
-                                    "itemsPerPage": 10,
-                                    "pageNumber": 1,
-                                    "totalPages": 5,
-                                    "totalItems": 42
-                                }
-                                """)));
+                .willReturn(aResponse().withHeader("Content-Type", "application/json").withBody("""
+                        {
+                            "certificates": [],
+                            "itemsPerPage": 10,
+                            "pageNumber": 1,
+                            "totalPages": 5,
+                            "totalItems": 42
+                        }
+                        """)));
 
         SearchRequestDto request = new SearchRequestDto();
         request.setItemsPerPage(10);
@@ -103,17 +107,15 @@ class IlmApiClientTest {
         String uuid = "a1b2c3d4-e5f6-7890-abcd-ef1234567890";
 
         stubFor(get(urlEqualTo("/v1/certificates/" + uuid))
-                .willReturn(aResponse()
-                        .withHeader("Content-Type", "application/json")
-                        .withBody("""
-                                {
-                                    "uuid": "%s",
-                                    "commonName": "test.example.com",
-                                    "serialNumber": "1234567890ABCDEF",
-                                    "issuerCommonName": "Test CA",
-                                    "certificateContent": "MIIBkTCB..."
-                                }
-                                """.formatted(uuid))));
+                .willReturn(aResponse().withHeader("Content-Type", "application/json").withBody("""
+                        {
+                            "uuid": "%s",
+                            "commonName": "test.example.com",
+                            "serialNumber": "1234567890ABCDEF",
+                            "issuerCommonName": "Test CA",
+                            "certificateContent": "MIIBkTCB..."
+                        }
+                        """.formatted(uuid))));
 
         CertificateDetailDto detail = client.getCertificate(uuid);
 
@@ -129,20 +131,18 @@ class IlmApiClientTest {
     @Test
     void getInfo_shouldReturnPlatformInfo() {
         stubFor(get(urlEqualTo("/v1/info"))
-                .willReturn(aResponse()
-                        .withHeader("Content-Type", "application/json")
-                        .withBody("""
-                                {
-                                    "app": {
-                                        "name": "CZERTAINLY",
-                                        "version": "2.17.0"
-                                    },
-                                    "db": {
-                                        "system": "PostgreSQL",
-                                        "version": "16.2"
-                                    }
-                                }
-                                """)));
+                .willReturn(aResponse().withHeader("Content-Type", "application/json").withBody("""
+                        {
+                            "app": {
+                                "name": "CZERTAINLY",
+                                "version": "2.17.0"
+                            },
+                            "db": {
+                                "system": "PostgreSQL",
+                                "version": "16.2"
+                            }
+                        }
+                        """)));
 
         CoreInfoResponseDto info = client.getInfo();
 
@@ -155,26 +155,24 @@ class IlmApiClientTest {
     @Test
     void searchSecrets_shouldReturnPaginatedResults() {
         stubFor(post(urlEqualTo("/v1/secrets"))
-                .willReturn(aResponse()
-                        .withHeader("Content-Type", "application/json")
-                        .withBody("""
+                .willReturn(aResponse().withHeader("Content-Type", "application/json").withBody("""
+                        {
+                            "items": [
                                 {
-                                    "items": [
-                                        {
-                                            "uuid": "secret-uuid-1",
-                                            "name": "db-password",
-                                            "type": "basicAuth",
-                                            "state": "active",
-                                            "version": 1,
-                                            "enabled": true
-                                        }
-                                    ],
-                                    "itemsPerPage": 10,
-                                    "pageNumber": 1,
-                                    "totalPages": 1,
-                                    "totalItems": 1
+                                    "uuid": "secret-uuid-1",
+                                    "name": "db-password",
+                                    "type": "basicAuth",
+                                    "state": "active",
+                                    "version": 1,
+                                    "enabled": true
                                 }
-                                """)));
+                            ],
+                            "itemsPerPage": 10,
+                            "pageNumber": 1,
+                            "totalPages": 1,
+                            "totalItems": 1
+                        }
+                        """)));
 
         SearchRequestDto request = new SearchRequestDto();
         PaginationResponseDto<SecretDto> response = client.searchSecrets(request);
@@ -190,20 +188,18 @@ class IlmApiClientTest {
     @Test
     void getSecret_shouldReturnSecretDetail() {
         stubFor(get(urlEqualTo("/v1/secrets/secret-1"))
-                .willReturn(aResponse()
-                        .withHeader("Content-Type", "application/json")
-                        .withBody("""
-                                {
-                                    "uuid": "secret-1",
-                                    "name": "api-key-prod",
-                                    "type": "apiKey",
-                                    "state": "active",
-                                    "version": 3,
-                                    "enabled": true,
-                                    "createdAt": "2026-01-15T08:00:00.000Z",
-                                    "updatedAt": "2026-03-20T14:30:00.000Z"
-                                }
-                                """)));
+                .willReturn(aResponse().withHeader("Content-Type", "application/json").withBody("""
+                        {
+                            "uuid": "secret-1",
+                            "name": "api-key-prod",
+                            "type": "apiKey",
+                            "state": "active",
+                            "version": 3,
+                            "enabled": true,
+                            "createdAt": "2026-01-15T08:00:00.000Z",
+                            "updatedAt": "2026-03-20T14:30:00.000Z"
+                        }
+                        """)));
 
         SecretDetailDto detail = client.getSecret("secret-1");
 
@@ -217,22 +213,20 @@ class IlmApiClientTest {
     @Test
     void getSecretVersions_shouldReturnVersionList() {
         stubFor(get(urlEqualTo("/v1/secrets/secret-1/versions"))
-                .willReturn(aResponse()
-                        .withHeader("Content-Type", "application/json")
-                        .withBody("""
-                                [
-                                    {
-                                        "version": 1,
-                                        "createdAt": "2026-01-15T08:00:00.000Z",
-                                        "fingerprint": "sha256:abc123"
-                                    },
-                                    {
-                                        "version": 2,
-                                        "createdAt": "2026-02-20T10:00:00.000Z",
-                                        "fingerprint": "sha256:def456"
-                                    }
-                                ]
-                                """)));
+                .willReturn(aResponse().withHeader("Content-Type", "application/json").withBody("""
+                        [
+                            {
+                                "version": 1,
+                                "createdAt": "2026-01-15T08:00:00.000Z",
+                                "fingerprint": "sha256:abc123"
+                            },
+                            {
+                                "version": 2,
+                                "createdAt": "2026-02-20T10:00:00.000Z",
+                                "fingerprint": "sha256:def456"
+                            }
+                        ]
+                        """)));
 
         var versions = client.getSecretVersions("secret-1");
 
@@ -246,27 +240,25 @@ class IlmApiClientTest {
     @Test
     void listVaultInstances_shouldReturnPaginatedResults() {
         stubFor(post(urlEqualTo("/v1/vaults/list"))
-                .willReturn(aResponse()
-                        .withHeader("Content-Type", "application/json")
-                        .withBody("""
+                .willReturn(aResponse().withHeader("Content-Type", "application/json").withBody("""
+                        {
+                            "items": [
                                 {
-                                    "items": [
-                                        {
-                                            "uuid": "vault-uuid-1",
-                                            "name": "HashiCorp Vault",
-                                            "description": "Production vault",
-                                            "connector": {
-                                                "uuid": "conn-1",
-                                                "name": "hcv-connector"
-                                            }
-                                        }
-                                    ],
-                                    "itemsPerPage": 10,
-                                    "pageNumber": 1,
-                                    "totalPages": 1,
-                                    "totalItems": 1
+                                    "uuid": "vault-uuid-1",
+                                    "name": "HashiCorp Vault",
+                                    "description": "Production vault",
+                                    "connector": {
+                                        "uuid": "conn-1",
+                                        "name": "hcv-connector"
+                                    }
                                 }
-                                """)));
+                            ],
+                            "itemsPerPage": 10,
+                            "pageNumber": 1,
+                            "totalPages": 1,
+                            "totalItems": 1
+                        }
+                        """)));
 
         SearchRequestDto request = new SearchRequestDto();
         PaginationResponseDto<VaultInstanceDto> response = client.listVaultInstances(request);
@@ -282,28 +274,26 @@ class IlmApiClientTest {
     @Test
     void listVaultProfiles_shouldReturnPaginatedResults() {
         stubFor(post(urlEqualTo("/v1/vaultProfiles/list"))
-                .willReturn(aResponse()
-                        .withHeader("Content-Type", "application/json")
-                        .withBody("""
+                .willReturn(aResponse().withHeader("Content-Type", "application/json").withBody("""
+                        {
+                            "items": [
                                 {
-                                    "items": [
-                                        {
-                                            "uuid": "vp-uuid-1",
-                                            "name": "prod-vault-profile",
-                                            "description": "Production vault profile",
-                                            "vaultInstance": {
-                                                "uuid": "vault-1",
-                                                "name": "HashiCorp Vault"
-                                            },
-                                            "enabled": true
-                                        }
-                                    ],
-                                    "itemsPerPage": 10,
-                                    "pageNumber": 1,
-                                    "totalPages": 1,
-                                    "totalItems": 1
+                                    "uuid": "vp-uuid-1",
+                                    "name": "prod-vault-profile",
+                                    "description": "Production vault profile",
+                                    "vaultInstance": {
+                                        "uuid": "vault-1",
+                                        "name": "HashiCorp Vault"
+                                    },
+                                    "enabled": true
                                 }
-                                """)));
+                            ],
+                            "itemsPerPage": 10,
+                            "pageNumber": 1,
+                            "totalPages": 1,
+                            "totalItems": 1
+                        }
+                        """)));
 
         SearchRequestDto request = new SearchRequestDto();
         PaginationResponseDto<VaultProfileDto> response = client.listVaultProfiles(request);
@@ -321,35 +311,35 @@ class IlmApiClientTest {
         stubFor(get(urlEqualTo("/v1/certificates/search"))
                 .willReturn(aResponse()
                         .withHeader("Content-Type", "application/json")
-                        .withBody("""
-                                [
-                                    {
-                                        "filterFieldSource": "property",
-                                        "searchFieldData": [
+                        .withBody(
+                                """
+                                        [
                                             {
-                                                "fieldIdentifier": "commonName",
-                                                "fieldLabel": "Common Name",
-                                                "type": "string",
-                                                "conditions": ["EQUALS", "NOT_EQUALS", "CONTAINS", "NOT_CONTAINS", "STARTS_WITH", "ENDS_WITH", "EMPTY", "NOT_EMPTY"],
-                                                "multiValue": false
-                                            },
-                                            {
-                                                "fieldIdentifier": "state",
-                                                "fieldLabel": "State",
-                                                "type": "list",
-                                                "conditions": ["EQUALS", "NOT_EQUALS"],
-                                                "value": ["issued", "revoked", "requested"],
-                                                "multiValue": false
+                                                "filterFieldSource": "property",
+                                                "searchFieldData": [
+                                                    {
+                                                        "fieldIdentifier": "commonName",
+                                                        "fieldLabel": "Common Name",
+                                                        "type": "string",
+                                                        "conditions": ["EQUALS", "NOT_EQUALS", "CONTAINS", "NOT_CONTAINS", "STARTS_WITH", "ENDS_WITH", "EMPTY", "NOT_EMPTY"],
+                                                        "multiValue": false
+                                                    },
+                                                    {
+                                                        "fieldIdentifier": "state",
+                                                        "fieldLabel": "State",
+                                                        "type": "list",
+                                                        "conditions": ["EQUALS", "NOT_EQUALS"],
+                                                        "value": ["issued", "revoked", "requested"],
+                                                        "multiValue": false
+                                                    }
+                                                ]
                                             }
                                         ]
-                                    }
-                                ]
-                                """)));
+                                        """)));
 
         var result = client.getSearchableFields("certificates");
 
-        assertThat(result).isNotNull()
-                .hasSize(1);
+        assertThat(result).isNotNull().hasSize(1);
         assertThat(result.get(0).getSearchFieldData()).hasSize(2);
         assertThat(result.get(0).getSearchFieldData().get(0).getFieldIdentifier()).isEqualTo("commonName");
         assertThat(result.get(0).getSearchFieldData().get(1).getFieldIdentifier()).isEqualTo("state");

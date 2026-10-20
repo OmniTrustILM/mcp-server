@@ -8,14 +8,18 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.web.client.RestClient;
 
-import static com.github.tomakehurst.wiremock.client.WireMock.*;
+import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
+import static com.github.tomakehurst.wiremock.client.WireMock.get;
+import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @WireMockTest
 class PlatformInfoTest {
 
     private PlatformInfo createPlatformInfo(WireMockRuntimeInfo wmInfo) {
-        RestClient restClient = RestClient.builder()
+        RestClient restClient = RestClient
+                .builder()
                 .baseUrl(wmInfo.getHttpBaseUrl())
                 .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                 .defaultHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
@@ -27,14 +31,12 @@ class PlatformInfoTest {
     @Test
     void shouldDetectSecretsSupported_when217(WireMockRuntimeInfo wmInfo) {
         stubFor(get(urlEqualTo("/v1/info"))
-                .willReturn(aResponse()
-                        .withHeader("Content-Type", "application/json")
-                        .withBody("""
-                                {
-                                    "app": {"name": "CZERTAINLY", "version": "2.17.0"},
-                                    "db": {"system": "PostgreSQL", "version": "16.2"}
-                                }
-                                """)));
+                .willReturn(aResponse().withHeader("Content-Type", "application/json").withBody("""
+                        {
+                            "app": {"name": "CZERTAINLY", "version": "2.17.0"},
+                            "db": {"system": "PostgreSQL", "version": "16.2"}
+                        }
+                        """)));
 
         PlatformInfo info = createPlatformInfo(wmInfo);
 
@@ -45,14 +47,12 @@ class PlatformInfoTest {
     @Test
     void shouldDetectSecretsSupported_whenNewerThan217(WireMockRuntimeInfo wmInfo) {
         stubFor(get(urlEqualTo("/v1/info"))
-                .willReturn(aResponse()
-                        .withHeader("Content-Type", "application/json")
-                        .withBody("""
-                                {
-                                    "app": {"name": "CZERTAINLY", "version": "2.18.1"},
-                                    "db": {"system": "PostgreSQL", "version": "16.2"}
-                                }
-                                """)));
+                .willReturn(aResponse().withHeader("Content-Type", "application/json").withBody("""
+                        {
+                            "app": {"name": "CZERTAINLY", "version": "2.18.1"},
+                            "db": {"system": "PostgreSQL", "version": "16.2"}
+                        }
+                        """)));
 
         PlatformInfo info = createPlatformInfo(wmInfo);
 
@@ -62,14 +62,12 @@ class PlatformInfoTest {
     @Test
     void shouldDetectSecretsNotSupported_whenOlderThan217(WireMockRuntimeInfo wmInfo) {
         stubFor(get(urlEqualTo("/v1/info"))
-                .willReturn(aResponse()
-                        .withHeader("Content-Type", "application/json")
-                        .withBody("""
-                                {
-                                    "app": {"name": "CZERTAINLY", "version": "2.16.2"},
-                                    "db": {"system": "PostgreSQL", "version": "16.2"}
-                                }
-                                """)));
+                .willReturn(aResponse().withHeader("Content-Type", "application/json").withBody("""
+                        {
+                            "app": {"name": "CZERTAINLY", "version": "2.16.2"},
+                            "db": {"system": "PostgreSQL", "version": "16.2"}
+                        }
+                        """)));
 
         PlatformInfo info = createPlatformInfo(wmInfo);
 
@@ -79,8 +77,7 @@ class PlatformInfoTest {
 
     @Test
     void shouldDefaultToNotSupported_whenApiUnreachable(WireMockRuntimeInfo wmInfo) {
-        stubFor(get(urlEqualTo("/v1/info"))
-                .willReturn(aResponse().withStatus(500)));
+        stubFor(get(urlEqualTo("/v1/info")).willReturn(aResponse().withStatus(500)));
 
         PlatformInfo info = createPlatformInfo(wmInfo);
 
@@ -91,14 +88,12 @@ class PlatformInfoTest {
     @Test
     void shouldDefaultToNotSupported_whenMalformedVersion(WireMockRuntimeInfo wmInfo) {
         stubFor(get(urlEqualTo("/v1/info"))
-                .willReturn(aResponse()
-                        .withHeader("Content-Type", "application/json")
-                        .withBody("""
-                                {
-                                    "app": {"name": "CZERTAINLY", "version": "unknown"},
-                                    "db": {"system": "PostgreSQL", "version": "16.2"}
-                                }
-                                """)));
+                .willReturn(aResponse().withHeader("Content-Type", "application/json").withBody("""
+                        {
+                            "app": {"name": "CZERTAINLY", "version": "unknown"},
+                            "db": {"system": "PostgreSQL", "version": "16.2"}
+                        }
+                        """)));
 
         PlatformInfo info = createPlatformInfo(wmInfo);
 

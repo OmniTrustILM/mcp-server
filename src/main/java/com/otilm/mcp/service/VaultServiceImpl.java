@@ -27,8 +27,12 @@ public class VaultServiceImpl implements VaultService {
     public String listVaultInstances(String filters, Integer itemsPerPage, Integer pageNumber) {
         try {
             SearchRequestDto request = new SearchRequestDto();
-            if (itemsPerPage != null) request.setItemsPerPage(itemsPerPage);
-            if (pageNumber != null) request.setPageNumber(pageNumber);
+            if (itemsPerPage != null) {
+                request.setItemsPerPage(itemsPerPage);
+            }
+            if (pageNumber != null) {
+                request.setPageNumber(pageNumber);
+            }
             request.setFilters(SearchFilterParser.parseFilters(filters, objectMapper));
 
             PaginationResponseDto<VaultInstanceDto> response = ilmApiClient.listVaultInstances(request);
@@ -45,8 +49,12 @@ public class VaultServiceImpl implements VaultService {
     public String listVaultProfiles(String filters, Integer itemsPerPage, Integer pageNumber) {
         try {
             SearchRequestDto request = new SearchRequestDto();
-            if (itemsPerPage != null) request.setItemsPerPage(itemsPerPage);
-            if (pageNumber != null) request.setPageNumber(pageNumber);
+            if (itemsPerPage != null) {
+                request.setItemsPerPage(itemsPerPage);
+            }
+            if (pageNumber != null) {
+                request.setPageNumber(pageNumber);
+            }
             request.setFilters(SearchFilterParser.parseFilters(filters, objectMapper));
 
             PaginationResponseDto<VaultProfileDto> response = ilmApiClient.listVaultProfiles(request);
@@ -62,8 +70,12 @@ public class VaultServiceImpl implements VaultService {
     private String formatVaultInstanceList(PaginationResponseDto<VaultInstanceDto> response) {
         StringBuilder sb = new StringBuilder();
         sb.append("Found ").append(response.getTotalItems()).append(" vault instances");
-        sb.append(" (page ").append(response.getPageNumber())
-          .append(" of ").append(response.getTotalPages()).append(")\n\n");
+        sb
+                .append(" (page ")
+                .append(response.getPageNumber())
+                .append(" of ")
+                .append(response.getTotalPages())
+                .append(")\n\n");
 
         for (VaultInstanceDto vault : response.getItems()) {
             sb.append("- ").append(vault.getName() != null ? vault.getName() : "N/A");
@@ -83,8 +95,12 @@ public class VaultServiceImpl implements VaultService {
     private String formatVaultProfileList(PaginationResponseDto<VaultProfileDto> response) {
         StringBuilder sb = new StringBuilder();
         sb.append("Found ").append(response.getTotalItems()).append(" vault profiles");
-        sb.append(" (page ").append(response.getPageNumber())
-          .append(" of ").append(response.getTotalPages()).append(")\n\n");
+        sb
+                .append(" (page ")
+                .append(response.getPageNumber())
+                .append(" of ")
+                .append(response.getTotalPages())
+                .append(")\n\n");
 
         for (VaultProfileDto profile : response.getItems()) {
             sb.append("- ").append(profile.getName() != null ? profile.getName() : "N/A");

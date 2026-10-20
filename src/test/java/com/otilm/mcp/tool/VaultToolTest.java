@@ -11,7 +11,12 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.web.client.RestClient;
 
-import static com.github.tomakehurst.wiremock.client.WireMock.*;
+import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
+import static com.github.tomakehurst.wiremock.client.WireMock.post;
+import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
+import static com.github.tomakehurst.wiremock.client.WireMock.verify;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @WireMockTest
@@ -21,7 +26,8 @@ class VaultToolTest {
 
     @BeforeEach
     void setup(WireMockRuntimeInfo wmInfo) {
-        RestClient restClient = RestClient.builder()
+        RestClient restClient = RestClient
+                .builder()
                 .baseUrl(wmInfo.getHttpBaseUrl())
                 .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                 .defaultHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
@@ -34,26 +40,24 @@ class VaultToolTest {
     @Test
     void listVaultInstancesDelegatesToService() {
         stubFor(post(urlEqualTo("/v1/vaults/list"))
-                .willReturn(aResponse()
-                        .withHeader("Content-Type", "application/json")
-                        .withBody("""
+                .willReturn(aResponse().withHeader("Content-Type", "application/json").withBody("""
+                        {
+                            "items": [
                                 {
-                                    "items": [
-                                        {
-                                            "uuid": "vault-1",
-                                            "name": "HashiCorp Vault",
-                                            "connector": {
-                                                "uuid": "conn-1",
-                                                "name": "hcv-connector"
-                                            }
-                                        }
-                                    ],
-                                    "itemsPerPage": 10,
-                                    "pageNumber": 1,
-                                    "totalPages": 1,
-                                    "totalItems": 1
+                                    "uuid": "vault-1",
+                                    "name": "HashiCorp Vault",
+                                    "connector": {
+                                        "uuid": "conn-1",
+                                        "name": "hcv-connector"
+                                    }
                                 }
-                                """)));
+                            ],
+                            "itemsPerPage": 10,
+                            "pageNumber": 1,
+                            "totalPages": 1,
+                            "totalItems": 1
+                        }
+                        """)));
 
         String result = tool.listVaultInstances(null, null, null);
 
@@ -66,27 +70,25 @@ class VaultToolTest {
     @Test
     void listVaultProfilesDelegatesToService() {
         stubFor(post(urlEqualTo("/v1/vaultProfiles/list"))
-                .willReturn(aResponse()
-                        .withHeader("Content-Type", "application/json")
-                        .withBody("""
+                .willReturn(aResponse().withHeader("Content-Type", "application/json").withBody("""
+                        {
+                            "items": [
                                 {
-                                    "items": [
-                                        {
-                                            "uuid": "vp-1",
-                                            "name": "prod-profile",
-                                            "vaultInstance": {
-                                                "uuid": "vault-1",
-                                                "name": "HashiCorp Vault"
-                                            },
-                                            "enabled": true
-                                        }
-                                    ],
-                                    "itemsPerPage": 10,
-                                    "pageNumber": 1,
-                                    "totalPages": 1,
-                                    "totalItems": 1
+                                    "uuid": "vp-1",
+                                    "name": "prod-profile",
+                                    "vaultInstance": {
+                                        "uuid": "vault-1",
+                                        "name": "HashiCorp Vault"
+                                    },
+                                    "enabled": true
                                 }
-                                """)));
+                            ],
+                            "itemsPerPage": 10,
+                            "pageNumber": 1,
+                            "totalPages": 1,
+                            "totalItems": 1
+                        }
+                        """)));
 
         String result = tool.listVaultProfiles(null, null, null);
 
