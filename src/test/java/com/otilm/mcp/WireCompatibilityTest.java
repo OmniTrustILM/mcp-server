@@ -7,6 +7,7 @@ import com.otilm.mcp.client.IlmApiClient;
 import com.otilm.mcp.service.CertificateServiceImpl;
 import com.otilm.mcp.service.InfrastructureServiceImpl;
 import com.otilm.mcp.service.KeyServiceImpl;
+import com.otilm.mcp.service.PlatformVersionCheck;
 import com.otilm.mcp.service.SearchServiceImpl;
 import com.otilm.mcp.service.SecretServiceImpl;
 import com.otilm.mcp.service.VaultServiceImpl;
@@ -49,8 +50,8 @@ class WireCompatibilityTest {
         IlmApiClient client = IlmTestSupport.client(wmInfo);
         tools = new Tools(new CertificateTool(new CertificateServiceImpl(client)),
                 new KeyTool(new KeyServiceImpl(client)), new InfrastructureTool(new InfrastructureServiceImpl(client)),
-                new SearchTool(new SearchServiceImpl(client)), new SecretTool(new SecretServiceImpl(client)),
-                new VaultTool(new VaultServiceImpl(client)));
+                new SearchTool(new SearchServiceImpl(client, new PlatformVersionCheck(client))),
+                new SecretTool(new SecretServiceImpl(client)), new VaultTool(new VaultServiceImpl(client)));
     }
 
     static Stream<Arguments> recordedResponses() {

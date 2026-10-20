@@ -5,9 +5,17 @@ import com.otilm.api.model.client.certificate.DiscoveryResponseDto;
 import com.otilm.api.model.client.certificate.EntityInstanceResponseDto;
 import com.otilm.api.model.client.certificate.SearchRequestDto;
 import com.otilm.api.model.client.cryptography.CryptographicKeyResponseDto;
+import com.otilm.api.model.client.dashboard.CryptographicAssetStatisticsDto;
+import com.otilm.api.model.client.dashboard.SigningRecordStatisticsDto;
 import com.otilm.api.model.client.dashboard.StatisticsDto;
+import com.otilm.api.model.client.signing.profile.SigningProfileDto;
+import com.otilm.api.model.client.signing.profile.SigningProfileListDto;
+import com.otilm.api.model.client.signing.protocols.tsp.TspProfileListDto;
 import com.otilm.api.model.common.PaginationResponseDto;
 import com.otilm.api.model.core.authority.AuthorityInstanceDto;
+import com.otilm.api.model.core.cbom.CbomContributedAssetDto;
+import com.otilm.api.model.core.cbom.CbomDetailDto;
+import com.otilm.api.model.core.cbom.CbomDto;
 import com.otilm.api.model.core.certificate.CertificateChainResponseDto;
 import com.otilm.api.model.core.certificate.CertificateDetailDto;
 import com.otilm.api.model.core.certificate.CertificateEventHistoryDto;
@@ -15,6 +23,9 @@ import com.otilm.api.model.core.certificate.CertificateValidationResultDto;
 import com.otilm.api.model.core.certificate.group.GroupDto;
 import com.otilm.api.model.core.connector.ConnectorDto;
 import com.otilm.api.model.core.credential.CredentialDto;
+import com.otilm.api.model.core.cryptoasset.CryptographicAssetDetailDto;
+import com.otilm.api.model.core.cryptoasset.CryptographicAssetDto;
+import com.otilm.api.model.core.cryptoasset.CryptographicAssetPqcExplanationDto;
 import com.otilm.api.model.core.cryptography.key.KeyDetailDto;
 import com.otilm.api.model.core.cryptography.token.TokenInstanceDto;
 import com.otilm.api.model.core.info.CoreInfoResponseDto;
@@ -23,9 +34,11 @@ import com.otilm.api.model.core.search.SearchFieldDataByGroupDto;
 import com.otilm.api.model.core.secret.SecretDetailDto;
 import com.otilm.api.model.core.secret.SecretDto;
 import com.otilm.api.model.core.secret.SecretVersionDto;
+import com.otilm.api.model.core.signing.signingrecord.SigningRecordListDto;
 import com.otilm.api.model.core.vault.VaultInstanceDto;
 import com.otilm.api.model.core.vaultprofile.VaultProfileDto;
 import java.util.List;
+import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.ParameterizedTypeReference;
@@ -236,6 +249,128 @@ public class IlmApiClient {
         return restClient
                 .get()
                 .uri("/v1/{resource}/search", resource)
+                .retrieve()
+                .body(new ParameterizedTypeReference<>() {
+                });
+    }
+
+    // ---- Cryptographic asset endpoints ----
+
+    public CryptographicAssetStatisticsDto getCryptoAssetStatistics() {
+        logger.debug("Fetching cryptographic asset statistics");
+        return restClient
+                .get()
+                .uri("/v1/statistics/cryptoAssets")
+                .retrieve()
+                .body(CryptographicAssetStatisticsDto.class);
+    }
+
+    public PaginationResponseDto<CryptographicAssetDto> searchCryptoAssets(SearchRequestDto request) {
+        logger.debug("Searching cryptographic assets");
+        return restClient
+                .post()
+                .uri("/v1/cryptoAssets")
+                .body(request)
+                .retrieve()
+                .body(new ParameterizedTypeReference<>() {
+                });
+    }
+
+    public CryptographicAssetDetailDto getCryptoAsset(String uuid) {
+        logger.debug("Fetching cryptographic asset {}", uuid);
+        return restClient.get().uri("/v1/cryptoAssets/{uuid}", uuid).retrieve().body(CryptographicAssetDetailDto.class);
+    }
+
+    public CryptographicAssetPqcExplanationDto getCryptoAssetPqcExplanation(String uuid) {
+        logger.debug("Fetching PQC verdict explanation for cryptographic asset {}", uuid);
+        return restClient
+                .get()
+                .uri("/v1/cryptoAssets/{uuid}/pqcExplanation", uuid)
+                .retrieve()
+                .body(CryptographicAssetPqcExplanationDto.class);
+    }
+
+    // ---- CBOM endpoints ----
+
+    public PaginationResponseDto<CbomDto> searchCboms(SearchRequestDto request) {
+        logger.debug("Searching CBOMs");
+        return restClient.post().uri("/v1/cboms").body(request).retrieve().body(new ParameterizedTypeReference<>() {
+        });
+    }
+
+    public CbomDetailDto getCbom(String uuid) {
+        logger.debug("Fetching CBOM {}", uuid);
+        return restClient.get().uri("/v1/cboms/{uuid}", uuid).retrieve().body(CbomDetailDto.class);
+    }
+
+    public List<CbomDto> getCbomVersions(String uuid) {
+        logger.debug("Fetching versions of CBOM {}", uuid);
+        return restClient
+                .get()
+                .uri("/v1/cboms/{uuid}/versions", uuid)
+                .retrieve()
+                .body(new ParameterizedTypeReference<>() {
+                });
+    }
+
+    public PaginationResponseDto<CbomContributedAssetDto> searchCbomAssets(String uuid, SearchRequestDto request) {
+        logger.debug("Searching cryptographic assets of CBOM {}", uuid);
+        return restClient
+                .post()
+                .uri("/v1/cboms/{uuid}/assets", uuid)
+                .body(request)
+                .retrieve()
+                .body(new ParameterizedTypeReference<>() {
+                });
+    }
+
+    // ---- Signing endpoints ----
+
+    public PaginationResponseDto<SigningProfileListDto> searchSigningProfiles(SearchRequestDto request) {
+        logger.debug("Searching signing profiles");
+        return restClient
+                .post()
+                .uri("/v1/signingProfiles/list")
+                .body(request)
+                .retrieve()
+                .body(new ParameterizedTypeReference<>() {
+                });
+    }
+
+    public SigningProfileDto getSigningProfile(String uuid) {
+        logger.debug("Fetching signing profile {}", uuid);
+        return restClient.get().uri("/v1/signingProfiles/{uuid}", uuid).retrieve().body(SigningProfileDto.class);
+    }
+
+    public PaginationResponseDto<SigningRecordListDto> searchSigningRecords(SearchRequestDto request) {
+        logger.debug("Searching signing records");
+        return restClient
+                .post()
+                .uri("/v1/signingRecords")
+                .body(request)
+                .retrieve()
+                .body(new ParameterizedTypeReference<>() {
+                });
+    }
+
+    public SigningRecordStatisticsDto getSigningStatistics(String period) {
+        logger.debug("Fetching signing record statistics");
+        return restClient
+                .get()
+                .uri(builder -> builder
+                        .path("/v1/statistics/signingRecords")
+                        .queryParamIfPresent("period", Optional.ofNullable(period))
+                        .build())
+                .retrieve()
+                .body(SigningRecordStatisticsDto.class);
+    }
+
+    public PaginationResponseDto<TspProfileListDto> searchTspProfiles(SearchRequestDto request) {
+        logger.debug("Searching TSP profiles");
+        return restClient
+                .post()
+                .uri("/v1/tspProfiles/list")
+                .body(request)
                 .retrieve()
                 .body(new ParameterizedTypeReference<>() {
                 });

@@ -1,0 +1,43 @@
+{
+  "uuid": "82643a70-90b8-4042-a4d2-4723b68e8391",
+  "name": "name-3",
+  "type": "algorithm",
+  "pqcVerdict": "notReady",
+  "sourceCbomCount": 1,
+  "occurrenceCount": 1,
+  "quarantined": false,
+  "customAttributes": [],
+  "verdict": {
+    "ruleId": "SYMMETRIC-UNDERSIZED",
+    "reason": "reason-1",
+    "evaluatedFields": {
+      "variant": "neasnowg|nea1",
+      "parameterSet": 128,
+      "algorithmFamily": "SNOW3G"
+    },
+    "decidedAt": "2026-10-14T08:22:36.000105Z",
+    "evaluatedAt": "2026-10-14T08:22:36.000105Z"
+  },
+  "normalizedFields": {
+    "algorithmFamily": "snow3g",
+    "primitive": "stream-cipher",
+    "parameterSet": "128",
+    "variant": "neasnowg|nea1"
+  },
+  "electedPayload": {
+    "payloadMarker": "synthetic"
+  },
+  "sources": [
+    {
+      "cbomUuid": "c986af6b-e6af-421d-a77d-5920bb81c240",
+      "serialNumber": "0000000000000000000000000000000000000001",
+      "version": 1,
+      "occurrenceCount": 0,
+      "source": "source-3",
+      "payload": {
+        "payloadMarker": "synthetic"
+      }
+    }
+  ],
+  "oids": []
+}

@@ -6,14 +6,20 @@ import com.otilm.api.model.core.cryptography.key.KeyDetailDto;
 import com.otilm.api.model.core.cryptography.key.KeyItemDetailDto;
 import com.otilm.api.model.core.cryptography.key.KeyItemDto;
 import com.otilm.mcp.client.IlmApiClient;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+
+import static com.otilm.mcp.service.TextFormat.code;
+import static com.otilm.mcp.service.TextFormat.field;
+import static com.otilm.mcp.service.TextFormat.item;
+import static com.otilm.mcp.service.TextFormat.names;
+import static com.otilm.mcp.service.TextFormat.orNa;
+import static com.otilm.mcp.service.TextFormat.pagedList;
 
 @Service
 public class KeyServiceImpl implements KeyService {
 
-    private static final Logger logger = LoggerFactory.getLogger(KeyServiceImpl.class);
+    private static final String INDENT = "  ";
+    private static final String ITEM_INDENT = "      ";
 
     private final IlmApiClient ilmApiClient;
 
@@ -23,140 +29,62 @@ public class KeyServiceImpl implements KeyService {
 
     @Override
     public String searchKeys(String filters, Integer itemsPerPage, Integer pageNumber) {
-        try {
-            SearchRequestDto request = new SearchRequestDto();
-            if (itemsPerPage != null) {
-                request.setItemsPerPage(itemsPerPage);
-            }
-            if (pageNumber != null) {
-                request.setPageNumber(pageNumber);
-            }
-            request.setFilters(SearchFilterParser.parseFilters(filters));
-
-            CryptographicKeyResponseDto response = ilmApiClient.searchKeys(request);
-            return formatKeyList(response);
-        } catch (IllegalArgumentException e) {
-            return e.getMessage();
-        } catch (Exception e) {
-            logger.error("Failed to search keys", e);
-            return "Error searching keys: " + e.getMessage();
-        }
+        return ToolResponses.run("searching keys", () -> {
+            CryptographicKeyResponseDto response = ilmApiClient
+                    .searchKeys(SearchRequests.of(new SearchRequestDto(), filters, itemsPerPage, pageNumber));
+            return pagedList(response.getTotalItems(), "cryptographic keys", response.getPageNumber(),
+                    response.getTotalPages(), response.getCryptographicKeys(), KeyServiceImpl::formatKeyItem);
+        });
     }
 
     @Override
     public String getKey(String uuid) {
-        try {
-            KeyDetailDto key = ilmApiClient.getKey(uuid);
-            return formatKeyDetail(key);
-        } catch (Exception e) {
-            logger.error("Failed to get key {}", uuid, e);
-            return "Error retrieving key: " + e.getMessage();
-        }
+        return ToolResponses.run("retrieving key", () -> formatKeyDetail(ilmApiClient.getKey(uuid)));
     }
 
-    private String formatKeyList(CryptographicKeyResponseDto response) {
+    private static void formatKeyItem(StringBuilder sb, KeyItemDto key) {
+        item(sb, key.getName(), key.getUuid());
+        field(sb, INDENT, "Key UUID", key.getKeyWrapperUuid());
+        field(sb, INDENT, "Algorithm", code(key.getKeyAlgorithm()));
+        field(sb, INDENT, "Size", key.getLength() + " bits");
+        field(sb, INDENT, "Type", code(key.getType()));
+        field(sb, INDENT, "State", code(key.getState()));
+        field(sb, INDENT, "Enabled", key.isEnabled());
+        field(sb, INDENT, "Token Instance", key.getTokenInstanceName());
+        field(sb, INDENT, "Token Profile", key.getTokenProfileName());
+        field(sb, INDENT, "Owner", key.getOwner());
+    }
+
+    private static String formatKeyDetail(KeyDetailDto key) {
         StringBuilder sb = new StringBuilder();
-        sb.append("Found ").append(response.getTotalItems()).append(" cryptographic keys");
-        sb
-                .append(" (page ")
-                .append(response.getPageNumber())
-                .append(" of ")
-                .append(response.getTotalPages())
-                .append(")\n\n");
-
-        for (KeyItemDto key : response.getCryptographicKeys()) {
-            appendKey(sb, key);
-        }
-
-        return sb.toString();
-    }
-
-    private static void appendKey(StringBuilder sb, KeyItemDto key) {
-        sb.append("- ").append(key.getName() != null ? key.getName() : "N/A");
-        sb.append(" [").append(key.getUuid()).append("]\n");
-        if (key.getKeyWrapperUuid() != null) {
-            sb.append("  Key UUID: ").append(key.getKeyWrapperUuid()).append("\n");
-        }
-        sb
-                .append("  Algorithm: ")
-                .append(key.getKeyAlgorithm() != null ? key.getKeyAlgorithm().getCode() : "N/A")
-                .append("\n");
-        sb.append("  Size: ").append(key.getLength()).append(" bits\n");
-        sb.append("  Type: ").append(key.getType() != null ? key.getType().getCode() : "N/A").append("\n");
-        sb.append("  State: ").append(key.getState() != null ? key.getState().getCode() : "N/A").append("\n");
-        sb.append("  Enabled: ").append(key.isEnabled()).append("\n");
-        if (key.getTokenInstanceName() != null) {
-            sb.append("  Token Instance: ").append(key.getTokenInstanceName()).append("\n");
-        }
-        if (key.getTokenProfileName() != null) {
-            sb.append("  Token Profile: ").append(key.getTokenProfileName()).append("\n");
-        }
-        if (key.getOwner() != null) {
-            sb.append("  Owner: ").append(key.getOwner()).append("\n");
-        }
-        sb.append("\n");
-    }
-
-    private String formatKeyDetail(KeyDetailDto key) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("Key: ").append(key.getName() != null ? key.getName() : "N/A").append("\n");
-        sb.append("  UUID: ").append(key.getUuid()).append("\n");
-        if (key.getDescription() != null) {
-            sb.append("  Description: ").append(key.getDescription()).append("\n");
-        }
-        if (key.getCreationTime() != null) {
-            sb.append("  Created: ").append(key.getCreationTime()).append("\n");
-        }
-        if (key.getTokenInstanceName() != null) {
-            sb.append("  Token Instance: ").append(key.getTokenInstanceName()).append("\n");
-        }
-        if (key.getTokenProfileName() != null) {
-            sb.append("  Token Profile: ").append(key.getTokenProfileName()).append("\n");
-        }
-        if (key.getOwner() != null) {
-            sb.append("  Owner: ").append(key.getOwner()).append("\n");
-        }
-        sb
-                .append("  Compliance: ")
-                .append(key.getComplianceStatus() != null ? key.getComplianceStatus().getCode() : "N/A")
-                .append("\n");
-
-        if (key.getGroups() != null && !key.getGroups().isEmpty()) {
-            sb.append("  Groups: ");
-            sb.append(String.join(", ", key.getGroups().stream().map(g -> g.getName()).toList()));
-            sb.append("\n");
-        }
-
+        sb.append("Key: ").append(orNa(key.getName())).append("\n");
+        field(sb, INDENT, "UUID", key.getUuid());
+        field(sb, INDENT, "Description", key.getDescription());
+        field(sb, INDENT, "Created", key.getCreationTime());
+        field(sb, INDENT, "Token Instance", key.getTokenInstanceName());
+        field(sb, INDENT, "Token Profile", key.getTokenProfileName());
+        field(sb, INDENT, "Owner", key.getOwner());
+        field(sb, INDENT, "Compliance", code(key.getComplianceStatus()));
+        field(sb, INDENT, "Groups", names(key.getGroups()));
         if (key.getItems() != null && !key.getItems().isEmpty()) {
             sb.append("\n  Key Items:\n");
-            for (KeyItemDetailDto item : key.getItems()) {
-                sb.append("    - ").append(item.getName() != null ? item.getName() : "N/A").append("\n");
-                sb.append("      UUID: ").append(item.getUuid()).append("\n");
-                sb
-                        .append("      Type: ")
-                        .append(item.getType() != null ? item.getType().getCode() : "N/A")
-                        .append("\n");
-                sb
-                        .append("      Algorithm: ")
-                        .append(item.getKeyAlgorithm() != null ? item.getKeyAlgorithm().getCode() : "N/A")
-                        .append("\n");
-                sb.append("      Size: ").append(item.getLength()).append(" bits\n");
-                sb
-                        .append("      Format: ")
-                        .append(item.getFormat() != null ? item.getFormat().getCode() : "N/A")
-                        .append("\n");
-                sb
-                        .append("      State: ")
-                        .append(item.getState() != null ? item.getState().getCode() : "N/A")
-                        .append("\n");
-                sb.append("      Enabled: ").append(item.isEnabled()).append("\n");
-                if (item.getUsage() != null && !item.getUsage().isEmpty()) {
-                    sb.append("      Usage: ").append(item.getUsage()).append("\n");
-                }
-                sb.append("\n");
-            }
+            key.getItems().forEach(keyItem -> formatKeyItemDetail(sb, keyItem));
         }
-
         return sb.toString();
+    }
+
+    private static void formatKeyItemDetail(StringBuilder sb, KeyItemDetailDto keyItem) {
+        sb.append("    - ").append(orNa(keyItem.getName())).append("\n");
+        field(sb, ITEM_INDENT, "UUID", keyItem.getUuid());
+        field(sb, ITEM_INDENT, "Type", code(keyItem.getType()));
+        field(sb, ITEM_INDENT, "Algorithm", code(keyItem.getKeyAlgorithm()));
+        field(sb, ITEM_INDENT, "Size", keyItem.getLength() + " bits");
+        field(sb, ITEM_INDENT, "Format", code(keyItem.getFormat()));
+        field(sb, ITEM_INDENT, "State", code(keyItem.getState()));
+        field(sb, ITEM_INDENT, "Enabled", keyItem.isEnabled());
+        if (keyItem.getUsage() != null && !keyItem.getUsage().isEmpty()) {
+            field(sb, ITEM_INDENT, "Usage", keyItem.getUsage());
+        }
+        sb.append("\n");
     }
 }

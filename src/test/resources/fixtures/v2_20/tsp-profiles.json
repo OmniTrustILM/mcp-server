@@ -1,0 +1,30 @@
+{
+  "items": [
+    {
+      "uuid": "ec658b0a-a6b2-4419-802d-9be6aa2d09ce",
+      "name": "name-27",
+      "defaultSigningProfile": {
+        "uuid": "38f6e529-8123-4ead-a5f1-f3e65d8c06a9",
+        "name": "name-28",
+        "enabled": true
+      },
+      "signingUrl": "https://signingurl-1.example.com",
+      "enabled": true
+    },
+    {
+      "uuid": "ad2cc387-9fb4-4c17-9b90-27ae1677b346",
+      "name": "name-29",
+      "defaultSigningProfile": {
+        "uuid": "7d292fae-0e6d-47b3-9fd7-853991d9eb58",
+        "name": "name-30",
+        "enabled": true
+      },
+      "signingUrl": "https://signingurl-2.example.com",
+      "enabled": true
+    }
+  ],
+  "itemsPerPage": 5,
+  "pageNumber": 1,
+  "totalPages": 15,
+  "totalItems": 73
+}

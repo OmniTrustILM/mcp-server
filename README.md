@@ -8,13 +8,17 @@ Built with [Spring AI MCP](https://docs.spring.io/spring-ai/reference/api/mcp/mc
 
 ## Features
 
-- **22 read-only tools** for certificates, cryptographic keys, infrastructure, secrets, and vaults
+- **35 read-only tools** for certificates, cryptographic keys, infrastructure, secrets, vaults, signing, CBOMs, and
+  the cryptographic asset inventory with its post-quantum (PQC) readiness
 - **Two transport modes**: HTTP (Streamable HTTP) and STDIO
 - **Three authentication methods**: client certificate, OAuth pass-through, OAuth client credentials
 - **AI-optimized responses**: formatted text output designed for LLM consumption
 - **Lightweight Docker image**: multi-stage build with custom JRE (jlink)
 
 ## Available Tools
+
+Every tool works with ILM 2.17 or later unless it names a newer version. On an older ILM, such a tool answers with
+the version it needs.
 
 ### Search
 
@@ -67,6 +71,34 @@ Built with [Spring AI MCP](https://docs.spring.io/spring-ai/reference/api/mcp/mc
 |------------------------|------------------------------------------|
 | `list_vault_instances` | Vault backend instances                  |
 | `list_vault_profiles`  | Vault profiles                           |
+
+### Cryptographic Assets
+
+| Tool                               | Description                                                                  |
+|------------------------------------|------------------------------------------------------------------------------|
+| `get_crypto_asset_statistics`      | PQC readiness overview of the cryptographic asset inventory (ILM 2.20+)      |
+| `search_crypto_assets`             | Search assets by PQC verdict, type, and other fields (ILM 2.20+)             |
+| `get_crypto_asset`                 | Asset details with its PQC verdict, properties, and source CBOMs (ILM 2.20+) |
+| `explain_crypto_asset_pqc_verdict` | Rule-by-rule explanation of an asset's PQC verdict (ILM 2.20+)               |
+
+### CBOMs
+
+| Tool                 | Description                                                |
+|----------------------|------------------------------------------------------------|
+| `search_cboms`       | Search stored CBOMs with their asset counts and sync state |
+| `get_cbom`           | CBOM details by UUID                                       |
+| `get_cbom_versions`  | Stored versions of a CBOM                                  |
+| `search_cbom_assets` | Cryptographic assets one CBOM contributed (ILM 2.20+)      |
+
+### Signing
+
+| Tool                      | Description                                                                    |
+|---------------------------|--------------------------------------------------------------------------------|
+| `search_signing_profiles` | Search signing profiles with their scheme, workflow, and protocols (ILM 2.18+) |
+| `get_signing_profile`     | Signing profile details by UUID (ILM 2.18+)                                    |
+| `search_tsp_profiles`     | Search TSP profiles with their signing URLs (ILM 2.18+)                        |
+| `search_signing_records`  | Search signing records, without signature values or content (ILM 2.19+)        |
+| `get_signing_statistics`  | Signing volume and breakdowns by profile, protocol, and scheme (ILM 2.19+)     |
 
 ## Quick Start
 

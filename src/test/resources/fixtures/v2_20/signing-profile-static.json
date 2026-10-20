@@ -1,0 +1,135 @@
+{
+  "uuid": "38f6e529-8123-4ead-a5f1-f3e65d8c06a9",
+  "name": "name-16",
+  "version": 1,
+  "enabled": true,
+  "enabledProtocols": [
+    "tsp"
+  ],
+  "signingScheme": {
+    "signingScheme": "managed",
+    "managedSigningType": "static_key",
+    "certificate": {
+      "uuid": "552038e1-4278-4785-b93e-1e4d092ca3fd",
+      "certificateType": "X.509",
+      "state": "issued",
+      "commonName": "commonName-1.example.com",
+      "subjectDn": "CN=subjectDn-1,O=Example",
+      "issuerCommonName": "issuerCommonName-1.example.com",
+      "issuerDn": "CN=issuerDn-1,O=Example",
+      "serialNumber": "0000000000000000000000000000000000000007",
+      "fingerprint": "0000000000000000000000000000000000000001",
+      "publicKeyAlgorithm": "SLH-DSA",
+      "signatureAlgorithm": "SHA256withRSA",
+      "notBefore": "2026-10-13T13:06:06.000+00:00",
+      "notAfter": "2028-10-12T13:06:05.000+00:00"
+    },
+    "signingOperationAttributes": [
+      {
+        "content": [
+          {
+            "reference": "reference-1",
+            "data": "data-1",
+            "contentType": "string"
+          }
+        ],
+        "uuid": "67c54810-594b-4c06-8069-10c8e9173197",
+        "name": "name-17",
+        "label": "Signature Algorithm",
+        "type": "data",
+        "contentType": "string",
+        "version": "v3"
+      }
+    ]
+  },
+  "workflow": {
+    "type": "timestamping",
+    "signatureFormattingConnector": {
+      "uuid": "57c8779b-066a-4f4f-b6c6-85787c6b0a1e",
+      "name": "name-18"
+    },
+    "signatureFormattingConnectorAttributes": [
+      {
+        "content": [
+          {
+            "reference": null,
+            "data": true,
+            "contentType": "boolean"
+          }
+        ],
+        "uuid": "b28aa649-a6eb-40d4-9b10-3d0e67b00d2d",
+        "name": "name-19",
+        "label": "Include CMS Algorithm Protection",
+        "type": "data",
+        "contentType": "boolean",
+        "version": "v3"
+      },
+      {
+        "content": [
+          {
+            "reference": null,
+            "data": true,
+            "contentType": "boolean"
+          }
+        ],
+        "uuid": "57ff3c3f-ec0e-4588-a3a8-304fcaf741cc",
+        "name": "name-20",
+        "label": "Include Signing Time Attribute",
+        "type": "data",
+        "contentType": "boolean",
+        "version": "v3"
+      },
+      {
+        "content": [
+          {
+            "reference": null,
+            "data": true,
+            "contentType": "boolean"
+          }
+        ],
+        "uuid": "b7a5a39a-8c03-4613-b667-85f4f50dba11",
+        "name": "name-21",
+        "label": "Include TSA Name",
+        "type": "data",
+        "contentType": "boolean",
+        "version": "v3"
+      }
+    ],
+    "qualifiedTimestamp": true,
+    "timeQualityConfiguration": {
+      "uuid": "088a96e7-62db-4df5-8654-5cf782eeed7d",
+      "name": "name-22",
+      "accuracy": "PT1S",
+      "ntpServers": [
+        "ntpServers-1"
+      ],
+      "ntpCheckInterval": "PT0.5S",
+      "ntpSamplesPerServer": 3,
+      "ntpCheckTimeout": "PT0.3S",
+      "ntpServersMinReachable": 1,
+      "maxClockDrift": "PT0.8S",
+      "leapSecondGuard": true,
+      "customAttributes": []
+    },
+    "defaultPolicyId": "defaultPolicyId-1",
+    "allowedPolicyIds": [
+      "allowedPolicyIds-1"
+    ],
+    "allowedDigestAlgorithms": [
+      "SHA-256",
+      "SHA-384",
+      "SHA-512"
+    ],
+    "validateTokenSignature": false
+  },
+  "customAttributes": [],
+  "recordPolicy": {
+    "recordingEnabled": true,
+    "recordRequestMetadata": false,
+    "recordSignature": false,
+    "recordSignedDocument": false,
+    "recordDtbs": false,
+    "deleteAfterRetrieval": false,
+    "persistenceMode": "deferred_durable"
+  }
+}

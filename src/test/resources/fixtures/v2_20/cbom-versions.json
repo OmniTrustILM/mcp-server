@@ -1,0 +1,33 @@
+[
+  {
+    "uuid": "fb2bce9f-99c9-4a71-a6cd-6e4c1a10d843",
+    "createdAt": "2026-10-14T18:00:01.036886Z",
+    "serialNumber": "0000000000000000000000000000000000000005",
+    "version": 3,
+    "specVersion": "1.6",
+    "source": "source-1",
+    "algorithms": 30,
+    "certificates": 0,
+    "protocols": 1,
+    "cryptoMaterial": 34,
+    "totalAssets": 65,
+    "assetSyncState": "synced",
+    "assetSyncedAt": "2026-10-14T18:00:00.941409Z"
+  },
+  {
+    "uuid": "210cb55b-7fe1-4d0e-b684-9f8f276b1b27",
+    "createdAt": "2026-10-08T09:29:24.431162Z",
+    "serialNumber": "0000000000000000000000000000000000000006",
+    "version": 1,
+    "specVersion": "1.6",
+    "timestamp": "2025-05-31T03:45:47Z",
+    "source": "source-1",
+    "algorithms": 30,
+    "certificates": 0,
+    "protocols": 1,
+    "cryptoMaterial": 34,
+    "totalAssets": 65,
+    "assetSyncState": "synced",
+    "assetSyncedAt": "2026-10-14T08:24:43.766277Z"
+  }
+]

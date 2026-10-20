@@ -12,15 +12,21 @@ import com.otilm.api.model.core.cryptography.token.TokenInstanceDto;
 import com.otilm.api.model.core.entity.EntityInstanceDto;
 import com.otilm.api.model.core.raprofile.RaProfileDto;
 import com.otilm.mcp.client.IlmApiClient;
-import java.util.List;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.util.Collection;
 import org.springframework.stereotype.Service;
+
+import static com.otilm.mcp.service.TextFormat.code;
+import static com.otilm.mcp.service.TextFormat.field;
+import static com.otilm.mcp.service.TextFormat.item;
+import static com.otilm.mcp.service.TextFormat.titledList;
 
 @Service
 public class InfrastructureServiceImpl implements InfrastructureService {
 
-    private static final Logger logger = LoggerFactory.getLogger(InfrastructureServiceImpl.class);
+    private static final String INDENT = "  ";
+    private static final String STATUS = "Status";
+    private static final String CONNECTOR = "Connector";
+    private static final String KIND = "Kind";
 
     private final IlmApiClient ilmApiClient;
 
@@ -30,347 +36,141 @@ public class InfrastructureServiceImpl implements InfrastructureService {
 
     @Override
     public String listAuthorities() {
-        try {
-            List<AuthorityInstanceDto> authorities = ilmApiClient.listAuthorities();
-            return formatAuthorities(authorities);
-        } catch (Exception e) {
-            logger.error("Failed to list authorities", e);
-            return "Error listing authorities: " + e.getMessage();
-        }
+        return ToolResponses.run("listing authorities", () -> {
+            Collection<AuthorityInstanceDto> authorities = ilmApiClient.listAuthorities();
+            return titledList("Authority Instances (" + authorities.size() + ")", authorities,
+                    "No authority instances found.", (sb, authority) -> {
+                        item(sb, authority.getName(), authority.getUuid());
+                        field(sb, INDENT, STATUS, authority.getStatus());
+                        field(sb, INDENT, CONNECTOR, connectorName(authority));
+                        field(sb, INDENT, KIND, authority.getKind());
+                    });
+        });
     }
 
     @Override
     public String listRaProfiles() {
-        try {
-            List<RaProfileDto> raProfiles = ilmApiClient.listRaProfiles();
-            return formatRaProfiles(raProfiles);
-        } catch (Exception e) {
-            logger.error("Failed to list RA profiles", e);
-            return "Error listing RA profiles: " + e.getMessage();
-        }
+        return ToolResponses.run("listing RA profiles", () -> {
+            Collection<RaProfileDto> raProfiles = ilmApiClient.listRaProfiles();
+            return titledList("RA Profiles (" + raProfiles.size() + ")", raProfiles, "No RA profiles found.",
+                    (sb, profile) -> {
+                        item(sb, profile.getName(), profile.getUuid());
+                        field(sb, INDENT, "Enabled", profile.getEnabled());
+                        field(sb, INDENT, "Description", profile.getDescription());
+                        field(sb, INDENT, "Authority", profile.getAuthorityInstanceName());
+                        if (profile.getEnabledProtocols() != null) {
+                            field(sb, INDENT, "Protocols", String.join(", ", profile.getEnabledProtocols()));
+                        }
+                    });
+        });
     }
 
     @Override
     public String listConnectors() {
-        try {
-            List<ConnectorDto> connectors = ilmApiClient.listConnectors();
-            return formatConnectors(connectors);
-        } catch (Exception e) {
-            logger.error("Failed to list connectors", e);
-            return "Error listing connectors: " + e.getMessage();
-        }
+        return ToolResponses.run("listing connectors", () -> {
+            Collection<ConnectorDto> connectors = ilmApiClient.listConnectors();
+            return titledList("Connectors (" + connectors.size() + ")", connectors, "No connectors found.",
+                    (sb, connector) -> {
+                        item(sb, connector.getName(), connector.getUuid());
+                        field(sb, INDENT, STATUS, code(connector.getStatus()));
+                        field(sb, INDENT, "URL", connector.getUrl());
+                        field(sb, INDENT, "Auth Type", code(connector.getAuthType()));
+                        if (connector.getFunctionGroups() != null && !connector.getFunctionGroups().isEmpty()) {
+                            field(sb, INDENT, "Function Groups", connector.getFunctionGroups().size());
+                        }
+                    });
+        });
     }
 
     @Override
     public String listGroups() {
-        try {
-            List<GroupDto> groups = ilmApiClient.listGroups();
-            return formatGroups(groups);
-        } catch (Exception e) {
-            logger.error("Failed to list groups", e);
-            return "Error listing groups: " + e.getMessage();
-        }
+        return ToolResponses.run("listing groups", () -> {
+            Collection<GroupDto> groups = ilmApiClient.listGroups();
+            return titledList("Groups (" + groups.size() + ")", groups, "No groups found.", (sb, group) -> {
+                item(sb, group.getName(), group.getUuid());
+                field(sb, INDENT, "Description", group.getDescription());
+                field(sb, INDENT, "Email", group.getEmail());
+            });
+        });
     }
 
     @Override
     public String listEntities(String filters) {
-        try {
-            SearchRequestDto request = new SearchRequestDto();
-            request.setFilters(SearchFilterParser.parseFilters(filters));
-            EntityInstanceResponseDto response = ilmApiClient.listEntities(request);
-            return formatEntities(response);
-        } catch (IllegalArgumentException e) {
-            return e.getMessage();
-        } catch (Exception e) {
-            logger.error("Failed to list entities", e);
-            return "Error listing entities: " + e.getMessage();
-        }
+        return ToolResponses.run("listing entities", () -> {
+            EntityInstanceResponseDto response = ilmApiClient
+                    .listEntities(SearchRequests.of(new SearchRequestDto(), filters, null, null));
+            return titledList(
+                    pageTitle("Entity Instances", response.getTotalItems(), response.getPageNumber(),
+                            response.getTotalPages()),
+                    response.getEntities(), "No entity instances found.", InfrastructureServiceImpl::formatEntity);
+        });
     }
 
     @Override
     public String listCredentials() {
-        try {
-            List<CredentialDto> credentials = ilmApiClient.listCredentials();
-            return formatCredentials(credentials);
-        } catch (Exception e) {
-            logger.error("Failed to list credentials", e);
-            return "Error listing credentials: " + e.getMessage();
-        }
+        return ToolResponses.run("listing credentials", () -> {
+            Collection<CredentialDto> credentials = ilmApiClient.listCredentials();
+            return titledList("Credentials (" + credentials.size() + ")", credentials, "No credentials found.",
+                    (sb, credential) -> {
+                        item(sb, credential.getName(), credential.getUuid());
+                        field(sb, INDENT, "Enabled", credential.getEnabled());
+                        field(sb, INDENT, KIND, credential.getKind());
+                        field(sb, INDENT, CONNECTOR, credential.getConnectorName());
+                    });
+        });
     }
 
     @Override
     public String listTokenInstances() {
-        try {
-            List<TokenInstanceDto> tokens = ilmApiClient.listTokenInstances();
-            return formatTokenInstances(tokens);
-        } catch (Exception e) {
-            logger.error("Failed to list token instances", e);
-            return "Error listing token instances: " + e.getMessage();
-        }
+        return ToolResponses.run("listing token instances", () -> {
+            Collection<TokenInstanceDto> tokens = ilmApiClient.listTokenInstances();
+            return titledList("Token Instances (" + tokens.size() + ")", tokens, "No token instances found.",
+                    (sb, token) -> {
+                        item(sb, token.getName(), token.getUuid());
+                        field(sb, INDENT, STATUS, code(token.getStatus()));
+                        field(sb, INDENT, CONNECTOR, token.getConnectorName());
+                        field(sb, INDENT, KIND, token.getKind());
+                        field(sb, INDENT, "Token Profiles", token.getTokenProfiles());
+                    });
+        });
     }
 
     @Override
     public String listDiscoveries(String filters) {
-        try {
-            SearchRequestDto request = new SearchRequestDto();
-            request.setFilters(SearchFilterParser.parseFilters(filters));
-            DiscoveryResponseDto response = ilmApiClient.listDiscoveries(request);
-            return formatDiscoveries(response);
-        } catch (IllegalArgumentException e) {
-            return e.getMessage();
-        } catch (Exception e) {
-            logger.error("Failed to list discoveries", e);
-            return "Error listing discoveries: " + e.getMessage();
-        }
+        return ToolResponses.run("listing discoveries", () -> {
+            DiscoveryResponseDto response = ilmApiClient
+                    .listDiscoveries(SearchRequests.of(new SearchRequestDto(), filters, null, null));
+            return titledList(
+                    pageTitle("Discoveries", response.getTotalItems(), response.getPageNumber(),
+                            response.getTotalPages()),
+                    response.getDiscoveries(), "No discoveries found.", InfrastructureServiceImpl::formatDiscovery);
+        });
     }
 
-    private String formatAuthorities(List<AuthorityInstanceDto> authorities) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("Authority Instances (").append(authorities.size()).append(")\n");
-        sb.append("=======================\n\n");
-
-        if (authorities.isEmpty()) {
-            sb.append("No authority instances found.\n");
-            return sb.toString();
-        }
-
-        for (AuthorityInstanceDto auth : authorities) {
-            sb.append("- ").append(auth.getName() != null ? auth.getName() : "N/A");
-            sb.append(" [").append(auth.getUuid()).append("]\n");
-            sb.append("  Status: ").append(auth.getStatus()).append("\n");
-            if (auth.getConnectorName() != null) {
-                sb.append("  Connector: ").append(auth.getConnectorName()).append("\n");
-            }
-            if (auth.getKind() != null) {
-                sb.append("  Kind: ").append(auth.getKind()).append("\n");
-            }
-            sb.append("\n");
-        }
-
-        return sb.toString();
+    private static String pageTitle(String title, Long totalItems, Integer pageNumber, Integer totalPages) {
+        return title + " (" + totalItems + " total, page " + pageNumber + " of " + totalPages + ")";
     }
 
-    private String formatRaProfiles(List<RaProfileDto> raProfiles) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("RA Profiles (").append(raProfiles.size()).append(")\n");
-        sb.append("=======================\n\n");
-
-        if (raProfiles.isEmpty()) {
-            sb.append("No RA profiles found.\n");
-            return sb.toString();
-        }
-
-        for (RaProfileDto profile : raProfiles) {
-            sb.append("- ").append(profile.getName() != null ? profile.getName() : "N/A");
-            sb.append(" [").append(profile.getUuid()).append("]\n");
-            sb.append("  Enabled: ").append(profile.getEnabled()).append("\n");
-            if (profile.getDescription() != null) {
-                sb.append("  Description: ").append(profile.getDescription()).append("\n");
-            }
-            if (profile.getAuthorityInstanceName() != null) {
-                sb.append("  Authority: ").append(profile.getAuthorityInstanceName()).append("\n");
-            }
-            if (profile.getEnabledProtocols() != null && !profile.getEnabledProtocols().isEmpty()) {
-                sb.append("  Protocols: ").append(String.join(", ", profile.getEnabledProtocols())).append("\n");
-            }
-            sb.append("\n");
-        }
-
-        return sb.toString();
+    // ILM before 2.20 sends only connectorName; 2.20 adds the connector reference and deprecates the name.
+    @SuppressWarnings({"deprecation", "removal"})
+    private static String connectorName(AuthorityInstanceDto authority) {
+        return authority.getConnector() != null ? authority.getConnector().getName() : authority.getConnectorName();
     }
 
-    private String formatConnectors(List<ConnectorDto> connectors) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("Connectors (").append(connectors.size()).append(")\n");
-        sb.append("=======================\n\n");
-
-        if (connectors.isEmpty()) {
-            sb.append("No connectors found.\n");
-            return sb.toString();
-        }
-
-        for (ConnectorDto connector : connectors) {
-            sb.append("- ").append(connector.getName() != null ? connector.getName() : "N/A");
-            sb.append(" [").append(connector.getUuid()).append("]\n");
-            sb
-                    .append("  Status: ")
-                    .append(connector.getStatus() != null ? connector.getStatus().getCode() : "N/A")
-                    .append("\n");
-            if (connector.getUrl() != null) {
-                sb.append("  URL: ").append(connector.getUrl()).append("\n");
-            }
-            sb
-                    .append("  Auth Type: ")
-                    .append(connector.getAuthType() != null ? connector.getAuthType().getCode() : "N/A")
-                    .append("\n");
-            if (connector.getFunctionGroups() != null && !connector.getFunctionGroups().isEmpty()) {
-                sb.append("  Function Groups: ").append(connector.getFunctionGroups().size()).append("\n");
-            }
-            sb.append("\n");
-        }
-
-        return sb.toString();
+    private static void formatEntity(StringBuilder sb, EntityInstanceDto entity) {
+        item(sb, entity.getName(), entity.getUuid());
+        field(sb, INDENT, STATUS, entity.getStatus());
+        field(sb, INDENT, CONNECTOR, entity.getConnectorName());
+        field(sb, INDENT, KIND, entity.getKind());
     }
 
-    private String formatGroups(List<GroupDto> groups) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("Groups (").append(groups.size()).append(")\n");
-        sb.append("=======================\n\n");
-
-        if (groups.isEmpty()) {
-            sb.append("No groups found.\n");
-            return sb.toString();
-        }
-
-        for (GroupDto group : groups) {
-            sb.append("- ").append(group.getName() != null ? group.getName() : "N/A");
-            sb.append(" [").append(group.getUuid()).append("]\n");
-            if (group.getDescription() != null) {
-                sb.append("  Description: ").append(group.getDescription()).append("\n");
-            }
-            if (group.getEmail() != null) {
-                sb.append("  Email: ").append(group.getEmail()).append("\n");
-            }
-            sb.append("\n");
-        }
-
-        return sb.toString();
-    }
-
-    private String formatEntities(EntityInstanceResponseDto response) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("Entity Instances (").append(response.getTotalItems()).append(" total");
-        sb
-                .append(", page ")
-                .append(response.getPageNumber())
-                .append(" of ")
-                .append(response.getTotalPages())
-                .append(")\n");
-        sb.append("=======================\n\n");
-
-        if (response.getEntities() == null || response.getEntities().isEmpty()) {
-            sb.append("No entity instances found.\n");
-            return sb.toString();
-        }
-
-        for (EntityInstanceDto entity : response.getEntities()) {
-            sb.append("- ").append(entity.getName() != null ? entity.getName() : "N/A");
-            sb.append(" [").append(entity.getUuid()).append("]\n");
-            sb.append("  Status: ").append(entity.getStatus()).append("\n");
-            if (entity.getConnectorName() != null) {
-                sb.append("  Connector: ").append(entity.getConnectorName()).append("\n");
-            }
-            if (entity.getKind() != null) {
-                sb.append("  Kind: ").append(entity.getKind()).append("\n");
-            }
-            sb.append("\n");
-        }
-
-        return sb.toString();
-    }
-
-    private String formatCredentials(List<CredentialDto> credentials) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("Credentials (").append(credentials.size()).append(")\n");
-        sb.append("=======================\n\n");
-
-        if (credentials.isEmpty()) {
-            sb.append("No credentials found.\n");
-            return sb.toString();
-        }
-
-        for (CredentialDto cred : credentials) {
-            sb.append("- ").append(cred.getName() != null ? cred.getName() : "N/A");
-            sb.append(" [").append(cred.getUuid()).append("]\n");
-            sb.append("  Enabled: ").append(cred.getEnabled()).append("\n");
-            if (cred.getKind() != null) {
-                sb.append("  Kind: ").append(cred.getKind()).append("\n");
-            }
-            if (cred.getConnectorName() != null) {
-                sb.append("  Connector: ").append(cred.getConnectorName()).append("\n");
-            }
-            sb.append("\n");
-        }
-
-        return sb.toString();
-    }
-
-    private String formatTokenInstances(List<TokenInstanceDto> tokens) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("Token Instances (").append(tokens.size()).append(")\n");
-        sb.append("=======================\n\n");
-
-        if (tokens.isEmpty()) {
-            sb.append("No token instances found.\n");
-            return sb.toString();
-        }
-
-        for (TokenInstanceDto token : tokens) {
-            sb.append("- ").append(token.getName() != null ? token.getName() : "N/A");
-            sb.append(" [").append(token.getUuid()).append("]\n");
-            sb
-                    .append("  Status: ")
-                    .append(token.getStatus() != null ? token.getStatus().getCode() : "N/A")
-                    .append("\n");
-            if (token.getConnectorName() != null) {
-                sb.append("  Connector: ").append(token.getConnectorName()).append("\n");
-            }
-            if (token.getKind() != null) {
-                sb.append("  Kind: ").append(token.getKind()).append("\n");
-            }
-            if (token.getTokenProfiles() != null) {
-                sb.append("  Token Profiles: ").append(token.getTokenProfiles()).append("\n");
-            }
-            sb.append("\n");
-        }
-
-        return sb.toString();
-    }
-
-    private String formatDiscoveries(DiscoveryResponseDto response) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("Discoveries (").append(response.getTotalItems()).append(" total");
-        sb
-                .append(", page ")
-                .append(response.getPageNumber())
-                .append(" of ")
-                .append(response.getTotalPages())
-                .append(")\n");
-        sb.append("=======================\n\n");
-
-        if (response.getDiscoveries() == null || response.getDiscoveries().isEmpty()) {
-            sb.append("No discoveries found.\n");
-            return sb.toString();
-        }
-
-        for (DiscoveryListDto discovery : response.getDiscoveries()) {
-            sb.append("- ").append(discovery.getName() != null ? discovery.getName() : "N/A");
-            sb.append(" [").append(discovery.getUuid()).append("]\n");
-            sb
-                    .append("  Status: ")
-                    .append(discovery.getStatus() != null ? discovery.getStatus().getCode() : "N/A")
-                    .append("\n");
-            if (discovery.getKind() != null) {
-                sb.append("  Kind: ").append(discovery.getKind()).append("\n");
-            }
-            if (discovery.getConnectorName() != null) {
-                sb.append("  Connector: ").append(discovery.getConnectorName()).append("\n");
-            }
-            if (discovery.getStartTime() != null) {
-                sb.append("  Start Time: ").append(discovery.getStartTime()).append("\n");
-            }
-            if (discovery.getEndTime() != null) {
-                sb.append("  End Time: ").append(discovery.getEndTime()).append("\n");
-            }
-            if (discovery.getTotalCertificatesDiscovered() != null) {
-                sb
-                        .append("  Certificates Discovered: ")
-                        .append(discovery.getTotalCertificatesDiscovered())
-                        .append("\n");
-            }
-            sb.append("\n");
-        }
-
-        return sb.toString();
+    private static void formatDiscovery(StringBuilder sb, DiscoveryListDto discovery) {
+        item(sb, discovery.getName(), discovery.getUuid());
+        field(sb, INDENT, STATUS, code(discovery.getStatus()));
+        field(sb, INDENT, KIND, discovery.getKind());
+        field(sb, INDENT, CONNECTOR, discovery.getConnectorName());
+        field(sb, INDENT, "Start Time", discovery.getStartTime());
+        field(sb, INDENT, "End Time", discovery.getEndTime());
+        field(sb, INDENT, "Certificates Discovered", discovery.getTotalCertificatesDiscovered());
     }
 }

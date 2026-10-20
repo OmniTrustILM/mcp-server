@@ -5,14 +5,17 @@ import com.otilm.api.model.common.PaginationResponseDto;
 import com.otilm.api.model.core.vault.VaultInstanceDto;
 import com.otilm.api.model.core.vaultprofile.VaultProfileDto;
 import com.otilm.mcp.client.IlmApiClient;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+
+import static com.otilm.mcp.service.TextFormat.field;
+import static com.otilm.mcp.service.TextFormat.item;
+import static com.otilm.mcp.service.TextFormat.nameOf;
+import static com.otilm.mcp.service.TextFormat.pagedList;
 
 @Service
 public class VaultServiceImpl implements VaultService {
 
-    private static final Logger logger = LoggerFactory.getLogger(VaultServiceImpl.class);
+    private static final String INDENT = "  ";
 
     private final IlmApiClient ilmApiClient;
 
@@ -22,96 +25,30 @@ public class VaultServiceImpl implements VaultService {
 
     @Override
     public String listVaultInstances(String filters, Integer itemsPerPage, Integer pageNumber) {
-        try {
-            SearchRequestDto request = new SearchRequestDto();
-            if (itemsPerPage != null) {
-                request.setItemsPerPage(itemsPerPage);
-            }
-            if (pageNumber != null) {
-                request.setPageNumber(pageNumber);
-            }
-            request.setFilters(SearchFilterParser.parseFilters(filters));
-
-            PaginationResponseDto<VaultInstanceDto> response = ilmApiClient.listVaultInstances(request);
-            return formatVaultInstanceList(response);
-        } catch (IllegalArgumentException e) {
-            return e.getMessage();
-        } catch (Exception e) {
-            logger.error("Failed to list vault instances", e);
-            return "Error listing vault instances: " + e.getMessage();
-        }
+        return ToolResponses.run("listing vault instances", () -> {
+            PaginationResponseDto<VaultInstanceDto> response = ilmApiClient
+                    .listVaultInstances(SearchRequests.of(new SearchRequestDto(), filters, itemsPerPage, pageNumber));
+            return pagedList(response.getTotalItems(), "vault instances", response.getPageNumber(),
+                    response.getTotalPages(), response.getItems(), (sb, vault) -> {
+                        item(sb, vault.getName(), vault.getUuid());
+                        field(sb, INDENT, "Description", vault.getDescription());
+                        field(sb, INDENT, "Connector", nameOf(vault.getConnector()));
+                    });
+        });
     }
 
     @Override
     public String listVaultProfiles(String filters, Integer itemsPerPage, Integer pageNumber) {
-        try {
-            SearchRequestDto request = new SearchRequestDto();
-            if (itemsPerPage != null) {
-                request.setItemsPerPage(itemsPerPage);
-            }
-            if (pageNumber != null) {
-                request.setPageNumber(pageNumber);
-            }
-            request.setFilters(SearchFilterParser.parseFilters(filters));
-
-            PaginationResponseDto<VaultProfileDto> response = ilmApiClient.listVaultProfiles(request);
-            return formatVaultProfileList(response);
-        } catch (IllegalArgumentException e) {
-            return e.getMessage();
-        } catch (Exception e) {
-            logger.error("Failed to list vault profiles", e);
-            return "Error listing vault profiles: " + e.getMessage();
-        }
-    }
-
-    private String formatVaultInstanceList(PaginationResponseDto<VaultInstanceDto> response) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("Found ").append(response.getTotalItems()).append(" vault instances");
-        sb
-                .append(" (page ")
-                .append(response.getPageNumber())
-                .append(" of ")
-                .append(response.getTotalPages())
-                .append(")\n\n");
-
-        for (VaultInstanceDto vault : response.getItems()) {
-            sb.append("- ").append(vault.getName() != null ? vault.getName() : "N/A");
-            sb.append(" [").append(vault.getUuid()).append("]\n");
-            if (vault.getDescription() != null) {
-                sb.append("  Description: ").append(vault.getDescription()).append("\n");
-            }
-            if (vault.getConnector() != null) {
-                sb.append("  Connector: ").append(vault.getConnector().getName()).append("\n");
-            }
-            sb.append("\n");
-        }
-
-        return sb.toString();
-    }
-
-    private String formatVaultProfileList(PaginationResponseDto<VaultProfileDto> response) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("Found ").append(response.getTotalItems()).append(" vault profiles");
-        sb
-                .append(" (page ")
-                .append(response.getPageNumber())
-                .append(" of ")
-                .append(response.getTotalPages())
-                .append(")\n\n");
-
-        for (VaultProfileDto profile : response.getItems()) {
-            sb.append("- ").append(profile.getName() != null ? profile.getName() : "N/A");
-            sb.append(" [").append(profile.getUuid()).append("]\n");
-            if (profile.getDescription() != null) {
-                sb.append("  Description: ").append(profile.getDescription()).append("\n");
-            }
-            if (profile.getVaultInstance() != null) {
-                sb.append("  Vault Instance: ").append(profile.getVaultInstance().getName()).append("\n");
-            }
-            sb.append("  Enabled: ").append(profile.isEnabled()).append("\n");
-            sb.append("\n");
-        }
-
-        return sb.toString();
+        return ToolResponses.run("listing vault profiles", () -> {
+            PaginationResponseDto<VaultProfileDto> response = ilmApiClient
+                    .listVaultProfiles(SearchRequests.of(new SearchRequestDto(), filters, itemsPerPage, pageNumber));
+            return pagedList(response.getTotalItems(), "vault profiles", response.getPageNumber(),
+                    response.getTotalPages(), response.getItems(), (sb, profile) -> {
+                        item(sb, profile.getName(), profile.getUuid());
+                        field(sb, INDENT, "Description", profile.getDescription());
+                        field(sb, INDENT, "Vault Instance", nameOf(profile.getVaultInstance()));
+                        field(sb, INDENT, "Enabled", profile.isEnabled());
+                    });
+        });
     }
 }

@@ -7,6 +7,12 @@ spring:
         name: ilm-mcp-server
         version: 0.1.0
         type: SYNC
+        instructions: >
+          Read-only access to an ILM platform: certificates, keys, secrets, signing, CBOMs and cryptographic assets.
+          For post-quantum (PQC) readiness questions start with get_crypto_asset_statistics, then use
+          search_crypto_assets filtered by PQC verdict, and explain_crypto_asset_pqc_verdict for a single asset.
+          Call get_searchable_fields for a resource type before filtering its search.
+          Tools that need an ILM newer than 2.17 name their minimum version and say so when the connected ILM is older.
 
 ilm:
   api:

@@ -107,7 +107,9 @@ MCP Tool (@Tool) → Service (formatting) → IlmApiClient (RestClient) → ILM 
 - Service interfaces with `*Impl` suffix for implementations
 - WireMock for integration tests (no Mockito)
 - 80%+ test coverage, <3% code duplication
-- AI-friendly formatted text responses from all tools (not raw JSON)
+- AI-friendly formatted text responses from all tools (not raw JSON); every `@Tool` sets `resultConverter = PlainTextResult.class` so clients receive the text as it is
+- Services build their text with `TextFormat`, wrap ILM calls in `ToolResponses.run(...)` so errors come back as readable text, and build search requests with `SearchRequests.of(...)`
+- The minimum supported ILM is 2.17. A tool that needs a newer ILM gets an `IlmFeature` entry with its minimum version, runs through `PlatformVersionCheck.run(...)`, and names that version in its description
 - Jackson 3 only: no imports from Jackson 2 `databind`, `core`, `datatype`, `dataformat` or `module` packages (`com.fasterxml.jackson.annotation` is shared and allowed)
 - Every `RestClient` to ILM comes from `IlmApiClient.restClientBuilder(...)`, which reads responses leniently so older ILM versions parse; tests use `IlmTestSupport.client(...)`
 - Test fixtures hold synthetic values only, with canonical UUIDs; responses recorded from ILM 2.20 live in `src/test/resources/fixtures/v2_20`
