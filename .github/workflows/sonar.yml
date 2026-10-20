@@ -14,22 +14,22 @@ run-name: >-
   • ${{ inputs.head_repo }}@${{ inputs.head_branch }}
   • ${{ inputs.head_sha }}
 
-# One analysis per pull request at a time. Successive commits each dispatch
-# their own run, and they all report under the same Sonar pull-request key, so
-# without this an older run finishing last would overwrite the newer result.
-concurrency:
-  group: sonar-pr-${{ inputs.pr_number }}
-  cancel-in-progress: true
-
 permissions:
   contents: read
   actions: read # download coverage + lint artifacts from the upstream Check PR run
   pull-requests: read
 
 jobs:
-  sonar:
-    name: Sonar • PR #${{ inputs.pr_number }}
+  verify:
+    name: Verify • PR #${{ inputs.pr_number }}
     runs-on: ubuntu-latest
+    outputs:
+      pr_number: ${{ steps.ctx.outputs.pr_number }}
+      head_sha: ${{ steps.ctx.outputs.head_sha }}
+      head_repo: ${{ steps.ctx.outputs.head_repo }}
+      head_branch: ${{ steps.ctx.outputs.head_branch }}
+      base_ref: ${{ steps.ctx.outputs.base_ref }}
+      run_attempt: ${{ github.run_attempt }}
 
     steps:
       # Verify BEFORE anything else touches the inputs: pattern-validate every
@@ -103,15 +103,31 @@ jobs:
             core.setOutput('head_branch', pr.data.head.ref);
             core.setOutput('base_ref',    pr.data.base.ref);
 
+  sonar:
+    name: Sonar • PR #${{ needs.verify.outputs.pr_number }}
+    needs: verify
+    # Re-running this job alone would reuse a verification that may be stale;
+    # only a run whose verify job ran in the same attempt proceeds.
+    if: needs.verify.outputs.run_attempt == github.run_attempt
+    runs-on: ubuntu-latest
+    # One analysis per pull request at a time, so an older run finishing last
+    # cannot overwrite the newer result. Only a run verified as the PR's current
+    # head gets here, so a delayed dispatch for an older commit fails in verify
+    # and cannot cancel the head's analysis.
+    concurrency:
+      group: sonar-pr-${{ needs.verify.outputs.pr_number }}
+      cancel-in-progress: true
+
+    steps:
       - name: Export verified context
         # API-sourced, pattern-validated values only (git refs cannot contain
         # whitespace or newlines, so the GITHUB_ENV write is injection-safe).
         env:
-          V_PR_NUMBER: ${{ steps.ctx.outputs.pr_number }}
-          V_HEAD_SHA: ${{ steps.ctx.outputs.head_sha }}
-          V_HEAD_REPO: ${{ steps.ctx.outputs.head_repo }}
-          V_PR_BRANCH: ${{ steps.ctx.outputs.head_branch }}
-          V_BASE_BRANCH: ${{ steps.ctx.outputs.base_ref }}
+          V_PR_NUMBER: ${{ needs.verify.outputs.pr_number }}
+          V_HEAD_SHA: ${{ needs.verify.outputs.head_sha }}
+          V_HEAD_REPO: ${{ needs.verify.outputs.head_repo }}
+          V_PR_BRANCH: ${{ needs.verify.outputs.head_branch }}
+          V_BASE_BRANCH: ${{ needs.verify.outputs.base_ref }}
         run: |
           {
             echo "PR_NUMBER=$V_PR_NUMBER"

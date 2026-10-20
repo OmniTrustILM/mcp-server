@@ -64,7 +64,7 @@ mvn verify
 ./scripts/sonar-local.sh
 ```
 
-Runs `mvn verify`, analyses the project in an ephemeral SonarQube container (Docker required), and fails unless the quality gate passes (ratings A, hotspots reviewed, coverage >= 80%, duplication <= 3%) and no open issue sits on a line changed since `origin/main`.
+Runs `mvn verify`, analyses the project with the pull-request workflow's scope in an ephemeral SonarQube container (Docker required), and fails unless the quality gate passes (ratings A, hotspots reviewed, coverage >= 80%, duplication <= 3%) and no open issue touches a line changed since `origin/main`.
 
 ## Configuration
 
