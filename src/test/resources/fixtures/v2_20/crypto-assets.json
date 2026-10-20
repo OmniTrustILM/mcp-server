@@ -1,0 +1,26 @@
+{
+  "items": [
+    {
+      "uuid": "82643a70-90b8-4042-a4d2-4723b68e8391",
+      "name": "name-1",
+      "type": "algorithm",
+      "pqcVerdict": "notReady",
+      "sourceCbomCount": 1,
+      "occurrenceCount": 1,
+      "quarantined": false
+    },
+    {
+      "uuid": "d24eee72-5ed7-45b4-b853-33eb55c6e0a6",
+      "name": "name-2",
+      "type": "algorithm",
+      "pqcVerdict": "notReady",
+      "sourceCbomCount": 1,
+      "occurrenceCount": 1,
+      "quarantined": false
+    }
+  ],
+  "itemsPerPage": 5,
+  "pageNumber": 1,
+  "totalPages": 115,
+  "totalItems": 573
+}

@@ -1,0 +1,40 @@
+{
+  "totalAssets": 573,
+  "sourceCbomCount": 37,
+  "statByType": {
+    "algorithm": 125,
+    "certificate": 164,
+    "protocol": 20,
+    "related-crypto-material": 264
+  },
+  "untypedAssetCount": 0,
+  "statByPqcVerdict": {
+    "ready": 59,
+    "notReady": 389,
+    "notApplicable": 22,
+    "unknown": 103
+  },
+  "statByAlgorithmFamily": {
+    "rsa": 254,
+    "ecdsa": 58,
+    "aes": 26,
+    "rsassa-pkcs1": 20,
+    "ml-dsa": 17,
+    "hmac": 10,
+    "ecdh": 8,
+    "eddsa": 8,
+    "slh-dsa": 7,
+    "ec": 4
+  },
+  "distinctAlgorithmFamilyCount": 44,
+  "unassignedAssetCount": 95,
+  "syncCompleteness": {
+    "cbomStatBySyncState": {
+      "pending": 0,
+      "inProgress": 0,
+      "synced": 71,
+      "failed": 0
+    },
+    "lastCompletedSyncAt": "2026-10-14T18:00:00.941409Z"
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "uuid": "fb2bce9f-99c9-4a71-a6cd-6e4c1a10d843",
+  "createdAt": "2026-10-14T18:00:01.036886Z",
+  "serialNumber": "0000000000000000000000000000000000000004",
+  "version": 3,
+  "specVersion": "1.6",
+  "source": "source-1",
+  "algorithms": 30,
+  "certificates": 0,
+  "protocols": 1,
+  "cryptoMaterial": 34,
+  "totalAssets": 65,
+  "assetSyncState": "synced",
+  "assetSyncedAt": "2026-10-14T18:00:00.941409Z",
+  "content": {
+    "bomFormat": "CycloneDX",
+    "specVersion": "1.6",
+    "contentMarker": "synthetic"
+  },
+  "customAttributes": []
+}

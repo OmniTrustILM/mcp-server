@@ -1,0 +1,33 @@
+{
+  "items": [
+    {
+      "uuid": "1795afd7-3140-4551-b59a-fc51cf42ad4d",
+      "name": "name-12",
+      "type": "algorithm",
+      "pqcVerdict": "notReady",
+      "sourceCbomCount": 3,
+      "occurrenceCount": 32,
+      "quarantined": false,
+      "bomRefs": [
+        "29562983-e2d1-44d4-b0f8-1d95f88dcc3c",
+        "48e24eed-1029-4564-ab65-20d2e4c93f08"
+      ]
+    },
+    {
+      "uuid": "fa6248ba-101e-4de0-a93a-94b606067348",
+      "name": "name-13",
+      "type": "algorithm",
+      "pqcVerdict": "notReady",
+      "sourceCbomCount": 3,
+      "occurrenceCount": 3,
+      "quarantined": false,
+      "bomRefs": [
+        "cc776080-f332-485b-90bd-7144aa62d04f"
+      ]
+    }
+  ],
+  "itemsPerPage": 5,
+  "pageNumber": 1,
+  "totalPages": 13,
+  "totalItems": 61
+}

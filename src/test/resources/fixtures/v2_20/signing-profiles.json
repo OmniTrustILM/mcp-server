@@ -1,0 +1,30 @@
+{
+  "items": [
+    {
+      "uuid": "38f6e529-8123-4ead-a5f1-f3e65d8c06a9",
+      "name": "name-14",
+      "version": 1,
+      "signingScheme": "managed",
+      "signingWorkflowType": "timestamping",
+      "enabled": true,
+      "enabledProtocols": [
+        "tsp"
+      ]
+    },
+    {
+      "uuid": "7d292fae-0e6d-47b3-9fd7-853991d9eb58",
+      "name": "name-15",
+      "version": 1,
+      "signingScheme": "managed",
+      "signingWorkflowType": "timestamping",
+      "enabled": true,
+      "enabledProtocols": [
+        "tsp"
+      ]
+    }
+  ],
+  "itemsPerPage": 50,
+  "pageNumber": 1,
+  "totalPages": 2,
+  "totalItems": 98
+}
