@@ -25,7 +25,8 @@ api() {
 }
 
 json() {
-    python3 -c "import json, sys; d = json.load(sys.stdin); print($1)"
+    local expression="$1"
+    python3 -c "import json, sys; d = json.load(sys.stdin); print(${expression})"
 }
 
 # Prints every page of open issues, one JSON document per line.
@@ -35,7 +36,7 @@ issue_pages() {
         body=$(api "${SONAR_URL}/api/issues/search?componentKeys=${PROJECT_KEY}&resolved=false&ps=500&p=${page}" \
             | json "json.dumps(d)")
         echo "${body}"
-        if [ "$(echo "${body}" | json "d['paging']['pageIndex'] * d['paging']['pageSize'] >= d['paging']['total']")" = "True" ]; then
+        if [[ "$(echo "${body}" | json "d['paging']['pageIndex'] * d['paging']['pageSize'] >= d['paging']['total']")" == "True" ]]; then
             return
         fi
         page=$((page + 1))
@@ -50,8 +51,8 @@ for i in $(seq 1 120); do
     if curl -sf "${SONAR_URL}/api/system/status" 2>/dev/null | grep -q '"status":"UP"'; then
         break
     fi
-    if [ "$i" -eq 120 ]; then
-        echo "ERROR: SonarQube did not start within 2 minutes."
+    if [[ "$i" -eq 120 ]]; then
+        echo "ERROR: SonarQube did not start within 2 minutes." >&2
         exit 1
     fi
     sleep 1
@@ -98,10 +99,11 @@ for i in $(seq 1 60); do
     CE_STATUS=$(api "${SONAR_URL}/api/ce/task?id=${CE_TASK_ID}" | json "d['task']['status']")
     case "${CE_STATUS}" in
         SUCCESS) break ;;
-        FAILED|CANCELED) echo "ERROR: analysis task ${CE_STATUS}."; exit 1 ;;
+        FAILED|CANCELED) echo "ERROR: analysis task ${CE_STATUS}." >&2; exit 1 ;;
+        *) ;; # PENDING or IN_PROGRESS: keep waiting
     esac
-    if [ "$i" -eq 60 ]; then
-        echo "ERROR: analysis did not finish within 2 minutes."
+    if [[ "$i" -eq 60 ]]; then
+        echo "ERROR: analysis did not finish within 2 minutes." >&2
         exit 1
     fi
     sleep 2
@@ -149,7 +151,7 @@ print(count)
 ")
 echo "  Total: ${CHANGED_ISSUES}"
 
-if [ "${GATE_STATUS}" != "OK" ] || [ "${CHANGED_ISSUES}" != "0" ]; then
+if [[ "${GATE_STATUS}" != "OK" || "${CHANGED_ISSUES}" != "0" ]]; then
     echo ""
     echo "FAILED: quality gate ${GATE_STATUS}, ${CHANGED_ISSUES} open issue(s) on changed lines."
     exit 1

@@ -7,7 +7,7 @@ COPY pom.xml .
 COPY src src
 
 RUN --mount=type=cache,target=/root/.m2 \
-    apt-get update && apt-get install -y maven && \
+    apt-get update && apt-get install -y --no-install-recommends maven && \
     mvn -B -U package -DskipTests
 
 # Stage 2: Optimize - create custom JRE for the Alpine runtime
@@ -30,7 +30,7 @@ RUN jar xf /app/app.jar && \
         --output /custom-jre
 
 # Stage 3: Package
-FROM alpine:latest
+FROM alpine:3.24
 
 LABEL org.opencontainers.image.authors="ILM <support@otilm.com>"
 

@@ -65,32 +65,36 @@ public class KeyServiceImpl implements KeyService {
                 .append(")\n\n");
 
         for (KeyItemDto key : response.getCryptographicKeys()) {
-            sb.append("- ").append(key.getName() != null ? key.getName() : "N/A");
-            sb.append(" [").append(key.getUuid()).append("]\n");
-            if (key.getKeyWrapperUuid() != null) {
-                sb.append("  Key UUID: ").append(key.getKeyWrapperUuid()).append("\n");
-            }
-            sb
-                    .append("  Algorithm: ")
-                    .append(key.getKeyAlgorithm() != null ? key.getKeyAlgorithm().getCode() : "N/A")
-                    .append("\n");
-            sb.append("  Size: ").append(key.getLength()).append(" bits\n");
-            sb.append("  Type: ").append(key.getType() != null ? key.getType().getCode() : "N/A").append("\n");
-            sb.append("  State: ").append(key.getState() != null ? key.getState().getCode() : "N/A").append("\n");
-            sb.append("  Enabled: ").append(key.isEnabled()).append("\n");
-            if (key.getTokenInstanceName() != null) {
-                sb.append("  Token Instance: ").append(key.getTokenInstanceName()).append("\n");
-            }
-            if (key.getTokenProfileName() != null) {
-                sb.append("  Token Profile: ").append(key.getTokenProfileName()).append("\n");
-            }
-            if (key.getOwner() != null) {
-                sb.append("  Owner: ").append(key.getOwner()).append("\n");
-            }
-            sb.append("\n");
+            appendKey(sb, key);
         }
 
         return sb.toString();
+    }
+
+    private static void appendKey(StringBuilder sb, KeyItemDto key) {
+        sb.append("- ").append(key.getName() != null ? key.getName() : "N/A");
+        sb.append(" [").append(key.getUuid()).append("]\n");
+        if (key.getKeyWrapperUuid() != null) {
+            sb.append("  Key UUID: ").append(key.getKeyWrapperUuid()).append("\n");
+        }
+        sb
+                .append("  Algorithm: ")
+                .append(key.getKeyAlgorithm() != null ? key.getKeyAlgorithm().getCode() : "N/A")
+                .append("\n");
+        sb.append("  Size: ").append(key.getLength()).append(" bits\n");
+        sb.append("  Type: ").append(key.getType() != null ? key.getType().getCode() : "N/A").append("\n");
+        sb.append("  State: ").append(key.getState() != null ? key.getState().getCode() : "N/A").append("\n");
+        sb.append("  Enabled: ").append(key.isEnabled()).append("\n");
+        if (key.getTokenInstanceName() != null) {
+            sb.append("  Token Instance: ").append(key.getTokenInstanceName()).append("\n");
+        }
+        if (key.getTokenProfileName() != null) {
+            sb.append("  Token Profile: ").append(key.getTokenProfileName()).append("\n");
+        }
+        if (key.getOwner() != null) {
+            sb.append("  Owner: ").append(key.getOwner()).append("\n");
+        }
+        sb.append("\n");
     }
 
     private String formatKeyDetail(KeyDetailDto key) {
