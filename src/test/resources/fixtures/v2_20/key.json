@@ -1,0 +1,32 @@
+{
+  "uuid": "7f248902-d5b4-4b4a-8799-ad22424097db",
+  "name": "name-11",
+  "creationTime": "2026-10-14T14:17:57.831943Z",
+  "customAttributes": [],
+  "groups": [],
+  "items": [
+    {
+      "uuid": "72f43b71-565c-4769-8d49-3b676070b2c1",
+      "name": "name-12",
+      "type": "Public",
+      "keyAlgorithm": "RSA",
+      "format": "SubjectPublicKeyInfo",
+      "keyData": "keyData-1",
+      "length": 2048,
+      "metadata": [],
+      "usage": [],
+      "enabled": true,
+      "state": "active",
+      "complianceStatus": "not_checked",
+      "exportable": false
+    }
+  ],
+  "associations": [
+    {
+      "uuid": "870576fe-04e3-4e01-986e-61369be6a098",
+      "name": "name-13",
+      "resource": "certificates"
+    }
+  ],
+  "complianceStatus": "not_checked"
+}

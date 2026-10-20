@@ -1,15 +1,12 @@
 package com.otilm.mcp.tool;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;
+import com.otilm.mcp.IlmTestSupport;
 import com.otilm.mcp.client.IlmApiClient;
 import com.otilm.mcp.service.SecretServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.web.client.RestClient;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
@@ -28,14 +25,8 @@ class SecretToolTest {
 
     @BeforeEach
     void setup(WireMockRuntimeInfo wmInfo) {
-        RestClient restClient = RestClient
-                .builder()
-                .baseUrl(wmInfo.getHttpBaseUrl())
-                .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-                .defaultHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
-                .build();
-        IlmApiClient apiClient = new IlmApiClient(restClient);
-        SecretServiceImpl service = new SecretServiceImpl(apiClient, new ObjectMapper());
+        IlmApiClient apiClient = IlmTestSupport.client(wmInfo);
+        SecretServiceImpl service = new SecretServiceImpl(apiClient);
         tool = new SecretTool(service);
     }
 
@@ -63,8 +54,7 @@ class SecretToolTest {
 
         String result = tool.searchSecrets(null, null, null);
 
-        assertThat(result).contains("Found 1 secrets");
-        assertThat(result).contains("db-password");
+        assertThat(result).contains("Found 1 secrets", "db-password");
 
         verify(postRequestedFor(urlEqualTo("/v1/secrets")));
     }
@@ -85,8 +75,7 @@ class SecretToolTest {
 
         String result = tool.getSecret("secret-uuid");
 
-        assertThat(result).contains("Secret: my-secret");
-        assertThat(result).contains("UUID: secret-uuid");
+        assertThat(result).contains("Secret: my-secret", "UUID: secret-uuid");
 
         verify(getRequestedFor(urlEqualTo("/v1/secrets/secret-uuid")));
     }
@@ -106,8 +95,7 @@ class SecretToolTest {
 
         String result = tool.getSecretVersions("secret-uuid");
 
-        assertThat(result).contains("Secret Versions for secret-uuid");
-        assertThat(result).contains("Version: 1");
+        assertThat(result).contains("Secret Versions for secret-uuid", "Version: 1");
 
         verify(getRequestedFor(urlEqualTo("/v1/secrets/secret-uuid/versions")));
     }

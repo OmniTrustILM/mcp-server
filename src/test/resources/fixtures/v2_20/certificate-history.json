@@ -1,0 +1,20 @@
+[
+  {
+    "uuid": "90c07d72-fd6f-4681-ab59-ca9e4a9a533b",
+    "certificateUuid": "870576fe-04e3-4e01-986e-61369be6a098",
+    "created": "2026-10-20T11:15:29.818336Z",
+    "createdBy": "createdBy-1",
+    "event": "Update RA Profile",
+    "status": "FAILED",
+    "message": "message-8"
+  },
+  {
+    "uuid": "6bc692f4-2082-44b2-a0ea-9fafa04862e4",
+    "certificateUuid": "870576fe-04e3-4e01-986e-61369be6a098",
+    "created": "2026-10-14T14:17:58.543547Z",
+    "createdBy": "createdBy-2",
+    "event": "Update Group",
+    "status": "SUCCESS",
+    "message": "message-9"
+  }
+]

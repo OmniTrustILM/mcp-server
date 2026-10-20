@@ -1,14 +1,13 @@
 package com.otilm.mcp.service;
 
-import com.czertainly.api.model.client.certificate.CertificateResponseDto;
-import com.czertainly.api.model.client.certificate.CertificateSearchRequestDto;
-import com.czertainly.api.model.client.dashboard.StatisticsDto;
-import com.czertainly.api.model.core.certificate.CertificateChainResponseDto;
-import com.czertainly.api.model.core.certificate.CertificateDetailDto;
-import com.czertainly.api.model.core.certificate.CertificateDto;
-import com.czertainly.api.model.core.certificate.CertificateEventHistoryDto;
-import com.czertainly.api.model.core.certificate.CertificateValidationResultDto;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.otilm.api.model.client.certificate.CertificateResponseDto;
+import com.otilm.api.model.client.certificate.CertificateSearchRequestDto;
+import com.otilm.api.model.client.dashboard.StatisticsDto;
+import com.otilm.api.model.core.certificate.CertificateChainResponseDto;
+import com.otilm.api.model.core.certificate.CertificateDetailDto;
+import com.otilm.api.model.core.certificate.CertificateDto;
+import com.otilm.api.model.core.certificate.CertificateEventHistoryDto;
+import com.otilm.api.model.core.certificate.CertificateValidationResultDto;
 import com.otilm.mcp.client.IlmApiClient;
 import java.util.List;
 import java.util.Map;
@@ -22,11 +21,9 @@ public class CertificateServiceImpl implements CertificateService {
     private static final Logger logger = LoggerFactory.getLogger(CertificateServiceImpl.class);
 
     private final IlmApiClient ilmApiClient;
-    private final ObjectMapper objectMapper;
 
-    public CertificateServiceImpl(IlmApiClient ilmApiClient, ObjectMapper objectMapper) {
+    public CertificateServiceImpl(IlmApiClient ilmApiClient) {
         this.ilmApiClient = ilmApiClient;
-        this.objectMapper = objectMapper;
     }
 
     @Override
@@ -50,7 +47,7 @@ public class CertificateServiceImpl implements CertificateService {
             if (pageNumber != null) {
                 request.setPageNumber(pageNumber);
             }
-            request.setFilters(SearchFilterParser.parseFilters(filters, objectMapper));
+            request.setFilters(SearchFilterParser.parseFilters(filters));
 
             CertificateResponseDto response = ilmApiClient.searchCertificates(request);
             return formatCertificateList(response);

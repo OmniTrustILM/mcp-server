@@ -1,14 +1,11 @@
 package com.otilm.mcp.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;
+import com.otilm.mcp.IlmTestSupport;
 import com.otilm.mcp.client.IlmApiClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.web.client.RestClient;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.containing;
@@ -27,14 +24,8 @@ class SecretServiceTest {
 
     @BeforeEach
     void setup(WireMockRuntimeInfo wmInfo) {
-        RestClient restClient = RestClient
-                .builder()
-                .baseUrl(wmInfo.getHttpBaseUrl())
-                .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-                .defaultHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
-                .build();
-        IlmApiClient apiClient = new IlmApiClient(restClient);
-        service = new SecretServiceImpl(apiClient, new ObjectMapper());
+        IlmApiClient apiClient = IlmTestSupport.client(wmInfo);
+        service = new SecretServiceImpl(apiClient);
     }
 
     @Test
@@ -73,20 +64,10 @@ class SecretServiceTest {
 
         String result = service.searchSecrets(null, null, null);
 
-        assertThat(result).contains("Found 2 secrets");
-        assertThat(result).contains("db-password");
-        assertThat(result).contains("api-token");
-        assertThat(result).contains("secret-uuid-1");
-        assertThat(result).contains("secret-uuid-2");
-        assertThat(result).contains("Type: basicAuth");
-        assertThat(result).contains("Type: apiKey");
-        assertThat(result).contains("State: active");
-        assertThat(result).contains("State: expired");
-        assertThat(result).contains("Version: 2");
-        assertThat(result).contains("Enabled: true");
-        assertThat(result).contains("Enabled: false");
-        assertThat(result).contains("Owner: admin");
-        assertThat(result).contains("Vault Profile: prod-vault");
+        assertThat(result)
+                .contains("Found 2 secrets", "db-password", "api-token", "secret-uuid-1", "secret-uuid-2",
+                        "Type: basicAuth", "Type: apiKey", "State: active", "State: expired", "Version: 2",
+                        "Enabled: true", "Enabled: false", "Owner: admin", "Vault Profile: prod-vault");
     }
 
     @Test
@@ -118,21 +99,12 @@ class SecretServiceTest {
 
         String result = service.getSecret("secret-1");
 
-        assertThat(result).contains("Secret: api-key-prod");
-        assertThat(result).contains("UUID: secret-1");
-        assertThat(result).contains("Description: Production API key for external service");
-        assertThat(result).contains("Type: apiKey");
-        assertThat(result).contains("State: active");
-        assertThat(result).contains("Version: 3");
-        assertThat(result).contains("Enabled: true");
-        assertThat(result).contains("Owner: devops-team");
-        assertThat(result).contains("Source Vault Profile: prod-vault");
-        assertThat(result).contains("Groups: production, api-keys");
-        assertThat(result).contains("Compliance: ok");
-        assertThat(result).contains("Created: 2026-01-15T08:00:00");
-        assertThat(result).contains("Updated: 2026-03-20T14:30:00");
-        assertThat(result).contains("Sync Vault Profiles:");
-        assertThat(result).contains("backup-vault");
+        assertThat(result)
+                .contains("Secret: api-key-prod", "UUID: secret-1",
+                        "Description: Production API key for external service", "Type: apiKey", "State: active",
+                        "Version: 3", "Enabled: true", "Owner: devops-team", "Source Vault Profile: prod-vault",
+                        "Groups: production, api-keys", "Compliance: ok", "Created: 2026-01-15T08:00:00",
+                        "Updated: 2026-03-20T14:30:00", "Sync Vault Profiles:", "backup-vault");
     }
 
     @Test
@@ -160,15 +132,9 @@ class SecretServiceTest {
 
         String result = service.getSecretVersions("secret-1");
 
-        assertThat(result).contains("Secret Versions for secret-1");
-        assertThat(result).contains("3 versions");
-        assertThat(result).contains("Version: 1");
-        assertThat(result).contains("Version: 2");
-        assertThat(result).contains("Version: 3");
-        assertThat(result).contains("sha256:abc123def456");
-        assertThat(result).contains("sha256:mno345pqr678");
-        assertThat(result).contains("2026-01-15T08:00:00");
-        assertThat(result).contains("2026-03-20T14:30:00");
+        assertThat(result)
+                .contains("Secret Versions for secret-1", "3 versions", "Version: 1", "Version: 2", "Version: 3",
+                        "sha256:abc123def456", "sha256:mno345pqr678", "2026-01-15T08:00:00", "2026-03-20T14:30:00");
     }
 
     @Test

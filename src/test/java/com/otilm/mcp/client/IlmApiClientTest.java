@@ -1,22 +1,22 @@
 package com.otilm.mcp.client;
 
-import com.czertainly.api.model.client.certificate.CertificateResponseDto;
-import com.czertainly.api.model.client.certificate.SearchRequestDto;
-import com.czertainly.api.model.client.dashboard.StatisticsDto;
-import com.czertainly.api.model.common.PaginationResponseDto;
-import com.czertainly.api.model.core.certificate.CertificateDetailDto;
-import com.czertainly.api.model.core.info.CoreInfoResponseDto;
-import com.czertainly.api.model.core.secret.SecretDetailDto;
-import com.czertainly.api.model.core.secret.SecretDto;
-import com.czertainly.api.model.core.vault.VaultInstanceDto;
-import com.czertainly.api.model.core.vaultprofile.VaultProfileDto;
 import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;
+import com.otilm.api.model.client.certificate.CertificateResponseDto;
+import com.otilm.api.model.client.certificate.SearchRequestDto;
+import com.otilm.api.model.client.cryptography.CryptographicKeyResponseDto;
+import com.otilm.api.model.client.dashboard.StatisticsDto;
+import com.otilm.api.model.common.PaginationResponseDto;
+import com.otilm.api.model.core.certificate.CertificateDetailDto;
+import com.otilm.api.model.core.cryptography.key.KeyItemDto;
+import com.otilm.api.model.core.info.CoreInfoResponseDto;
+import com.otilm.api.model.core.secret.SecretDetailDto;
+import com.otilm.api.model.core.secret.SecretDto;
+import com.otilm.api.model.core.vault.VaultInstanceDto;
+import com.otilm.api.model.core.vaultprofile.VaultProfileDto;
+import com.otilm.mcp.IlmTestSupport;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.web.client.RestClient;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.containing;
@@ -36,13 +36,7 @@ class IlmApiClientTest {
 
     @BeforeEach
     void setUp(WireMockRuntimeInfo wmRuntimeInfo) {
-        RestClient restClient = RestClient
-                .builder()
-                .baseUrl(wmRuntimeInfo.getHttpBaseUrl())
-                .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-                .defaultHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
-                .build();
-        client = new IlmApiClient(restClient);
+        client = IlmTestSupport.client(wmRuntimeInfo);
     }
 
     @Test
@@ -70,6 +64,34 @@ class IlmApiClientTest {
         assertThat(stats.getTotalRaProfiles()).isEqualTo(4L);
 
         verify(getRequestedFor(urlEqualTo("/v1/statistics")));
+    }
+
+    @Test
+    void restClientBuilderReadsUnknownFieldsAndMissingPrimitives(WireMockRuntimeInfo wmRuntimeInfo) {
+        stubFor(post(urlEqualTo("/v1/keys"))
+                .willReturn(aResponse().withHeader("Content-Type", "application/json").withBody("""
+                        {
+                            "cryptographicKeys": [
+                                {
+                                    "uuid": "0b5e6f4c-8a3d-4f7e-9c21-5d6e7f8a9b0c",
+                                    "name": "signing-key",
+                                    "length": 2048,
+                                    "futureField": 1
+                                }
+                            ],
+                            "itemsPerPage": 10,
+                            "pageNumber": 1,
+                            "totalPages": 1,
+                            "totalItems": 1
+                        }
+                        """)));
+
+        CryptographicKeyResponseDto response = IlmTestSupport.client(wmRuntimeInfo).searchKeys(new SearchRequestDto());
+
+        assertThat(response.getCryptographicKeys())
+                .singleElement()
+                .extracting(KeyItemDto::getAssociations)
+                .isEqualTo(0);
     }
 
     @Test

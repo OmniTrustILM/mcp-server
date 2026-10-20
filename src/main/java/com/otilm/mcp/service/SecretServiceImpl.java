@@ -1,11 +1,10 @@
 package com.otilm.mcp.service;
 
-import com.czertainly.api.model.client.certificate.SearchRequestDto;
-import com.czertainly.api.model.common.PaginationResponseDto;
-import com.czertainly.api.model.core.secret.SecretDetailDto;
-import com.czertainly.api.model.core.secret.SecretDto;
-import com.czertainly.api.model.core.secret.SecretVersionDto;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.otilm.api.model.client.certificate.SearchRequestDto;
+import com.otilm.api.model.common.PaginationResponseDto;
+import com.otilm.api.model.core.secret.SecretDetailDto;
+import com.otilm.api.model.core.secret.SecretDto;
+import com.otilm.api.model.core.secret.SecretVersionDto;
 import com.otilm.mcp.client.IlmApiClient;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
@@ -21,11 +20,9 @@ public class SecretServiceImpl implements SecretService {
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssXXX");
 
     private final IlmApiClient ilmApiClient;
-    private final ObjectMapper objectMapper;
 
-    public SecretServiceImpl(IlmApiClient ilmApiClient, ObjectMapper objectMapper) {
+    public SecretServiceImpl(IlmApiClient ilmApiClient) {
         this.ilmApiClient = ilmApiClient;
-        this.objectMapper = objectMapper;
     }
 
     @Override
@@ -38,7 +35,7 @@ public class SecretServiceImpl implements SecretService {
             if (pageNumber != null) {
                 request.setPageNumber(pageNumber);
             }
-            request.setFilters(SearchFilterParser.parseFilters(filters, objectMapper));
+            request.setFilters(SearchFilterParser.parseFilters(filters));
 
             PaginationResponseDto<SecretDto> response = ilmApiClient.searchSecrets(request);
             return formatSecretList(response);

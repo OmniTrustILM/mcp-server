@@ -1,19 +1,18 @@
 package com.otilm.mcp.config;
 
+import com.otilm.mcp.client.IlmApiClient;
 import com.otilm.mcp.security.AuthTokenFilter;
 import com.otilm.mcp.security.AuthTokenHolder;
 import java.util.Optional;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.http.client.ClientHttpRequestFactoryBuilder;
-import org.springframework.boot.http.client.ClientHttpRequestFactorySettings;
+import org.springframework.boot.http.client.HttpClientSettings;
 import org.springframework.boot.ssl.SslBundle;
 import org.springframework.boot.ssl.SslBundles;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
 import org.springframework.http.client.ClientHttpRequestInterceptor;
 import org.springframework.web.client.RestClient;
 
@@ -32,11 +31,7 @@ public class IlmApiClientConfiguration {
 
     @Bean
     public RestClient ilmRestClient(IlmApiProperties properties, Optional<SslBundles> sslBundles) {
-        RestClient.Builder builder = RestClient
-                .builder()
-                .baseUrl(properties.getUrl())
-                .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-                .defaultHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE);
+        RestClient.Builder builder = IlmApiClient.restClientBuilder(properties.getUrl());
 
         switch (properties.getAuth().getMethod()) {
             case CERTIFICATE -> configureCertificateAuth(builder, properties, sslBundles);
@@ -54,10 +49,7 @@ public class IlmApiClientConfiguration {
         SslBundles bundles = sslBundles
                 .orElseThrow(() -> new IllegalStateException("SSL bundles required for certificate auth"));
         SslBundle bundle = bundles.getBundle(properties.getAuth().getSslBundle());
-        builder
-                .requestFactory(ClientHttpRequestFactoryBuilder
-                        .detect()
-                        .build(ClientHttpRequestFactorySettings.ofSslBundle(bundle)));
+        builder.requestFactory(ClientHttpRequestFactoryBuilder.detect().build(HttpClientSettings.ofSslBundle(bundle)));
     }
 
     private void configureOAuthPassthrough(RestClient.Builder builder) {

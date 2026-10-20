@@ -1,0 +1,16 @@
+{
+  "entities": [
+    {
+      "uuid": "a24a347d-cf70-4c55-8af9-5c0e046e049c",
+      "name": "name-26",
+      "attributes": [],
+      "connectorUuid": "e05a7ed0-3ae2-4a98-a441-adb29fdeaa8c",
+      "connectorName": "connectorName-3",
+      "kind": "Keystore"
+    }
+  ],
+  "itemsPerPage": 5,
+  "pageNumber": 1,
+  "totalPages": 1,
+  "totalItems": 1
+}

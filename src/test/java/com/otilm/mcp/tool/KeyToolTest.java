@@ -1,15 +1,12 @@
 package com.otilm.mcp.tool;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;
+import com.otilm.mcp.IlmTestSupport;
 import com.otilm.mcp.client.IlmApiClient;
 import com.otilm.mcp.service.KeyServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.web.client.RestClient;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
@@ -28,14 +25,8 @@ class KeyToolTest {
 
     @BeforeEach
     void setup(WireMockRuntimeInfo wmInfo) {
-        RestClient restClient = RestClient
-                .builder()
-                .baseUrl(wmInfo.getHttpBaseUrl())
-                .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-                .defaultHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
-                .build();
-        IlmApiClient apiClient = new IlmApiClient(restClient);
-        KeyServiceImpl service = new KeyServiceImpl(apiClient, new ObjectMapper());
+        IlmApiClient apiClient = IlmTestSupport.client(wmInfo);
+        KeyServiceImpl service = new KeyServiceImpl(apiClient);
         tool = new KeyTool(service);
     }
 
@@ -64,8 +55,7 @@ class KeyToolTest {
 
         String result = tool.searchKeys(null, 10, 1);
 
-        assertThat(result).contains("Found 1 cryptographic keys");
-        assertThat(result).contains("rsa-signing-key");
+        assertThat(result).contains("Found 1 cryptographic keys", "rsa-signing-key");
 
         verify(postRequestedFor(urlEqualTo("/v1/keys")));
     }
@@ -85,8 +75,7 @@ class KeyToolTest {
 
         String result = tool.getKey("key-uuid");
 
-        assertThat(result).contains("Key: my-key");
-        assertThat(result).contains("UUID: key-uuid");
+        assertThat(result).contains("Key: my-key", "UUID: key-uuid");
 
         verify(getRequestedFor(urlEqualTo("/v1/keys/key-uuid")));
     }

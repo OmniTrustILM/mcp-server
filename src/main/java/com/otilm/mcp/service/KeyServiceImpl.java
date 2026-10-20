@@ -1,11 +1,10 @@
 package com.otilm.mcp.service;
 
-import com.czertainly.api.model.client.certificate.SearchRequestDto;
-import com.czertainly.api.model.client.cryptography.CryptographicKeyResponseDto;
-import com.czertainly.api.model.core.cryptography.key.KeyDetailDto;
-import com.czertainly.api.model.core.cryptography.key.KeyItemDetailDto;
-import com.czertainly.api.model.core.cryptography.key.KeyItemDto;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.otilm.api.model.client.certificate.SearchRequestDto;
+import com.otilm.api.model.client.cryptography.CryptographicKeyResponseDto;
+import com.otilm.api.model.core.cryptography.key.KeyDetailDto;
+import com.otilm.api.model.core.cryptography.key.KeyItemDetailDto;
+import com.otilm.api.model.core.cryptography.key.KeyItemDto;
 import com.otilm.mcp.client.IlmApiClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,11 +16,9 @@ public class KeyServiceImpl implements KeyService {
     private static final Logger logger = LoggerFactory.getLogger(KeyServiceImpl.class);
 
     private final IlmApiClient ilmApiClient;
-    private final ObjectMapper objectMapper;
 
-    public KeyServiceImpl(IlmApiClient ilmApiClient, ObjectMapper objectMapper) {
+    public KeyServiceImpl(IlmApiClient ilmApiClient) {
         this.ilmApiClient = ilmApiClient;
-        this.objectMapper = objectMapper;
     }
 
     @Override
@@ -34,7 +31,7 @@ public class KeyServiceImpl implements KeyService {
             if (pageNumber != null) {
                 request.setPageNumber(pageNumber);
             }
-            request.setFilters(SearchFilterParser.parseFilters(filters, objectMapper));
+            request.setFilters(SearchFilterParser.parseFilters(filters));
 
             CryptographicKeyResponseDto response = ilmApiClient.searchKeys(request);
             return formatKeyList(response);
@@ -68,29 +65,36 @@ public class KeyServiceImpl implements KeyService {
                 .append(")\n\n");
 
         for (KeyItemDto key : response.getCryptographicKeys()) {
-            sb.append("- ").append(key.getName() != null ? key.getName() : "N/A");
-            sb.append(" [").append(key.getUuid()).append("]\n");
-            sb
-                    .append("  Algorithm: ")
-                    .append(key.getKeyAlgorithm() != null ? key.getKeyAlgorithm().getCode() : "N/A")
-                    .append("\n");
-            sb.append("  Size: ").append(key.getLength()).append(" bits\n");
-            sb.append("  Type: ").append(key.getType() != null ? key.getType().getCode() : "N/A").append("\n");
-            sb.append("  State: ").append(key.getState() != null ? key.getState().getCode() : "N/A").append("\n");
-            sb.append("  Enabled: ").append(key.isEnabled()).append("\n");
-            if (key.getTokenInstanceName() != null) {
-                sb.append("  Token Instance: ").append(key.getTokenInstanceName()).append("\n");
-            }
-            if (key.getTokenProfileName() != null) {
-                sb.append("  Token Profile: ").append(key.getTokenProfileName()).append("\n");
-            }
-            if (key.getOwner() != null) {
-                sb.append("  Owner: ").append(key.getOwner()).append("\n");
-            }
-            sb.append("\n");
+            appendKey(sb, key);
         }
 
         return sb.toString();
+    }
+
+    private static void appendKey(StringBuilder sb, KeyItemDto key) {
+        sb.append("- ").append(key.getName() != null ? key.getName() : "N/A");
+        sb.append(" [").append(key.getUuid()).append("]\n");
+        if (key.getKeyWrapperUuid() != null) {
+            sb.append("  Key UUID: ").append(key.getKeyWrapperUuid()).append("\n");
+        }
+        sb
+                .append("  Algorithm: ")
+                .append(key.getKeyAlgorithm() != null ? key.getKeyAlgorithm().getCode() : "N/A")
+                .append("\n");
+        sb.append("  Size: ").append(key.getLength()).append(" bits\n");
+        sb.append("  Type: ").append(key.getType() != null ? key.getType().getCode() : "N/A").append("\n");
+        sb.append("  State: ").append(key.getState() != null ? key.getState().getCode() : "N/A").append("\n");
+        sb.append("  Enabled: ").append(key.isEnabled()).append("\n");
+        if (key.getTokenInstanceName() != null) {
+            sb.append("  Token Instance: ").append(key.getTokenInstanceName()).append("\n");
+        }
+        if (key.getTokenProfileName() != null) {
+            sb.append("  Token Profile: ").append(key.getTokenProfileName()).append("\n");
+        }
+        if (key.getOwner() != null) {
+            sb.append("  Owner: ").append(key.getOwner()).append("\n");
+        }
+        sb.append("\n");
     }
 
     private String formatKeyDetail(KeyDetailDto key) {

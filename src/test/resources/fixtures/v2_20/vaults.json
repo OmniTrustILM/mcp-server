@@ -1,0 +1,42 @@
+{
+  "items": [
+    {
+      "uuid": "425fdf56-0d6a-48a9-b40e-2e14f70801ca",
+      "name": "name-42",
+      "description": "description-6",
+      "connector": {
+        "uuid": "e316ffcc-b39a-4749-9632-be027e959703",
+        "name": "name-43"
+      },
+      "connectorInterface": {
+        "uuid": "bf6a5d9e-264c-4c6c-9dfe-dddd6d2a37ee",
+        "code": "secret",
+        "version": "v1",
+        "features": [
+          "stateless"
+        ]
+      }
+    },
+    {
+      "uuid": "33bad2e9-c4fa-4ffd-b55f-6d984a8cd7bd",
+      "name": "name-44",
+      "description": "",
+      "connector": {
+        "uuid": "e316ffcc-b39a-4749-9632-be027e959703",
+        "name": "name-45"
+      },
+      "connectorInterface": {
+        "uuid": "bf6a5d9e-264c-4c6c-9dfe-dddd6d2a37ee",
+        "code": "secret",
+        "version": "v1",
+        "features": [
+          "stateless"
+        ]
+      }
+    }
+  ],
+  "itemsPerPage": 5,
+  "pageNumber": 1,
+  "totalPages": 5,
+  "totalItems": 21
+}

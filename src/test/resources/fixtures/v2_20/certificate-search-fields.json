@@ -1,0 +1,127 @@
+[
+  {
+    "filterFieldSource": "property",
+    "searchFieldData": [
+      {
+        "fieldIdentifier": "COMMON_NAME",
+        "fieldLabel": "Common Name",
+        "type": "string",
+        "conditions": [
+          "CONTAINS",
+          "NOT_CONTAINS",
+          "EQUALS",
+          "NOT_EQUALS",
+          "EMPTY",
+          "NOT_EMPTY",
+          "STARTS_WITH",
+          "ENDS_WITH",
+          "MATCHES",
+          "NOT_MATCHES"
+        ],
+        "multiValue": false,
+        "displayable": true,
+        "sortable": true
+      },
+      {
+        "fieldIdentifier": "NOT_AFTER",
+        "fieldLabel": "Expires At",
+        "type": "datetime",
+        "conditions": [
+          "EQUALS",
+          "NOT_EQUALS",
+          "GREATER",
+          "GREATER_OR_EQUAL",
+          "LESSER",
+          "LESSER_OR_EQUAL",
+          "EMPTY",
+          "NOT_EMPTY",
+          "IN_NEXT",
+          "IN_PAST"
+        ],
+        "multiValue": false,
+        "displayable": true,
+        "sortable": true
+      },
+      {
+        "fieldIdentifier": "KEY_SIZE",
+        "fieldLabel": "Key Size",
+        "type": "list",
+        "conditions": [
+          "EQUALS",
+          "NOT_EQUALS",
+          "EMPTY",
+          "NOT_EMPTY"
+        ],
+        "value": [
+          -1,
+          192,
+          256,
+          282,
+          384,
+          512,
+          521,
+          1024,
+          1536,
+          2048,
+          3072,
+          4096,
+          8192,
+          10496,
+          14344,
+          15616,
+          20736
+        ],
+        "multiValue": true,
+        "displayable": true,
+        "sortable": true
+      },
+      {
+        "fieldIdentifier": "SERIAL_NUMBER",
+        "fieldLabel": "Serial Number",
+        "type": "string",
+        "conditions": [
+          "CONTAINS",
+          "NOT_CONTAINS",
+          "EQUALS",
+          "NOT_EQUALS",
+          "EMPTY",
+          "NOT_EMPTY",
+          "STARTS_WITH",
+          "ENDS_WITH",
+          "MATCHES",
+          "NOT_MATCHES"
+        ],
+        "multiValue": false,
+        "displayable": true,
+        "sortable": true
+      },
+      {
+        "fieldIdentifier": "CERTIFICATE_STATE",
+        "fieldLabel": "State",
+        "type": "list",
+        "conditions": [
+          "EQUALS",
+          "NOT_EQUALS",
+          "EMPTY",
+          "NOT_EMPTY"
+        ],
+        "platformEnum": "CertificateState",
+        "value": [
+          "value-1",
+          "value-2",
+          "value-3",
+          "value-4",
+          "value-5",
+          "value-6",
+          "value-7",
+          "value-8",
+          "value-9",
+          "value-10"
+        ],
+        "multiValue": true,
+        "displayable": true,
+        "sortable": true
+      }
+    ]
+  }
+]

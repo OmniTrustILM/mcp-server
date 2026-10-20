@@ -7,11 +7,11 @@ COPY pom.xml .
 COPY src src
 
 RUN --mount=type=cache,target=/root/.m2 \
-    apt-get update && apt-get install -y maven && \
+    apt-get update && apt-get install -y --no-install-recommends maven && \
     mvn -B -U package -DskipTests
 
-# Stage 2: Optimize - create custom JRE
-FROM eclipse-temurin:21-jdk AS optimize
+# Stage 2: Optimize - create custom JRE for the Alpine runtime
+FROM eclipse-temurin:21-jdk-alpine AS optimize
 
 COPY --from=build /build/target/*.jar /app/app.jar
 
@@ -30,10 +30,12 @@ RUN jar xf /app/app.jar && \
         --output /custom-jre
 
 # Stage 3: Package
-FROM alpine:latest
+FROM alpine:3.24
 
 LABEL org.opencontainers.image.authors="ILM <support@otilm.com>"
 
+# VERSION changes per release, so a tag build never reuses a cached, outdated upgrade layer
+ARG VERSION
 RUN apk upgrade --no-cache && \
     addgroup -g 10001 ilm && \
     adduser -u 10001 -G ilm -s /bin/sh -D ilm

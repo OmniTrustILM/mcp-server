@@ -1,14 +1,11 @@
 package com.otilm.mcp.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;
+import com.otilm.mcp.IlmTestSupport;
 import com.otilm.mcp.client.IlmApiClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.web.client.RestClient;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
@@ -28,14 +25,8 @@ class InfrastructureServiceTest {
 
     @BeforeEach
     void setup(WireMockRuntimeInfo wmInfo) {
-        RestClient restClient = RestClient
-                .builder()
-                .baseUrl(wmInfo.getHttpBaseUrl())
-                .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-                .defaultHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
-                .build();
-        IlmApiClient apiClient = new IlmApiClient(restClient);
-        service = new InfrastructureServiceImpl(apiClient, new ObjectMapper());
+        IlmApiClient apiClient = IlmTestSupport.client(wmInfo);
+        service = new InfrastructureServiceImpl(apiClient);
     }
 
     @Test
@@ -62,14 +53,9 @@ class InfrastructureServiceTest {
 
         String result = service.listAuthorities();
 
-        assertThat(result).contains("Authority Instances (2)");
-        assertThat(result).contains("ADCS Authority");
-        assertThat(result).contains("auth-uuid-1");
-        assertThat(result).contains("EJBCA Authority");
-        assertThat(result).contains("auth-uuid-2");
-        assertThat(result).contains("Status: connected");
-        assertThat(result).contains("Connector: MS-ADCS-Connector");
-        assertThat(result).contains("Kind: ADCS");
+        assertThat(result)
+                .contains("Authority Instances (2)", "ADCS Authority", "auth-uuid-1", "EJBCA Authority", "auth-uuid-2",
+                        "Status: connected", "Connector: MS-ADCS-Connector", "Kind: ADCS");
     }
 
     @Test
@@ -92,13 +78,9 @@ class InfrastructureServiceTest {
 
         String result = service.listConnectors();
 
-        assertThat(result).contains("Connectors (1)");
-        assertThat(result).contains("MS-ADCS-Connector");
-        assertThat(result).contains("conn-uuid-1");
-        assertThat(result).contains("Status: connected");
-        assertThat(result).contains("URL: https://adcs.example.com/api");
-        assertThat(result).contains("Auth Type: certificate");
-        assertThat(result).contains("Function Groups: 1");
+        assertThat(result)
+                .contains("Connectors (1)", "MS-ADCS-Connector", "conn-uuid-1", "Status: connected",
+                        "URL: https://adcs.example.com/api", "Auth Type: certificate", "Function Groups: 1");
     }
 
     @Test
@@ -122,13 +104,10 @@ class InfrastructureServiceTest {
 
         String result = service.listGroups();
 
-        assertThat(result).contains("Groups (2)");
-        assertThat(result).contains("Production Certificates");
-        assertThat(result).contains("group-uuid-1");
-        assertThat(result).contains("Description: Group for production certificates");
-        assertThat(result).contains("Email: certs@example.com");
-        assertThat(result).contains("Development Certificates");
-        assertThat(result).contains("group-uuid-2");
+        assertThat(result)
+                .contains("Groups (2)", "Production Certificates", "group-uuid-1",
+                        "Description: Group for production certificates", "Email: certs@example.com",
+                        "Development Certificates", "group-uuid-2");
     }
 
     @Test
@@ -148,12 +127,9 @@ class InfrastructureServiceTest {
 
         String result = service.listCredentials();
 
-        assertThat(result).contains("Credentials (1)");
-        assertThat(result).contains("ADCS-Service-Credential");
-        assertThat(result).contains("cred-uuid-1");
-        assertThat(result).contains("Enabled: true");
-        assertThat(result).contains("Kind: Basic");
-        assertThat(result).contains("Connector: MS-ADCS-Connector");
+        assertThat(result)
+                .contains("Credentials (1)", "ADCS-Service-Credential", "cred-uuid-1", "Enabled: true", "Kind: Basic",
+                        "Connector: MS-ADCS-Connector");
     }
 
     @Test
@@ -174,12 +150,9 @@ class InfrastructureServiceTest {
 
         String result = service.listTokenInstances();
 
-        assertThat(result).contains("Token Instances (1)");
-        assertThat(result).contains("SoftHSM-Instance");
-        assertThat(result).contains("token-uuid-1");
-        assertThat(result).contains("Status: Connected");
-        assertThat(result).contains("Connector: SoftHSM-Connector");
-        assertThat(result).contains("Kind: SoftHSM");
+        assertThat(result)
+                .contains("Token Instances (1)", "SoftHSM-Instance", "token-uuid-1", "Status: Connected",
+                        "Connector: SoftHSM-Connector", "Kind: SoftHSM");
     }
 
     @Test
@@ -208,13 +181,9 @@ class InfrastructureServiceTest {
 
         String result = service.listDiscoveries(null);
 
-        assertThat(result).contains("Discoveries (1 total");
-        assertThat(result).contains("Network Scan Q1");
-        assertThat(result).contains("disc-uuid-1");
-        assertThat(result).contains("Status: completed");
-        assertThat(result).contains("Kind: IP-Hostname");
-        assertThat(result).contains("Connector: Network-Discovery-Connector");
-        assertThat(result).contains("Certificates Discovered: 42");
+        assertThat(result)
+                .contains("Discoveries (1 total", "Network Scan Q1", "disc-uuid-1", "Status: completed",
+                        "Kind: IP-Hostname", "Connector: Network-Discovery-Connector", "Certificates Discovered: 42");
     }
 
     @Test
@@ -234,12 +203,9 @@ class InfrastructureServiceTest {
 
         String result = service.listRaProfiles();
 
-        assertThat(result).contains("RA Profiles (1)");
-        assertThat(result).contains("Web Server Profile");
-        assertThat(result).contains("ra-uuid-1");
-        assertThat(result).contains("Enabled: true");
-        assertThat(result).contains("Description: Profile for web server certificates");
-        assertThat(result).contains("Authority: ADCS Authority");
+        assertThat(result)
+                .contains("RA Profiles (1)", "Web Server Profile", "ra-uuid-1", "Enabled: true",
+                        "Description: Profile for web server certificates", "Authority: ADCS Authority");
     }
 
     @Test
@@ -265,12 +231,9 @@ class InfrastructureServiceTest {
 
         String result = service.listEntities(null);
 
-        assertThat(result).contains("Entity Instances (1 total");
-        assertThat(result).contains("Web Server Entity");
-        assertThat(result).contains("entity-uuid-1");
-        assertThat(result).contains("Status: connected");
-        assertThat(result).contains("Connector: Entity-Connector");
-        assertThat(result).contains("Kind: Keystore");
+        assertThat(result)
+                .contains("Entity Instances (1 total", "Web Server Entity", "entity-uuid-1", "Status: connected",
+                        "Connector: Entity-Connector", "Kind: Keystore");
     }
 
     @Test

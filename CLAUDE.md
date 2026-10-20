@@ -7,10 +7,12 @@ MCP (Model Context Protocol) server for the ILM platform (formerly CZERTAINLY). 
 ## Tech Stack
 
 - Java 21
-- Spring Boot 3.5.13
-- Spring AI 1.1.4
+- Spring Boot 4.1.1 through the parent `com.otilm:dependencies` 2.20.0
+- Spring AI 2.0.1 (MCP Java SDK 2.0)
 - Maven
-- CZERTAINLY Interfaces library (com.czertainly:interfaces)
+- ILM Interfaces library (`com.otilm:interfaces` 2.20.0)
+- Jackson 3 (`tools.jackson`)
+- Supported ILM platform: 2.17 or later
 
 ## Build & Run
 
@@ -23,6 +25,12 @@ MCP (Model Context Protocol) server for the ILM platform (formerly CZERTAINLY). 
 
 ```bash
 mvn clean verify
+```
+
+`verify` also runs the organization's Spotless and Checkstyle gates. Format before committing:
+
+```bash
+mvn spotless:apply
 ```
 
 ### Run locally (STDIO mode)
@@ -49,6 +57,14 @@ mvn test
 mvn verify
 # Report at target/site/jacoco/index.html
 ```
+
+### Local SonarQube analysis
+
+```bash
+./scripts/sonar-local.sh
+```
+
+Runs `mvn verify`, analyses the project in an ephemeral SonarQube container (Docker required), and fails unless the quality gate passes (ratings A, hotspots reviewed, coverage >= 80%, duplication <= 3%) and no open issue sits on a line changed since `origin/main`.
 
 ## Configuration
 
@@ -87,13 +103,19 @@ MCP Tool (@Tool) → Service (formatting) → IlmApiClient (RestClient) → ILM 
 
 ## Conventions
 
-- Follow CZERTAINLY Java repository conventions
+- Follow the OmniTrustILM Java repository conventions
 - Service interfaces with `*Impl` suffix for implementations
 - WireMock for integration tests (no Mockito)
 - 80%+ test coverage, <3% code duplication
 - AI-friendly formatted text responses from all tools (not raw JSON)
+- Jackson 3 only: no imports from Jackson 2 `databind`, `core`, `datatype`, `dataformat` or `module` packages (`com.fasterxml.jackson.annotation` is shared and allowed)
+- Every `RestClient` to ILM comes from `IlmApiClient.restClientBuilder(...)`, which reads responses leniently so older ILM versions parse; tests use `IlmTestSupport.client(...)`
+- Test fixtures hold synthetic values only, with canonical UUIDs; responses recorded from ILM 2.20 live in `src/test/resources/fixtures/v2_20`
+- Commits carry a DCO sign-off (`git commit -s`)
 
 ## Docker
+
+Images are published to `hub.omnitrustregistry.com/ilm/mcp-server` by the shared organization workflows.
 
 ```bash
 docker build -t ilm-mcp-server .
