@@ -291,7 +291,7 @@ mvn spotless:apply
 
 ### Local SonarQube Analysis
 
-Runs the build, analyses it with an ephemeral SonarQube container, and fails on a failed quality gate or on open issues on changed lines. Requires Docker.
+Runs the build, analyses it with the pull-request workflow's scope in an ephemeral SonarQube container, and fails on a failed quality gate or on open issues touching changed lines. Requires Docker.
 
 ```bash
 ./scripts/sonar-local.sh
