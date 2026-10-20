@@ -33,4 +33,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: mvn -B -U verify org.sonarsource.scanner.maven:sonar-maven-plugin:5.8.0.7211:sonar
+        # Same scope as the pull-request analysis in sonar.yml.
+        run: >-
+          mvn -B -U verify org.sonarsource.scanner.maven:sonar-maven-plugin:5.8.0.7211:sonar
+          -Dsonar.sources=.
+          "-Dsonar.exclusions=src/test/**,target/**"
+          -Dsonar.tests=src/test/java
