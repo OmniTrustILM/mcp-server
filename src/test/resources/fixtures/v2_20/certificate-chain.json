@@ -1,0 +1,83 @@
+{
+  "completeChain": true,
+  "certificates": [
+    {
+      "uuid": "870576fe-04e3-4e01-986e-61369be6a098",
+      "commonName": "commonName-4.example.com",
+      "serialNumber": "0000000000000000000000000000000000000004",
+      "issuerCommonName": "issuerCommonName-4.example.com",
+      "issuerDn": "CN=issuerDn-4,O=Example",
+      "subjectDn": "CN=subjectDn-4,O=Example",
+      "notBefore": "2026-10-14T14:17:57.000+00:00",
+      "notAfter": "2026-11-13T14:17:57.000+00:00",
+      "publicKeyAlgorithm": "RSA",
+      "signatureAlgorithm": "SHA256withRSA",
+      "hybridCertificate": false,
+      "keySize": 2048,
+      "state": "issued",
+      "validationStatus": "invalid",
+      "fingerprint": "0000000000000000000000000000000000000004",
+      "groups": [
+        {
+          "uuid": "337d4f1b-7010-40a8-82c3-aa73f9ce6504",
+          "name": "name-6",
+          "description": "description-3"
+        }
+      ],
+      "certificateType": "X.509",
+      "issuerSerialNumber": "0000000000000000000000000000000000000004",
+      "complianceStatus": "not_checked",
+      "privateKeyAvailability": false,
+      "trustedCa": false,
+      "archived": false,
+      "extendedKeyUsage": [],
+      "keyUsage": [],
+      "subjectType": "selfSignedEndEntity",
+      "certificateContent": "TUlJQ2VydGlmaWNhdGVNYXJrZXI=",
+      "subjectAlternativeNames": {
+        "dNSName": [],
+        "directoryName": [],
+        "ediPartyName": [],
+        "iPAddress": [],
+        "otherName": [],
+        "registeredID": [],
+        "rfc822Name": [],
+        "uniformResourceIdentifier": [],
+        "x400Address": []
+      },
+      "key": {
+        "uuid": "7f248902-d5b4-4b4a-8799-ad22424097db",
+        "name": "name-7",
+        "creationTime": "2026-10-14T14:17:57.831943Z",
+        "items": [
+          {
+            "uuid": "72f43b71-565c-4769-8d49-3b676070b2c1",
+            "name": "name-8",
+            "creationTime": "2026-10-14T14:17:57.831943Z",
+            "keyWrapperUuid": "7f248902-d5b4-4b4a-8799-ad22424097db",
+            "groups": [],
+            "associations": 0,
+            "type": "Public",
+            "keyAlgorithm": "RSA",
+            "format": "SubjectPublicKeyInfo",
+            "length": 2048,
+            "usage": [],
+            "enabled": true,
+            "state": "active",
+            "complianceStatus": "not_checked"
+          }
+        ],
+        "associations": 0,
+        "complianceStatus": "not_checked"
+      },
+      "keystoreAvailable": false,
+      "issueAttributes": [],
+      "revokeAttributes": [],
+      "registerAttributes": [],
+      "renewAttributes": [],
+      "identifyAttributes": [],
+      "registrationRequestAttributes": [],
+      "relatedCertificates": []
+    }
+  ]
+}

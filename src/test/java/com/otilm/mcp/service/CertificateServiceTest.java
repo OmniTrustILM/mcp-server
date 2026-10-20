@@ -1,14 +1,11 @@
 package com.otilm.mcp.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;
+import com.otilm.mcp.IlmTestSupport;
 import com.otilm.mcp.client.IlmApiClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.web.client.RestClient;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.containing;
@@ -27,14 +24,8 @@ class CertificateServiceTest {
 
     @BeforeEach
     void setup(WireMockRuntimeInfo wmInfo) {
-        RestClient restClient = RestClient
-                .builder()
-                .baseUrl(wmInfo.getHttpBaseUrl())
-                .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-                .defaultHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
-                .build();
-        IlmApiClient apiClient = new IlmApiClient(restClient);
-        service = new CertificateServiceImpl(apiClient, new ObjectMapper());
+        IlmApiClient apiClient = IlmTestSupport.client(wmInfo);
+        service = new CertificateServiceImpl(apiClient);
     }
 
     @Test
@@ -66,21 +57,11 @@ class CertificateServiceTest {
 
         String result = service.getStatistics();
 
-        assertThat(result).contains("ILM Platform Statistics");
-        assertThat(result).contains("Total Certificates: 150");
-        assertThat(result).contains("Total Groups: 8");
-        assertThat(result).contains("Total Discoveries: 5");
-        assertThat(result).contains("Total Connectors: 3");
-        assertThat(result).contains("Total RA Profiles: 6");
-        assertThat(result).contains("Total Authorities: 2");
-        assertThat(result).contains("Total Credentials: 4");
-        assertThat(result).contains("Certificates by State:");
-        assertThat(result).contains("issued: 120");
-        assertThat(result).contains("revoked: 15");
-        assertThat(result).contains("expired: 15");
-        assertThat(result).contains("Certificates by Key Size:");
-        assertThat(result).contains("2048: 80");
-        assertThat(result).contains("4096: 70");
+        assertThat(result)
+                .contains("ILM Platform Statistics", "Total Certificates: 150", "Total Groups: 8",
+                        "Total Discoveries: 5", "Total Connectors: 3", "Total RA Profiles: 6", "Total Authorities: 2",
+                        "Total Credentials: 4", "Certificates by State:", "issued: 120", "revoked: 15", "expired: 15",
+                        "Certificates by Key Size:", "2048: 80", "4096: 70");
     }
 
     @Test
@@ -90,7 +71,7 @@ class CertificateServiceTest {
                         {
                             "certificates": [
                                 {
-                                    "uuid": "cert-uuid-1",
+                                    "uuid": "3f1c2a4e-5b6d-4c7e-8f90-a1b2c3d4e5f6",
                                     "commonName": "web.example.com",
                                     "serialNumber": "AABB11",
                                     "state": "issued",
@@ -100,7 +81,7 @@ class CertificateServiceTest {
                                     "notAfter": "2027-01-01T00:00:00.000Z"
                                 },
                                 {
-                                    "uuid": "cert-uuid-2",
+                                    "uuid": "7a8b9c0d-1e2f-4a3b-9c4d-5e6f7a8b9c0d",
                                     "commonName": "api.example.com",
                                     "serialNumber": "CCDD22",
                                     "state": "issued",
@@ -119,15 +100,10 @@ class CertificateServiceTest {
 
         String result = service.searchCertificates(null, null, null);
 
-        assertThat(result).contains("Found 2 certificates");
-        assertThat(result).contains("web.example.com");
-        assertThat(result).contains("api.example.com");
-        assertThat(result).contains("RSA");
-        assertThat(result).contains("ECDSA");
-        assertThat(result).contains("cert-uuid-1");
-        assertThat(result).contains("cert-uuid-2");
-        assertThat(result).contains("Serial: AABB11");
-        assertThat(result).contains("Serial: CCDD22");
+        assertThat(result)
+                .contains("Found 2 certificates", "web.example.com", "api.example.com", "RSA", "ECDSA",
+                        "3f1c2a4e-5b6d-4c7e-8f90-a1b2c3d4e5f6", "7a8b9c0d-1e2f-4a3b-9c4d-5e6f7a8b9c0d",
+                        "Serial: AABB11", "Serial: CCDD22");
     }
 
     @Test
@@ -156,18 +132,12 @@ class CertificateServiceTest {
 
         String result = service.getCertificate("uuid-1");
 
-        assertThat(result).contains("Certificate: server.example.com");
-        assertThat(result).contains("UUID: uuid-1");
-        assertThat(result).contains("Serial: FF1122334455");
-        assertThat(result).contains("Subject DN: CN=server.example.com,O=Example Corp,C=US");
-        assertThat(result).contains("Issuer: Example Intermediate CA");
-        assertThat(result).contains("Issuer DN: CN=Example Intermediate CA,O=Example Corp,C=US");
-        assertThat(result).contains("Key Algorithm: RSA 4096");
-        assertThat(result).contains("Signature Algorithm: SHA256withRSA");
-        assertThat(result).contains("State: issued");
-        assertThat(result).contains("Validation: valid");
-        assertThat(result).contains("Compliance: ok");
-        assertThat(result).contains("Fingerprint: AB:CD:EF:12:34:56:78:90");
+        assertThat(result)
+                .contains("Certificate: server.example.com", "UUID: uuid-1", "Serial: FF1122334455",
+                        "Subject DN: CN=server.example.com,O=Example Corp,C=US", "Issuer: Example Intermediate CA",
+                        "Issuer DN: CN=Example Intermediate CA,O=Example Corp,C=US", "Key Algorithm: RSA 4096",
+                        "Signature Algorithm: SHA256withRSA", "State: issued", "Validation: valid", "Compliance: ok",
+                        "Fingerprint: AB:CD:EF:12:34:56:78:90");
     }
 
     @Test
@@ -188,11 +158,9 @@ class CertificateServiceTest {
 
         String result = service.getCertificateHistory("uuid-1");
 
-        assertThat(result).contains("Event History for Certificate uuid-1");
-        assertThat(result).contains("Issue Certificate");
-        assertThat(result).contains("SUCCESS");
-        assertThat(result).contains("admin@example.com");
-        assertThat(result).contains("Certificate issued successfully");
+        assertThat(result)
+                .contains("Event History for Certificate uuid-1", "Issue Certificate", "SUCCESS", "admin@example.com",
+                        "Certificate issued successfully");
     }
 
     @Test
@@ -228,16 +196,10 @@ class CertificateServiceTest {
 
         String result = service.getStatistics();
 
-        assertThat(result).contains("Total Certificates: 150");
-        assertThat(result).contains("Total Secrets: 25");
-        assertThat(result).contains("Total Vault Instances: 2");
-        assertThat(result).contains("Total Vault Profiles: 3");
-        assertThat(result).contains("Secrets by Type:");
-        assertThat(result).contains("basicAuth: 10");
-        assertThat(result).contains("apiKey: 8");
-        assertThat(result).contains("Secrets by State:");
-        assertThat(result).contains("active: 20");
-        assertThat(result).contains("expired: 5");
+        assertThat(result)
+                .contains("Total Certificates: 150", "Total Secrets: 25", "Total Vault Instances: 2",
+                        "Total Vault Profiles: 3", "Secrets by Type:", "basicAuth: 10", "apiKey: 8",
+                        "Secrets by State:", "active: 20", "expired: 5");
     }
 
     @Test
@@ -259,7 +221,7 @@ class CertificateServiceTest {
                         {
                             "certificates": [
                                 {
-                                    "uuid": "cert-1",
+                                    "uuid": "9d8c7b6a-5f4e-4d3c-8b2a-1f0e9d8c7b6a",
                                     "commonName": "example.com",
                                     "serialNumber": "ABC123",
                                     "state": "issued",

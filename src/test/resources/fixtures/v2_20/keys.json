@@ -1,0 +1,40 @@
+{
+  "cryptographicKeys": [
+    {
+      "uuid": "72f43b71-565c-4769-8d49-3b676070b2c1",
+      "name": "name-9",
+      "creationTime": "2026-10-14T14:17:57.831943Z",
+      "keyWrapperUuid": "7f248902-d5b4-4b4a-8799-ad22424097db",
+      "groups": [],
+      "associations": 1,
+      "type": "Public",
+      "keyAlgorithm": "RSA",
+      "format": "SubjectPublicKeyInfo",
+      "length": 2048,
+      "usage": [],
+      "enabled": true,
+      "state": "active",
+      "complianceStatus": "not_checked"
+    },
+    {
+      "uuid": "035cbc1a-918a-4105-9ccc-93f691252169",
+      "name": "name-10",
+      "creationTime": "2026-10-14T14:17:56.311424Z",
+      "keyWrapperUuid": "d295d036-82a3-423b-b358-ec43a84960c2",
+      "groups": [],
+      "associations": 1,
+      "type": "Public",
+      "keyAlgorithm": "RSA",
+      "format": "SubjectPublicKeyInfo",
+      "length": 2048,
+      "usage": [],
+      "enabled": true,
+      "state": "active",
+      "complianceStatus": "not_checked"
+    }
+  ],
+  "itemsPerPage": 5,
+  "pageNumber": 1,
+  "totalPages": 25338,
+  "totalItems": 126687
+}

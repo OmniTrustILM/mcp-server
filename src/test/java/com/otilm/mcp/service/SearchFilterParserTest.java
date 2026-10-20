@@ -1,9 +1,8 @@
 package com.otilm.mcp.service;
 
-import com.czertainly.api.model.client.certificate.SearchFilterRequestDto;
-import com.czertainly.api.model.core.search.FilterConditionOperator;
-import com.czertainly.api.model.core.search.FilterFieldSource;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.otilm.api.model.client.certificate.SearchFilterRequestDto;
+import com.otilm.api.model.core.search.FilterConditionOperator;
+import com.otilm.api.model.core.search.FilterFieldSource;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -15,13 +14,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class SearchFilterParserTest {
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
-
     @ParameterizedTest
     @NullAndEmptySource
     @ValueSource(strings = {"  ", "[]"})
     void shouldReturnEmptyListForNullBlankOrEmptyInput(String input) {
-        List<SearchFilterRequestDto> result = SearchFilterParser.parseFilters(input, objectMapper);
+        List<SearchFilterRequestDto> result = SearchFilterParser.parseFilters(input);
         assertThat(result).isEmpty();
     }
 
@@ -30,7 +27,7 @@ class SearchFilterParserTest {
         String json = """
                 [{"fieldSource":"property","fieldIdentifier":"commonName","condition":"CONTAINS","value":"example.com"}]
                 """;
-        List<SearchFilterRequestDto> result = SearchFilterParser.parseFilters(json, objectMapper);
+        List<SearchFilterRequestDto> result = SearchFilterParser.parseFilters(json);
         assertThat(result).hasSize(1);
         assertThat(result.get(0).getFieldSource()).isEqualTo(FilterFieldSource.PROPERTY);
         assertThat(result.get(0).getFieldIdentifier()).isEqualTo("commonName");
@@ -46,7 +43,7 @@ class SearchFilterParserTest {
                     {"fieldSource":"property","fieldIdentifier":"keySize","condition":"GREATER","value":2048}
                 ]
                 """;
-        List<SearchFilterRequestDto> result = SearchFilterParser.parseFilters(json, objectMapper);
+        List<SearchFilterRequestDto> result = SearchFilterParser.parseFilters(json);
         assertThat(result).hasSize(2);
         assertThat(result.get(0).getFieldIdentifier()).isEqualTo("state");
         assertThat(result.get(1).getFieldIdentifier()).isEqualTo("keySize");
@@ -54,7 +51,7 @@ class SearchFilterParserTest {
 
     @Test
     void shouldThrowOnMalformedJson() {
-        assertThatThrownBy(() -> SearchFilterParser.parseFilters("not json", objectMapper))
+        assertThatThrownBy(() -> SearchFilterParser.parseFilters("not json"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Invalid filters JSON");
     }

@@ -1,15 +1,12 @@
 package com.otilm.mcp.tool;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;
+import com.otilm.mcp.IlmTestSupport;
 import com.otilm.mcp.client.IlmApiClient;
 import com.otilm.mcp.service.CertificateServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.web.client.RestClient;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
@@ -28,14 +25,8 @@ class CertificateToolTest {
 
     @BeforeEach
     void setup(WireMockRuntimeInfo wmInfo) {
-        RestClient restClient = RestClient
-                .builder()
-                .baseUrl(wmInfo.getHttpBaseUrl())
-                .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-                .defaultHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
-                .build();
-        IlmApiClient apiClient = new IlmApiClient(restClient);
-        CertificateServiceImpl service = new CertificateServiceImpl(apiClient, new ObjectMapper());
+        IlmApiClient apiClient = IlmTestSupport.client(wmInfo);
+        CertificateServiceImpl service = new CertificateServiceImpl(apiClient);
         tool = new CertificateTool(service);
     }
 
@@ -56,8 +47,7 @@ class CertificateToolTest {
 
         String result = tool.getStatistics();
 
-        assertThat(result).contains("ILM Platform Statistics");
-        assertThat(result).contains("Total Certificates: 10");
+        assertThat(result).contains("ILM Platform Statistics", "Total Certificates: 10");
 
         verify(getRequestedFor(urlEqualTo("/v1/statistics")));
     }
@@ -69,7 +59,7 @@ class CertificateToolTest {
                         {
                             "certificates": [
                                 {
-                                    "uuid": "cert-1",
+                                    "uuid": "2e4c6a8b-0d1f-4e3a-9b5c-7d9e1f3a5b7c",
                                     "commonName": "test.example.com",
                                     "serialNumber": "AABB",
                                     "state": "issued",
@@ -87,8 +77,7 @@ class CertificateToolTest {
 
         String result = tool.searchCertificates(null, 10, 1);
 
-        assertThat(result).contains("Found 1 certificates");
-        assertThat(result).contains("test.example.com");
+        assertThat(result).contains("Found 1 certificates", "test.example.com");
 
         verify(postRequestedFor(urlEqualTo("/v1/certificates")));
     }
@@ -115,8 +104,7 @@ class CertificateToolTest {
 
         String result = tool.getCertificate("cert-uuid");
 
-        assertThat(result).contains("Certificate: detail.example.com");
-        assertThat(result).contains("UUID: cert-uuid");
+        assertThat(result).contains("Certificate: detail.example.com", "UUID: cert-uuid");
 
         verify(getRequestedFor(urlEqualTo("/v1/certificates/cert-uuid")));
     }
@@ -173,9 +161,7 @@ class CertificateToolTest {
 
         String result = tool.getCertificateHistory("cert-uuid");
 
-        assertThat(result).contains("Event History for Certificate cert-uuid");
-        assertThat(result).contains("Issue Certificate");
-        assertThat(result).contains("SUCCESS");
+        assertThat(result).contains("Event History for Certificate cert-uuid", "Issue Certificate", "SUCCESS");
 
         verify(getRequestedFor(urlEqualTo("/v1/certificates/cert-uuid/history")));
     }
@@ -187,7 +173,7 @@ class CertificateToolTest {
                         {
                             "certificates": [
                                 {
-                                    "uuid": "cert-1",
+                                    "uuid": "2e4c6a8b-0d1f-4e3a-9b5c-7d9e1f3a5b7c",
                                     "commonName": "filtered.example.com",
                                     "serialNumber": "DEF456",
                                     "state": "issued",

@@ -26,7 +26,8 @@ public class KeyTool {
 
     @Tool(name = "get_key",
             description = "Get detailed information about a specific cryptographic key by its UUID. Returns key name, description, creation time, token instance, token profile, owner, compliance status, groups, and detailed key items including type, algorithm, size, format, state, enabled status, and usage. Use this when you need complete details about a particular key.")
-    public String getKey(@ToolParam(description = "The UUID of the cryptographic key to retrieve") String uuid) {
+    public String getKey(@ToolParam(
+            description = "The UUID of the cryptographic key to retrieve, shown as Key UUID by search_keys") String uuid) {
         return keyService.getKey(uuid);
     }
 }

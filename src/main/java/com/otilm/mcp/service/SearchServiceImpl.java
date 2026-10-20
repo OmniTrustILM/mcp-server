@@ -1,7 +1,7 @@
 package com.otilm.mcp.service;
 
-import com.czertainly.api.model.core.search.SearchFieldDataByGroupDto;
-import com.czertainly.api.model.core.search.SearchFieldDataDto;
+import com.otilm.api.model.core.search.SearchFieldDataByGroupDto;
+import com.otilm.api.model.core.search.SearchFieldDataDto;
 import com.otilm.mcp.client.IlmApiClient;
 import java.util.List;
 import java.util.Map;

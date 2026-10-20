@@ -1,6 +1,6 @@
 package com.otilm.mcp.config;
 
-import com.czertainly.api.model.core.info.CoreInfoResponseDto;
+import com.otilm.api.model.core.info.CoreInfoResponseDto;
 import com.otilm.mcp.client.IlmApiClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

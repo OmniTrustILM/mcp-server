@@ -1,0 +1,41 @@
+{
+  "resultStatus": "invalid",
+  "validationChecks": {
+    "certificate_chain": {
+      "validationCheck": "certificate_chain",
+      "status": "invalid",
+      "message": "message-1"
+    },
+    "signature": {
+      "validationCheck": "signature",
+      "status": "valid",
+      "message": "message-2"
+    },
+    "certificate_validity": {
+      "validationCheck": "certificate_validity",
+      "status": "expiring",
+      "message": "message-3"
+    },
+    "ocsp_verification": {
+      "validationCheck": "ocsp_verification",
+      "status": "not_checked",
+      "message": "message-4"
+    },
+    "crl_verification": {
+      "validationCheck": "crl_verification",
+      "status": "not_checked",
+      "message": "message-5"
+    },
+    "basic_constraints": {
+      "validationCheck": "basic_constraints",
+      "status": "valid",
+      "message": "message-6"
+    },
+    "key_usage": {
+      "validationCheck": "key_usage",
+      "status": "not_checked",
+      "message": "message-7"
+    }
+  },
+  "validationTimestamp": "2026-10-20T13:35:21.664289234Z"
+}

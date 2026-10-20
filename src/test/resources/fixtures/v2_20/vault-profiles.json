@@ -1,0 +1,27 @@
+{
+  "items": [
+    {
+      "uuid": "ba7b8322-43c4-4f03-960b-e239f54ec7f4",
+      "name": "name-46",
+      "description": "",
+      "vaultInstance": {
+        "uuid": "425fdf56-0d6a-48a9-b40e-2e14f70801ca",
+        "name": "name-47"
+      },
+      "enabled": true
+    },
+    {
+      "uuid": "08aef708-a7ff-4b6e-8af1-a429a22f94ee",
+      "name": "name-48",
+      "vaultInstance": {
+        "uuid": "33bad2e9-c4fa-4ffd-b55f-6d984a8cd7bd",
+        "name": "name-49"
+      },
+      "enabled": true
+    }
+  ],
+  "itemsPerPage": 5,
+  "pageNumber": 1,
+  "totalPages": 4,
+  "totalItems": 18
+}

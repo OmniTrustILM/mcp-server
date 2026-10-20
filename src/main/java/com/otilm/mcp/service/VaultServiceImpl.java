@@ -1,10 +1,9 @@
 package com.otilm.mcp.service;
 
-import com.czertainly.api.model.client.certificate.SearchRequestDto;
-import com.czertainly.api.model.common.PaginationResponseDto;
-import com.czertainly.api.model.core.vault.VaultInstanceDto;
-import com.czertainly.api.model.core.vaultprofile.VaultProfileDto;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.otilm.api.model.client.certificate.SearchRequestDto;
+import com.otilm.api.model.common.PaginationResponseDto;
+import com.otilm.api.model.core.vault.VaultInstanceDto;
+import com.otilm.api.model.core.vaultprofile.VaultProfileDto;
 import com.otilm.mcp.client.IlmApiClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,11 +15,9 @@ public class VaultServiceImpl implements VaultService {
     private static final Logger logger = LoggerFactory.getLogger(VaultServiceImpl.class);
 
     private final IlmApiClient ilmApiClient;
-    private final ObjectMapper objectMapper;
 
-    public VaultServiceImpl(IlmApiClient ilmApiClient, ObjectMapper objectMapper) {
+    public VaultServiceImpl(IlmApiClient ilmApiClient) {
         this.ilmApiClient = ilmApiClient;
-        this.objectMapper = objectMapper;
     }
 
     @Override
@@ -33,7 +30,7 @@ public class VaultServiceImpl implements VaultService {
             if (pageNumber != null) {
                 request.setPageNumber(pageNumber);
             }
-            request.setFilters(SearchFilterParser.parseFilters(filters, objectMapper));
+            request.setFilters(SearchFilterParser.parseFilters(filters));
 
             PaginationResponseDto<VaultInstanceDto> response = ilmApiClient.listVaultInstances(request);
             return formatVaultInstanceList(response);
@@ -55,7 +52,7 @@ public class VaultServiceImpl implements VaultService {
             if (pageNumber != null) {
                 request.setPageNumber(pageNumber);
             }
-            request.setFilters(SearchFilterParser.parseFilters(filters, objectMapper));
+            request.setFilters(SearchFilterParser.parseFilters(filters));
 
             PaginationResponseDto<VaultProfileDto> response = ilmApiClient.listVaultProfiles(request);
             return formatVaultProfileList(response);

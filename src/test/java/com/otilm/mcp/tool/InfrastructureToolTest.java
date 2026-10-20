@@ -1,15 +1,12 @@
 package com.otilm.mcp.tool;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;
+import com.otilm.mcp.IlmTestSupport;
 import com.otilm.mcp.client.IlmApiClient;
 import com.otilm.mcp.service.InfrastructureServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.web.client.RestClient;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
@@ -28,14 +25,8 @@ class InfrastructureToolTest {
 
     @BeforeEach
     void setup(WireMockRuntimeInfo wmInfo) {
-        RestClient restClient = RestClient
-                .builder()
-                .baseUrl(wmInfo.getHttpBaseUrl())
-                .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-                .defaultHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
-                .build();
-        IlmApiClient apiClient = new IlmApiClient(restClient);
-        InfrastructureServiceImpl service = new InfrastructureServiceImpl(apiClient, new ObjectMapper());
+        IlmApiClient apiClient = IlmTestSupport.client(wmInfo);
+        InfrastructureServiceImpl service = new InfrastructureServiceImpl(apiClient);
         tool = new InfrastructureTool(service);
     }
 
@@ -56,8 +47,7 @@ class InfrastructureToolTest {
 
         String result = tool.listAuthorities();
 
-        assertThat(result).contains("Authority Instances (1)");
-        assertThat(result).contains("Test Authority");
+        assertThat(result).contains("Authority Instances (1)", "Test Authority");
 
         verify(getRequestedFor(urlEqualTo("/v1/authorities")));
     }
@@ -79,8 +69,7 @@ class InfrastructureToolTest {
 
         String result = tool.listConnectors();
 
-        assertThat(result).contains("Connectors (1)");
-        assertThat(result).contains("My Connector");
+        assertThat(result).contains("Connectors (1)", "My Connector");
 
         verify(getRequestedFor(urlEqualTo("/v1/connectors")));
     }
@@ -100,8 +89,7 @@ class InfrastructureToolTest {
 
         String result = tool.listGroups();
 
-        assertThat(result).contains("Groups (1)");
-        assertThat(result).contains("My Group");
+        assertThat(result).contains("Groups (1)", "My Group");
 
         verify(getRequestedFor(urlEqualTo("/v1/groups")));
     }
@@ -122,8 +110,7 @@ class InfrastructureToolTest {
 
         String result = tool.listTokenInstances();
 
-        assertThat(result).contains("Token Instances (1)");
-        assertThat(result).contains("SoftHSM");
+        assertThat(result).contains("Token Instances (1)", "SoftHSM");
 
         verify(getRequestedFor(urlEqualTo("/v1/tokens")));
     }
@@ -143,8 +130,7 @@ class InfrastructureToolTest {
 
         String result = tool.listDiscoveries(null);
 
-        assertThat(result).contains("Discoveries");
-        assertThat(result).contains("Scan");
+        assertThat(result).contains("Discoveries", "Scan");
 
         verify(postRequestedFor(urlEqualTo("/v1/discoveries/list")));
     }
@@ -158,8 +144,7 @@ class InfrastructureToolTest {
 
         String result = tool.listRaProfiles();
 
-        assertThat(result).contains("RA Profiles (1)");
-        assertThat(result).contains("Default RA");
+        assertThat(result).contains("RA Profiles (1)", "Default RA");
 
         verify(getRequestedFor(urlEqualTo("/v1/raProfiles")));
     }
@@ -176,8 +161,7 @@ class InfrastructureToolTest {
 
         String result = tool.listEntities(null);
 
-        assertThat(result).contains("Entity Instances");
-        assertThat(result).contains("Web Server");
+        assertThat(result).contains("Entity Instances", "Web Server");
 
         verify(postRequestedFor(urlEqualTo("/v1/entities/list")));
     }
@@ -198,8 +182,7 @@ class InfrastructureToolTest {
 
         String result = tool.listCredentials();
 
-        assertThat(result).contains("Credentials (1)");
-        assertThat(result).contains("My Credential");
+        assertThat(result).contains("Credentials (1)", "My Credential");
 
         verify(getRequestedFor(urlEqualTo("/v1/credentials")));
     }

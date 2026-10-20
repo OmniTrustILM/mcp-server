@@ -1,6 +1,6 @@
 # ILM MCP Server
 
-[Model Context Protocol](https://modelcontextprotocol.io/) (MCP) server for the [ILM](https://www.czertainly.com/) platform. Exposes certificate and key management operations as AI-friendly tools, enabling LLMs and AI agents to interact with ILM through natural language.
+[Model Context Protocol](https://modelcontextprotocol.io/) (MCP) server for the [ILM](https://docs.otilm.com) platform. Exposes certificate and key management operations as AI-friendly tools, enabling LLMs and AI agents to interact with ILM through natural language.
 
 Built with [Spring AI MCP](https://docs.spring.io/spring-ai/reference/api/mcp/mcp-server-boot-starter-docs.html) and Java 21.
 
@@ -53,7 +53,7 @@ Built with [Spring AI MCP](https://docs.spring.io/spring-ai/reference/api/mcp/mc
 | `list_token_instances` | Cryptographic token instances (HSMs, software tokens) |
 | `list_discoveries`     | Certificate discovery tasks and results               |
 
-### Secrets (ILM platform 2.17+)
+### Secrets
 
 | Tool                  | Description                              |
 |-----------------------|------------------------------------------|
@@ -61,7 +61,7 @@ Built with [Spring AI MCP](https://docs.spring.io/spring-ai/reference/api/mcp/mc
 | `get_secret`          | Detailed secret information by UUID      |
 | `get_secret_versions` | Secret version history                   |
 
-### Vaults (ILM platform 2.17+)
+### Vaults
 
 | Tool                   | Description                              |
 |------------------------|------------------------------------------|
@@ -74,7 +74,7 @@ Built with [Spring AI MCP](https://docs.spring.io/spring-ai/reference/api/mcp/mc
 
 - Java 21+
 - Maven 3.9+
-- Running ILM platform instance
+- Running ILM platform instance, version 2.17 or later
 
 ### Build
 
@@ -143,6 +143,13 @@ No additional configuration needed. The server forwards the Bearer token from in
 | `JAVA_OPTS` | JVM options                       | (empty) |
 
 ## Docker
+
+Images are published to `hub.omnitrustregistry.com/ilm/mcp-server`. `latest` is the newest release and
+`develop-latest` the newest build of `main`:
+
+```bash
+docker pull hub.omnitrustregistry.com/ilm/mcp-server:latest
+```
 
 ### Build
 
@@ -242,14 +249,32 @@ mvn verify
 # Report at target/site/jacoco/index.html
 ```
 
+### Formatting
+
+`mvn verify` checks formatting and Checkstyle rules. To apply the formatting:
+
+```bash
+mvn spotless:apply
+```
+
+### Local SonarQube Analysis
+
+Runs the build, analyses it with an ephemeral SonarQube container, and fails on a failed quality gate or on open issues on changed lines. Requires Docker.
+
+```bash
+./scripts/sonar-local.sh
+```
+
 ### Tech Stack
 
 - Java 21
-- Spring Boot 3.5.13
-- Spring AI 1.1.4
-- CZERTAINLY Interfaces 2.17.0
+- Spring Boot 4.1.1 (parent `com.otilm:dependencies` 2.20.0)
+- Spring AI 2.0.1
+- ILM Interfaces 2.20.0 (`com.otilm:interfaces`)
+- Jackson 3
 - WireMock (testing)
 - JaCoCo (coverage)
+- Spotless and Checkstyle with the organization rules
 
 ## License
 

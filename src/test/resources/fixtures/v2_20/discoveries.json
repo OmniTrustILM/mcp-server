@@ -1,0 +1,53 @@
+{
+  "discoveries": [
+    {
+      "uuid": "59c8f903-c55f-41e6-a6ab-f8772adf0dcb",
+      "name": "name-31",
+      "status": "cancelled",
+      "startTime": "2026-10-12T13:54:43.667124Z",
+      "endTime": "2026-10-12T13:56:22.27207Z",
+      "totalCertificatesDiscovered": 0,
+      "totalItemsDiscovered": 0,
+      "resources": [
+        "certificates"
+      ],
+      "connectorUuid": "34bc799e-d58a-4122-ade0-e788b8f46567",
+      "connectorName": "connectorName-8",
+      "connectorInterface": {
+        "uuid": "f15ec471-62d5-4b6d-a3b0-a40056f96bfc",
+        "code": "discovery",
+        "version": "v2",
+        "features": [
+          "discoveryStopResume"
+        ]
+      }
+    },
+    {
+      "uuid": "4f13f46b-23f1-4fcc-8005-f5d0a088dc3d",
+      "name": "name-32",
+      "status": "completed",
+      "startTime": "2026-10-12T13:51:11.719928Z",
+      "endTime": "2026-10-12T13:52:12.740142Z",
+      "totalCertificatesDiscovered": 9,
+      "totalItemsDiscovered": 18,
+      "resources": [
+        "certificates",
+        "keys"
+      ],
+      "connectorUuid": "34bc799e-d58a-4122-ade0-e788b8f46567",
+      "connectorName": "connectorName-9",
+      "connectorInterface": {
+        "uuid": "f15ec471-62d5-4b6d-a3b0-a40056f96bfc",
+        "code": "discovery",
+        "version": "v2",
+        "features": [
+          "discoveryStopResume"
+        ]
+      }
+    }
+  ],
+  "itemsPerPage": 5,
+  "pageNumber": 1,
+  "totalPages": 101,
+  "totalItems": 504
+}

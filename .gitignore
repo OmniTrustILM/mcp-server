@@ -20,3 +20,6 @@ Thumbs.db
 *.jar
 !.mvn/wrapper/*.jar
 .claude/settings.local.json
+
+# Local planning documents
+docs/superpowers/

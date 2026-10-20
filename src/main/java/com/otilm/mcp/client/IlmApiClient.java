@@ -1,36 +1,41 @@
 package com.otilm.mcp.client;
 
-import com.czertainly.api.model.client.certificate.CertificateResponseDto;
-import com.czertainly.api.model.client.certificate.DiscoveryResponseDto;
-import com.czertainly.api.model.client.certificate.EntityInstanceResponseDto;
-import com.czertainly.api.model.client.certificate.SearchRequestDto;
-import com.czertainly.api.model.client.cryptography.CryptographicKeyResponseDto;
-import com.czertainly.api.model.client.dashboard.StatisticsDto;
-import com.czertainly.api.model.common.PaginationResponseDto;
-import com.czertainly.api.model.core.authority.AuthorityInstanceDto;
-import com.czertainly.api.model.core.certificate.CertificateChainResponseDto;
-import com.czertainly.api.model.core.certificate.CertificateDetailDto;
-import com.czertainly.api.model.core.certificate.CertificateEventHistoryDto;
-import com.czertainly.api.model.core.certificate.CertificateValidationResultDto;
-import com.czertainly.api.model.core.certificate.group.GroupDto;
-import com.czertainly.api.model.core.connector.ConnectorDto;
-import com.czertainly.api.model.core.credential.CredentialDto;
-import com.czertainly.api.model.core.cryptography.key.KeyDetailDto;
-import com.czertainly.api.model.core.cryptography.token.TokenInstanceDto;
-import com.czertainly.api.model.core.info.CoreInfoResponseDto;
-import com.czertainly.api.model.core.raprofile.RaProfileDto;
-import com.czertainly.api.model.core.search.SearchFieldDataByGroupDto;
-import com.czertainly.api.model.core.secret.SecretDetailDto;
-import com.czertainly.api.model.core.secret.SecretDto;
-import com.czertainly.api.model.core.secret.SecretVersionDto;
-import com.czertainly.api.model.core.vault.VaultInstanceDto;
-import com.czertainly.api.model.core.vaultprofile.VaultProfileDto;
+import com.otilm.api.model.client.certificate.CertificateResponseDto;
+import com.otilm.api.model.client.certificate.DiscoveryResponseDto;
+import com.otilm.api.model.client.certificate.EntityInstanceResponseDto;
+import com.otilm.api.model.client.certificate.SearchRequestDto;
+import com.otilm.api.model.client.cryptography.CryptographicKeyResponseDto;
+import com.otilm.api.model.client.dashboard.StatisticsDto;
+import com.otilm.api.model.common.PaginationResponseDto;
+import com.otilm.api.model.core.authority.AuthorityInstanceDto;
+import com.otilm.api.model.core.certificate.CertificateChainResponseDto;
+import com.otilm.api.model.core.certificate.CertificateDetailDto;
+import com.otilm.api.model.core.certificate.CertificateEventHistoryDto;
+import com.otilm.api.model.core.certificate.CertificateValidationResultDto;
+import com.otilm.api.model.core.certificate.group.GroupDto;
+import com.otilm.api.model.core.connector.ConnectorDto;
+import com.otilm.api.model.core.credential.CredentialDto;
+import com.otilm.api.model.core.cryptography.key.KeyDetailDto;
+import com.otilm.api.model.core.cryptography.token.TokenInstanceDto;
+import com.otilm.api.model.core.info.CoreInfoResponseDto;
+import com.otilm.api.model.core.raprofile.RaProfileDto;
+import com.otilm.api.model.core.search.SearchFieldDataByGroupDto;
+import com.otilm.api.model.core.secret.SecretDetailDto;
+import com.otilm.api.model.core.secret.SecretDto;
+import com.otilm.api.model.core.secret.SecretVersionDto;
+import com.otilm.api.model.core.vault.VaultInstanceDto;
+import com.otilm.api.model.core.vaultprofile.VaultProfileDto;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.converter.json.JacksonJsonHttpMessageConverter;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
+import tools.jackson.databind.DeserializationFeature;
+import tools.jackson.databind.json.JsonMapper;
 
 @Component
 public class IlmApiClient {
@@ -41,6 +46,23 @@ public class IlmApiClient {
 
     public IlmApiClient(RestClient ilmRestClient) {
         this.restClient = ilmRestClient;
+    }
+
+    public static RestClient.Builder restClientBuilder(String baseUrl) {
+        JsonMapper jsonMapper = JsonMapper
+                .builder()
+                .findAndAddModules()
+                .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES,
+                        DeserializationFeature.FAIL_ON_NULL_FOR_PRIMITIVES)
+                .build();
+        return RestClient
+                .builder()
+                .baseUrl(baseUrl)
+                .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                .defaultHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
+                .configureMessageConverters(converters -> converters
+                        .registerDefaults()
+                        .withJsonConverter(new JacksonJsonHttpMessageConverter(jsonMapper)));
     }
 
     // ---- Certificate endpoints ----

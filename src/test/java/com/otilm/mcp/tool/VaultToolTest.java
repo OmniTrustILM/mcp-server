@@ -1,15 +1,12 @@
 package com.otilm.mcp.tool;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;
+import com.otilm.mcp.IlmTestSupport;
 import com.otilm.mcp.client.IlmApiClient;
 import com.otilm.mcp.service.VaultServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.web.client.RestClient;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.post;
@@ -26,14 +23,8 @@ class VaultToolTest {
 
     @BeforeEach
     void setup(WireMockRuntimeInfo wmInfo) {
-        RestClient restClient = RestClient
-                .builder()
-                .baseUrl(wmInfo.getHttpBaseUrl())
-                .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-                .defaultHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
-                .build();
-        IlmApiClient apiClient = new IlmApiClient(restClient);
-        VaultServiceImpl service = new VaultServiceImpl(apiClient, new ObjectMapper());
+        IlmApiClient apiClient = IlmTestSupport.client(wmInfo);
+        VaultServiceImpl service = new VaultServiceImpl(apiClient);
         tool = new VaultTool(service);
     }
 
@@ -61,8 +52,7 @@ class VaultToolTest {
 
         String result = tool.listVaultInstances(null, null, null);
 
-        assertThat(result).contains("Found 1 vault instances");
-        assertThat(result).contains("HashiCorp Vault");
+        assertThat(result).contains("Found 1 vault instances", "HashiCorp Vault");
 
         verify(postRequestedFor(urlEqualTo("/v1/vaults/list")));
     }
@@ -92,8 +82,7 @@ class VaultToolTest {
 
         String result = tool.listVaultProfiles(null, null, null);
 
-        assertThat(result).contains("Found 1 vault profiles");
-        assertThat(result).contains("prod-profile");
+        assertThat(result).contains("Found 1 vault profiles", "prod-profile");
 
         verify(postRequestedFor(urlEqualTo("/v1/vaultProfiles/list")));
     }

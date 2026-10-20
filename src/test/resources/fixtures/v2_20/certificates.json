@@ -1,0 +1,62 @@
+{
+  "certificates": [
+    {
+      "uuid": "870576fe-04e3-4e01-986e-61369be6a098",
+      "commonName": "commonName-1.example.com",
+      "serialNumber": "0000000000000000000000000000000000000001",
+      "issuerCommonName": "issuerCommonName-1.example.com",
+      "issuerDn": "CN=issuerDn-1,O=Example",
+      "subjectDn": "CN=subjectDn-1,O=Example",
+      "notBefore": "2026-10-14T14:17:57.000+00:00",
+      "notAfter": "2026-11-13T14:17:57.000+00:00",
+      "publicKeyAlgorithm": "RSA",
+      "signatureAlgorithm": "SHA256withRSA",
+      "hybridCertificate": false,
+      "keySize": 2048,
+      "state": "issued",
+      "validationStatus": "invalid",
+      "fingerprint": "0000000000000000000000000000000000000001",
+      "groups": [
+        {
+          "uuid": "337d4f1b-7010-40a8-82c3-aa73f9ce6504",
+          "name": "name-1",
+          "description": "description-1"
+        }
+      ],
+      "certificateType": "X.509",
+      "issuerSerialNumber": "0000000000000000000000000000000000000001",
+      "complianceStatus": "not_checked",
+      "privateKeyAvailability": false,
+      "trustedCa": false,
+      "archived": false
+    },
+    {
+      "uuid": "df202986-22de-4783-8eeb-324f85b9dac8",
+      "commonName": "commonName-2.example.com",
+      "serialNumber": "0000000000000000000000000000000000000002",
+      "issuerCommonName": "issuerCommonName-2.example.com",
+      "issuerDn": "CN=issuerDn-2,O=Example",
+      "subjectDn": "CN=subjectDn-2,O=Example",
+      "notBefore": "2026-10-14T14:17:56.000+00:00",
+      "notAfter": "2026-11-13T14:17:56.000+00:00",
+      "publicKeyAlgorithm": "RSA",
+      "signatureAlgorithm": "SHA256withRSA",
+      "hybridCertificate": false,
+      "keySize": 2048,
+      "state": "issued",
+      "validationStatus": "invalid",
+      "fingerprint": "0000000000000000000000000000000000000002",
+      "groups": [],
+      "certificateType": "X.509",
+      "issuerSerialNumber": "0000000000000000000000000000000000000002",
+      "complianceStatus": "not_checked",
+      "privateKeyAvailability": false,
+      "trustedCa": false,
+      "archived": false
+    }
+  ],
+  "itemsPerPage": 5,
+  "pageNumber": 1,
+  "totalPages": 32235,
+  "totalItems": 161175
+}

@@ -1,14 +1,11 @@
 package com.otilm.mcp.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;
+import com.otilm.mcp.IlmTestSupport;
 import com.otilm.mcp.client.IlmApiClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.web.client.RestClient;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.containing;
@@ -26,14 +23,8 @@ class VaultServiceTest {
 
     @BeforeEach
     void setup(WireMockRuntimeInfo wmInfo) {
-        RestClient restClient = RestClient
-                .builder()
-                .baseUrl(wmInfo.getHttpBaseUrl())
-                .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-                .defaultHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
-                .build();
-        IlmApiClient apiClient = new IlmApiClient(restClient);
-        service = new VaultServiceImpl(apiClient, new ObjectMapper());
+        IlmApiClient apiClient = IlmTestSupport.client(wmInfo);
+        service = new VaultServiceImpl(apiClient);
     }
 
     @Test
@@ -69,14 +60,10 @@ class VaultServiceTest {
 
         String result = service.listVaultInstances(null, null, null);
 
-        assertThat(result).contains("Found 2 vault instances");
-        assertThat(result).contains("HashiCorp Vault Production");
-        assertThat(result).contains("AWS Secrets Manager");
-        assertThat(result).contains("vault-uuid-1");
-        assertThat(result).contains("vault-uuid-2");
-        assertThat(result).contains("Connector: hcv-connector");
-        assertThat(result).contains("Connector: aws-connector");
-        assertThat(result).contains("Description: Primary production vault");
+        assertThat(result)
+                .contains("Found 2 vault instances", "HashiCorp Vault Production", "AWS Secrets Manager",
+                        "vault-uuid-1", "vault-uuid-2", "Connector: hcv-connector", "Connector: aws-connector",
+                        "Description: Primary production vault");
     }
 
     @Test
@@ -114,16 +101,10 @@ class VaultServiceTest {
 
         String result = service.listVaultProfiles(null, null, null);
 
-        assertThat(result).contains("Found 2 vault profiles");
-        assertThat(result).contains("prod-vault-profile");
-        assertThat(result).contains("dev-vault-profile");
-        assertThat(result).contains("vp-uuid-1");
-        assertThat(result).contains("vp-uuid-2");
-        assertThat(result).contains("Vault Instance: HashiCorp Vault");
-        assertThat(result).contains("Vault Instance: AWS Secrets Manager");
-        assertThat(result).contains("Enabled: true");
-        assertThat(result).contains("Enabled: false");
-        assertThat(result).contains("Description: Production vault profile");
+        assertThat(result)
+                .contains("Found 2 vault profiles", "prod-vault-profile", "dev-vault-profile", "vp-uuid-1", "vp-uuid-2",
+                        "Vault Instance: HashiCorp Vault", "Vault Instance: AWS Secrets Manager", "Enabled: true",
+                        "Enabled: false", "Description: Production vault profile");
     }
 
     @Test

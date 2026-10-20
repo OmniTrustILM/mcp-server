@@ -1,0 +1,43 @@
+[
+  {
+    "uuid": "737eb66f-e79b-4b25-8c98-cb3a2f230c47",
+    "name": "name-20",
+    "url": "https://url-1.example.com",
+    "authType": "none",
+    "authAttributes": [],
+    "status": "connected",
+    "functionGroups": []
+  },
+  {
+    "uuid": "f08f5fa5-5050-4cca-bddf-87f899f93e85",
+    "name": "name-21",
+    "url": "https://url-2.example.com",
+    "authType": "basic",
+    "authAttributes": [
+      {
+        "content": [
+          {
+            "data": "data-2"
+          }
+        ],
+        "uuid": "66086372-0b75-4f2b-b5da-86ed20797b16",
+        "name": "name-22",
+        "type": "data",
+        "contentType": "string",
+        "version": "v2"
+      },
+      {
+        "content": [
+          {}
+        ],
+        "uuid": "14628ad1-bcc5-4adc-83a9-0bfbbb32c142",
+        "name": "name-23",
+        "type": "data",
+        "contentType": "secret",
+        "version": "v2"
+      }
+    ],
+    "status": "connected",
+    "functionGroups": []
+  }
+]

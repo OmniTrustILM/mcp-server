@@ -1,17 +1,16 @@
 package com.otilm.mcp.service;
 
-import com.czertainly.api.model.client.certificate.DiscoveryResponseDto;
-import com.czertainly.api.model.client.certificate.EntityInstanceResponseDto;
-import com.czertainly.api.model.client.certificate.SearchRequestDto;
-import com.czertainly.api.model.client.discovery.DiscoveryHistoryDto;
-import com.czertainly.api.model.core.authority.AuthorityInstanceDto;
-import com.czertainly.api.model.core.certificate.group.GroupDto;
-import com.czertainly.api.model.core.connector.ConnectorDto;
-import com.czertainly.api.model.core.credential.CredentialDto;
-import com.czertainly.api.model.core.cryptography.token.TokenInstanceDto;
-import com.czertainly.api.model.core.entity.EntityInstanceDto;
-import com.czertainly.api.model.core.raprofile.RaProfileDto;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.otilm.api.model.client.certificate.DiscoveryResponseDto;
+import com.otilm.api.model.client.certificate.EntityInstanceResponseDto;
+import com.otilm.api.model.client.certificate.SearchRequestDto;
+import com.otilm.api.model.client.discovery.DiscoveryListDto;
+import com.otilm.api.model.core.authority.AuthorityInstanceDto;
+import com.otilm.api.model.core.certificate.group.GroupDto;
+import com.otilm.api.model.core.connector.ConnectorDto;
+import com.otilm.api.model.core.credential.CredentialDto;
+import com.otilm.api.model.core.cryptography.token.TokenInstanceDto;
+import com.otilm.api.model.core.entity.EntityInstanceDto;
+import com.otilm.api.model.core.raprofile.RaProfileDto;
 import com.otilm.mcp.client.IlmApiClient;
 import java.util.List;
 import org.slf4j.Logger;
@@ -24,11 +23,9 @@ public class InfrastructureServiceImpl implements InfrastructureService {
     private static final Logger logger = LoggerFactory.getLogger(InfrastructureServiceImpl.class);
 
     private final IlmApiClient ilmApiClient;
-    private final ObjectMapper objectMapper;
 
-    public InfrastructureServiceImpl(IlmApiClient ilmApiClient, ObjectMapper objectMapper) {
+    public InfrastructureServiceImpl(IlmApiClient ilmApiClient) {
         this.ilmApiClient = ilmApiClient;
-        this.objectMapper = objectMapper;
     }
 
     @Override
@@ -79,7 +76,7 @@ public class InfrastructureServiceImpl implements InfrastructureService {
     public String listEntities(String filters) {
         try {
             SearchRequestDto request = new SearchRequestDto();
-            request.setFilters(SearchFilterParser.parseFilters(filters, objectMapper));
+            request.setFilters(SearchFilterParser.parseFilters(filters));
             EntityInstanceResponseDto response = ilmApiClient.listEntities(request);
             return formatEntities(response);
         } catch (IllegalArgumentException e) {
@@ -116,7 +113,7 @@ public class InfrastructureServiceImpl implements InfrastructureService {
     public String listDiscoveries(String filters) {
         try {
             SearchRequestDto request = new SearchRequestDto();
-            request.setFilters(SearchFilterParser.parseFilters(filters, objectMapper));
+            request.setFilters(SearchFilterParser.parseFilters(filters));
             DiscoveryResponseDto response = ilmApiClient.listDiscoveries(request);
             return formatDiscoveries(response);
         } catch (IllegalArgumentException e) {
@@ -346,7 +343,7 @@ public class InfrastructureServiceImpl implements InfrastructureService {
             return sb.toString();
         }
 
-        for (DiscoveryHistoryDto discovery : response.getDiscoveries()) {
+        for (DiscoveryListDto discovery : response.getDiscoveries()) {
             sb.append("- ").append(discovery.getName() != null ? discovery.getName() : "N/A");
             sb.append(" [").append(discovery.getUuid()).append("]\n");
             sb

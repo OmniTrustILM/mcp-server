@@ -1,0 +1,22 @@
+[
+  {
+    "uuid": "a70ee363-321e-405b-ab4a-86f50e2e891f",
+    "name": "name-18",
+    "description": "description-4",
+    "authorityInstanceUuid": "bbe4cdca-dfe9-4dee-9303-d18d8cf3ba0e",
+    "authorityInstanceName": "authorityInstanceName-1",
+    "enabled": false,
+    "attributes": [],
+    "enabledProtocols": []
+  },
+  {
+    "uuid": "0adde1d2-60c7-47aa-b2a4-11282d671f66",
+    "name": "name-19",
+    "description": "",
+    "authorityInstanceUuid": "42b65474-2696-4260-9903-07c018314266",
+    "authorityInstanceName": "authorityInstanceName-2",
+    "enabled": true,
+    "attributes": [],
+    "enabledProtocols": []
+  }
+]

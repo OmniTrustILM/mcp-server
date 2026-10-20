@@ -1,0 +1,9 @@
+# Commits listed here are skipped by `git blame` (GitHub web UI honours this automatically;
+# locally, the git-build-hook-maven-plugin wires `git config blame.ignoreRevsFile` to point
+# here on the first Maven build of the clone — see the blame-ignore-revs profile in the parent POM).
+#
+# The SHAs below are whole-tree reformatting commits, so blame attributes lines to their
+# real authors rather than to the reformatting commit.
+
+# Apply centralized Java formatting
+69466baee5363d34ad911c06dc8142cab250d39a

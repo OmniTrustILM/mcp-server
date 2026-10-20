@@ -5,9 +5,9 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.5.13</version>
+        <groupId>com.otilm</groupId>
+        <artifactId>dependencies</artifactId>
+        <version>2.20.0</version>
         <relativePath/>
     </parent>
 
@@ -19,11 +19,8 @@
 
     <properties>
         <java.version>21</java.version>
-        <spring-ai.version>1.1.4</spring-ai.version>
-        <czertainly-interfaces.version>2.17.0</czertainly-interfaces.version>
-        <wiremock.version>3.12.1</wiremock.version>
-        <maven.jacoco.plugin.version>0.8.14</maven.jacoco.plugin.version>
-        <sonar.organization>czertainly</sonar.organization>
+        <spring-ai.version>2.0.1</spring-ai.version>
+        <sonar.organization>ilm</sonar.organization>
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
         <sonar.projectKey>CZERTAINLY_mcp-server</sonar.projectKey>
     </properties>
@@ -36,6 +33,12 @@
                 <version>${spring-ai.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
+            </dependency>
+            <!-- interfaces 2.20.0 brings 1.5.9, which breaks the MCP SDK; drop once interfaces#1061 ships 3.x -->
+            <dependency>
+                <groupId>com.networknt</groupId>
+                <artifactId>json-schema-validator</artifactId>
+                <version>3.0.0</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
@@ -56,18 +59,16 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
-
-        <!-- CZERTAINLY Interfaces (DTOs) -->
         <dependency>
-            <groupId>com.czertainly</groupId>
-            <artifactId>interfaces</artifactId>
-            <version>${czertainly-interfaces.version}</version>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-restclient</artifactId>
         </dependency>
 
-        <!-- Jackson for JSON -->
+        <!-- ILM Interfaces (DTOs) -->
         <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-databind</artifactId>
+            <groupId>com.otilm</groupId>
+            <artifactId>interfaces</artifactId>
+            <version>2.20.0</version>
         </dependency>
 
         <!-- Test -->
@@ -79,7 +80,6 @@
         <dependency>
             <groupId>org.wiremock</groupId>
             <artifactId>wiremock-standalone</artifactId>
-            <version>${wiremock.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -97,104 +97,6 @@
                     <argLine>@{argLine}</argLine>
                 </configuration>
             </plugin>
-            <plugin>
-                <groupId>org.jacoco</groupId>
-                <artifactId>jacoco-maven-plugin</artifactId>
-                <version>${maven.jacoco.plugin.version}</version>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>prepare-agent</goal>
-                        </goals>
-                    </execution>
-                    <execution>
-                        <id>report</id>
-                        <phase>test</phase>
-                        <goals>
-                            <goal>report</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>com.diffplug.spotless</groupId>
-                <artifactId>spotless-maven-plugin</artifactId>
-                <version>3.7.0</version>
-                <configuration>
-                    <java>
-                        <includes>
-                            <include>src/main/java/**/*.java</include>
-                            <include>src/test/java/**/*.java</include>
-                        </includes>
-                        <eclipse>
-                            <version>4.40</version>
-                            <file>otilm/eclipse-formatter.xml</file>
-                        </eclipse>
-                        <importOrder>
-                            <file>otilm/eclipse.importorder</file>
-                        </importOrder>
-                        <removeUnusedImports/>
-                        <trimTrailingWhitespace/>
-                        <endWithNewline/>
-                    </java>
-                </configuration>
-                <dependencies>
-                    <dependency>
-                        <groupId>com.otilm</groupId>
-                        <artifactId>build-tools</artifactId>
-                        <version>2.20.0</version>
-                    </dependency>
-                </dependencies>
-                <executions>
-                    <execution>
-                        <id>spotless-check</id>
-                        <goals>
-                            <goal>check</goal>
-                        </goals>
-                        <phase>verify</phase>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-checkstyle-plugin</artifactId>
-                <version>3.6.0</version>
-                <configuration>
-                    <configLocation>otilm/checkstyle.xml</configLocation>
-                    <includeTestSourceDirectory>true</includeTestSourceDirectory>
-                    <excludeGeneratedSources>true</excludeGeneratedSources>
-                    <failOnViolation>true</failOnViolation>
-                    <violationSeverity>error</violationSeverity>
-                </configuration>
-                <dependencies>
-                    <dependency>
-                        <groupId>com.puppycrawl.tools</groupId>
-                        <artifactId>checkstyle</artifactId>
-                        <version>13.11.0</version>
-                    </dependency>
-                    <dependency>
-                        <groupId>com.otilm</groupId>
-                        <artifactId>build-tools</artifactId>
-                        <version>2.20.0</version>
-                    </dependency>
-                </dependencies>
-                <executions>
-                    <execution>
-                        <id>checkstyle-lint</id>
-                        <goals>
-                            <goal>check</goal>
-                        </goals>
-                        <phase>verify</phase>
-                    </execution>
-                </executions>
-            </plugin>
         </plugins>
     </build>
-
-    <repositories>
-        <repository>
-            <id>ossrh</id>
-            <url>https://central.sonatype.com/repository/maven-snapshots/</url>
-        </repository>
-    </repositories>
 </project>

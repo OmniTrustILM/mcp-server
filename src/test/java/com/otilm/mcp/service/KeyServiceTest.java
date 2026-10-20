@@ -1,14 +1,11 @@
 package com.otilm.mcp.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;
+import com.otilm.mcp.IlmTestSupport;
 import com.otilm.mcp.client.IlmApiClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.web.client.RestClient;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.containing;
@@ -27,14 +24,37 @@ class KeyServiceTest {
 
     @BeforeEach
     void setup(WireMockRuntimeInfo wmInfo) {
-        RestClient restClient = RestClient
-                .builder()
-                .baseUrl(wmInfo.getHttpBaseUrl())
-                .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-                .defaultHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
-                .build();
-        IlmApiClient apiClient = new IlmApiClient(restClient);
-        service = new KeyServiceImpl(apiClient, new ObjectMapper());
+        IlmApiClient apiClient = IlmTestSupport.client(wmInfo);
+        service = new KeyServiceImpl(apiClient);
+    }
+
+    @Test
+    void searchShowsTheKeyUuidThatGetKeyAccepts() {
+        stubFor(post(urlEqualTo("/v1/keys"))
+                .willReturn(aResponse().withHeader("Content-Type", "application/json").withBody("""
+                        {
+                            "cryptographicKeys": [
+                                {
+                                    "uuid": "6c1f8a2e-3b4d-4e5f-8a9b-0c1d2e3f4a5b",
+                                    "keyWrapperUuid": "e7d6c5b4-a392-4817-9654-3f2e1d0c9b8a",
+                                    "name": "signing-key",
+                                    "keyAlgorithm": "RSA",
+                                    "length": 2048,
+                                    "type": "Private",
+                                    "state": "active",
+                                    "enabled": true
+                                }
+                            ],
+                            "itemsPerPage": 10,
+                            "pageNumber": 1,
+                            "totalPages": 1,
+                            "totalItems": 1
+                        }
+                        """)));
+
+        String result = service.searchKeys(null, null, null);
+
+        assertThat(result).contains("  Key UUID: e7d6c5b4-a392-4817-9654-3f2e1d0c9b8a");
     }
 
     @Test
@@ -74,16 +94,10 @@ class KeyServiceTest {
 
         String result = service.searchKeys(null, null, null);
 
-        assertThat(result).contains("Found 2 cryptographic keys");
-        assertThat(result).contains("production-rsa-key");
-        assertThat(result).contains("test-ecdsa-key");
-        assertThat(result).contains("key-uuid-1");
-        assertThat(result).contains("key-uuid-2");
-        assertThat(result).contains("Algorithm: RSA");
-        assertThat(result).contains("Algorithm: ECDSA");
-        assertThat(result).contains("Size: 2048 bits");
-        assertThat(result).contains("Size: 256 bits");
-        assertThat(result).contains("Token Instance: SoftHSM");
+        assertThat(result)
+                .contains("Found 2 cryptographic keys", "production-rsa-key", "test-ecdsa-key", "key-uuid-1",
+                        "key-uuid-2", "Algorithm: RSA", "Algorithm: ECDSA", "Size: 2048 bits", "Size: 256 bits",
+                        "Token Instance: SoftHSM");
     }
 
     @Test
@@ -118,17 +132,10 @@ class KeyServiceTest {
 
         String result = service.getKey("key-1");
 
-        assertThat(result).contains("Key: my-signing-key");
-        assertThat(result).contains("UUID: key-1");
-        assertThat(result).contains("Description: Used for code signing");
-        assertThat(result).contains("Token Instance: SoftHSM");
-        assertThat(result).contains("Token Profile: signing-profile");
-        assertThat(result).contains("Owner: devops-team");
-        assertThat(result).contains("Compliance: ok");
-        assertThat(result).contains("Key Items:");
-        assertThat(result).contains("my-signing-key-private");
-        assertThat(result).contains("Algorithm: RSA");
-        assertThat(result).contains("Size: 4096 bits");
+        assertThat(result)
+                .contains("Key: my-signing-key", "UUID: key-1", "Description: Used for code signing",
+                        "Token Instance: SoftHSM", "Token Profile: signing-profile", "Owner: devops-team",
+                        "Compliance: ok", "Key Items:", "my-signing-key-private", "Algorithm: RSA", "Size: 4096 bits");
     }
 
     @Test
