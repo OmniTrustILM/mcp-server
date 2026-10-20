@@ -4,10 +4,10 @@
 # coverage, analyses the project with the pull-request workflow's scope using the
 # Maven scanner, and fails unless the quality gate passes and no open issue
 # touches a line changed since the base branch (committed or not). An issue
-# touches a changed line when its own range or any secondary location covers
-# it, so a finding already present in a changed method counts too. SonarQube
-# Community has no shell analyzer, so shell scripts are checked on SonarCloud
-# only.
+# touches a changed line when its own range or any secondary location, in any
+# file, covers it, so a finding already present in a changed method counts too.
+# SonarQube Community has no shell analyzer, so shell scripts are checked on
+# SonarCloud only.
 # Prereqs: docker, mvn, curl, python3, git, openssl
 # Usage: ./scripts/sonar-local.sh   (BASE_BRANCH defaults to origin/main)
 set -euo pipefail
@@ -146,19 +146,22 @@ untracked = subprocess.run(['git', 'ls-files', '--others', '--exclude-standard']
 for path in untracked.stdout.split():
     changed[path] = None
 
+def touches(location):
+    path = location['component'].split(':', 1)[-1]
+    if path not in changed:
+        return False
+    lines, text_range = changed[path], location.get('textRange')
+    if lines is None or text_range is None:
+        return True
+    return any(number in lines for number in range(text_range['startLine'], text_range['endLine'] + 1))
+
 count = 0
 for issue in (issue for page in sys.stdin for issue in json.loads(page)['issues']):
-    path = issue['component'].split(':', 1)[-1]
-    if path not in changed:
-        continue
-    lines, line = changed[path], issue.get('line')
-    ranges = [issue] + [loc for flow in issue.get('flows', []) for loc in flow.get('locations', [])
-                        if loc.get('component') == issue['component']]
-    locations = {number for loc in ranges if 'textRange' in loc
-                 for number in range(loc['textRange']['startLine'], loc['textRange']['endLine'] + 1)}
-    if lines is None or line is None or locations & lines:
+    locations = [issue] + [loc for flow in issue.get('flows', []) for loc in flow.get('locations', [])]
+    if any(touches(loc) for loc in locations if 'component' in loc):
         count += 1
-        print(f\"  {issue['rule']} {path}:{line or '-'} - {issue['message']}\", file=sys.stderr)
+        path = issue['component'].split(':', 1)[-1]
+        print(f\"  {issue['rule']} {path}:{issue.get('line') or '-'} - {issue['message']}\", file=sys.stderr)
 print(count)
 ")
 echo "  Total: ${CHANGED_ISSUES}"
