@@ -1,0 +1,219 @@
+[
+  {
+    "filterFieldSource": "custom",
+    "searchFieldData": [
+      {
+        "fieldIdentifier": "attribute-1|STRING",
+        "fieldLabel": "attribute-1",
+        "type": "list",
+        "conditions": [
+          "EQUALS",
+          "NOT_EQUALS",
+          "EMPTY",
+          "NOT_EMPTY"
+        ],
+        "attributeContentType": "string",
+        "value": [
+          "value-1",
+          "value-2"
+        ],
+        "multiValue": true,
+        "displayable": true,
+        "sortable": true
+      }
+    ]
+  },
+  {
+    "filterFieldSource": "data",
+    "searchFieldData": [
+      {
+        "fieldIdentifier": "data-1|STRING",
+        "fieldLabel": "data-1",
+        "type": "string",
+        "conditions": [
+          "CONTAINS",
+          "NOT_CONTAINS",
+          "EQUALS",
+          "NOT_EQUALS",
+          "EMPTY",
+          "NOT_EMPTY",
+          "STARTS_WITH",
+          "ENDS_WITH",
+          "MATCHES",
+          "NOT_MATCHES"
+        ],
+        "attributeContentType": "string",
+        "multiValue": false,
+        "displayable": true,
+        "sortable": true,
+        "value": null
+      }
+    ]
+  },
+  {
+    "filterFieldSource": "meta",
+    "searchFieldData": [
+      {
+        "fieldIdentifier": "meta-1|STRING",
+        "fieldLabel": "meta-1",
+        "type": "string",
+        "conditions": [
+          "CONTAINS",
+          "NOT_CONTAINS",
+          "EQUALS",
+          "NOT_EQUALS",
+          "EMPTY",
+          "NOT_EMPTY",
+          "STARTS_WITH",
+          "ENDS_WITH",
+          "MATCHES",
+          "NOT_MATCHES"
+        ],
+        "attributeContentType": "string",
+        "multiValue": false,
+        "displayable": true,
+        "sortable": true,
+        "value": null
+      }
+    ]
+  },
+  {
+    "filterFieldSource": "property",
+    "searchFieldData": [
+      {
+        "fieldIdentifier": "COMMON_NAME",
+        "fieldLabel": "Common Name",
+        "type": "string",
+        "conditions": [
+          "CONTAINS",
+          "NOT_CONTAINS",
+          "EQUALS",
+          "NOT_EQUALS",
+          "EMPTY",
+          "NOT_EMPTY",
+          "STARTS_WITH",
+          "ENDS_WITH",
+          "MATCHES",
+          "NOT_MATCHES"
+        ],
+        "multiValue": false,
+        "displayable": true,
+        "sortable": true
+      },
+      {
+        "fieldIdentifier": "CERTIFICATE_STATE",
+        "fieldLabel": "State",
+        "type": "list",
+        "conditions": [
+          "EQUALS",
+          "NOT_EQUALS",
+          "EMPTY",
+          "NOT_EMPTY"
+        ],
+        "platformEnum": "CertificateState",
+        "value": [
+          "requested",
+          "rejected",
+          "pending_approval",
+          "pending_issue",
+          "pending_revoke",
+          "pending_registration",
+          "registered",
+          "failed",
+          "issued",
+          "revoked"
+        ],
+        "multiValue": true,
+        "displayable": true,
+        "sortable": true
+      },
+      {
+        "fieldIdentifier": "GROUP_NAME",
+        "fieldLabel": "Groups",
+        "type": "list",
+        "conditions": [
+          "EQUALS",
+          "NOT_EQUALS",
+          "EMPTY",
+          "NOT_EMPTY",
+          "COUNT_EQUAL",
+          "COUNT_NOT_EQUAL",
+          "COUNT_GREATER_THAN",
+          "COUNT_LESS_THAN"
+        ],
+        "value": [
+          {
+            "name": "group-1",
+            "uuid": "00000000-0000-4000-8000-000000000201"
+          },
+          {
+            "name": "group-2",
+            "uuid": "00000000-0000-4000-8000-000000000202"
+          },
+          {
+            "name": "group-3",
+            "uuid": "00000000-0000-4000-8000-000000000203"
+          },
+          {
+            "name": "group-4",
+            "uuid": "00000000-0000-4000-8000-000000000204"
+          },
+          {
+            "name": "group-5",
+            "uuid": "00000000-0000-4000-8000-000000000205"
+          },
+          {
+            "name": "group-6",
+            "uuid": "00000000-0000-4000-8000-000000000206"
+          },
+          {
+            "name": "group-7",
+            "uuid": "00000000-0000-4000-8000-000000000207"
+          },
+          {
+            "name": "group-8",
+            "uuid": "00000000-0000-4000-8000-000000000208"
+          },
+          {
+            "name": "group-9",
+            "uuid": "00000000-0000-4000-8000-000000000209"
+          },
+          {
+            "name": "group-10",
+            "uuid": "00000000-0000-4000-8000-000000000210"
+          },
+          {
+            "name": "group-11",
+            "uuid": "00000000-0000-4000-8000-000000000211"
+          },
+          {
+            "name": "group-12",
+            "uuid": "00000000-0000-4000-8000-000000000212"
+          }
+        ],
+        "multiValue": true,
+        "displayable": true,
+        "sortable": true
+      },
+      {
+        "fieldIdentifier": "KEY_SIZE",
+        "fieldLabel": "Key Size",
+        "type": "list",
+        "conditions": [
+          "EQUALS",
+          "NOT_EQUALS",
+          "EMPTY",
+          "NOT_EMPTY"
+        ],
+        "value": [
+          -1,
+          192,
+          256
+        ],
+        "multiValue": true,
+        "displayable": true,
+        "sortable": true
+      }
+    ]
+  }
+]

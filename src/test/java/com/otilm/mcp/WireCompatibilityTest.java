@@ -35,6 +35,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.okJson;
 import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 
@@ -117,6 +118,10 @@ class WireCompatibilityTest {
                                 "COMMON_NAME"),
                         recorded("list_triggers", get(urlEqualTo("/v1/workflows/triggers")), "workflow-triggers",
                                 t -> t.workflows().listTriggers(null), "name-44"),
+                        recorded("list_trigger_fields", get(urlPathEqualTo("/v1/resources/certificates/filters/rules")),
+                                "rule-fields-certificates",
+                                t -> t.workflows().listTriggerFields("certificate_expiring"),
+                                "GROUP_NAME | Groups (LIST)"),
                         recorded("list_custom_attributes", get(urlEqualTo("/v1/attributes/custom")),
                                 "custom-attributes", t -> t.attributes().listCustomAttributes(), "name-51"),
                         recorded("list_users", get(urlEqualTo("/v1/users")), "users", t -> t.users().listUsers(),

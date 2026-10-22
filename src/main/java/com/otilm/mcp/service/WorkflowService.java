@@ -8,6 +8,8 @@ public interface WorkflowService {
 
     String listEventTriggers(String event);
 
+    String listTriggerFields(String event);
+
     String createTrigger(TriggerInput input);
 
     String attachTrigger(String uuid);

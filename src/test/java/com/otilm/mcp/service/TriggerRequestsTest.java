@@ -120,7 +120,7 @@ class TriggerRequestsTest {
 
         assertThatThrownBy(() -> TriggerRequests.plan(input))
                 .hasMessage("Each condition needs a fieldSource, a fieldIdentifier and a condition; "
-                        + "get_searchable_fields lists the fields.");
+                        + "list_trigger_fields lists the fields.");
     }
 
     @Test

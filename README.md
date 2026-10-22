@@ -8,8 +8,8 @@ Built with [Spring AI MCP](https://docs.spring.io/spring-ai/reference/api/mcp/mc
 
 ## Features
 
-- **47 tools** for certificates, cryptographic keys, infrastructure, secrets, vaults, signing, CBOMs, the
-  cryptographic asset inventory with its post-quantum (PQC) readiness, and workflows: 41 that read, 6 that change ILM
+- **48 tools** for certificates, cryptographic keys, infrastructure, secrets, vaults, signing, CBOMs, the
+  cryptographic asset inventory with its post-quantum (PQC) readiness, and workflows: 42 that read, 6 that change ILM
 - **Read-only by default**: access levels and toolsets decide which tools clients see
 - **Two transport modes**: HTTP (Streamable HTTP) and STDIO
 - **Three authentication methods**: client certificate, OAuth pass-through, OAuth client credentials
@@ -109,6 +109,7 @@ the version it needs.
 | `list_triggers`       | Workflow triggers with their event and resource                                                    |
 | `get_trigger`         | One trigger in plain words: its event, conditions, outcome, and platform attachment               |
 | `list_event_triggers` | Which platform triggers run when an event happens, in order                                        |
+| `list_trigger_fields` | Fields a trigger's conditions can check and its setFields can set, with their values               |
 | `create_trigger`      | Set up a whole workflow in one call and attach it to its event (`read-write`)                      |
 | `attach_trigger`      | Attach a trigger to its event platform-wide (`read-write`)                                         |
 | `detach_trigger`      | Detach a trigger from its event's platform-wide list (`read-write`)                                |

@@ -281,6 +281,21 @@ public class WorkflowServiceImpl implements WorkflowService {
     }
 
     @Override
+    public String listTriggerFields(String event) {
+        return ToolResponses.run("listing trigger fields", () -> {
+            ResourceEvent resourceEvent = TriggerRequests.event(event);
+            String resource = resourceEvent.getResource().getCode();
+            StringBuilder sb = new StringBuilder();
+            title(sb, "Trigger fields for " + resourceEvent.getCode() + " (" + resource + ")");
+            sb.append("Conditions can check:\n");
+            WorkflowText.fields(sb, ilmApiClient.listRuleFilterFields(resource, false), true);
+            sb.append("\nsetFields can set:\n");
+            WorkflowText.fields(sb, ilmApiClient.listRuleFilterFields(resource, true), false);
+            return sb.toString();
+        });
+    }
+
+    @Override
     public String listEventTriggers(String event) {
         return ToolResponses.run("listing event triggers", () -> {
             ResourceEvent only = isBlank(event) ? null : TriggerRequests.event(event);

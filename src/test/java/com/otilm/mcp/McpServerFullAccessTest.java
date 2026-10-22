@@ -34,7 +34,7 @@ class McpServerFullAccessTest {
                     .stream()
                     .collect(Collectors.toMap(McpSchema.Tool::name, McpSchema.Tool::annotations));
 
-            assertThat(hints).hasSize(12);
+            assertThat(hints).hasSize(13);
             assertThat(hints.get("delete_trigger").destructiveHint()).isTrue();
             assertThat(List.of("create_trigger", "attach_trigger", "detach_trigger", "create_custom_attribute"))
                     .hasSize(4)

@@ -16,6 +16,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.okJson;
 import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static com.otilm.mcp.IlmTestSupport.fixture;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -112,6 +113,51 @@ class WorkflowServiceTest {
         assertThat(appender.list)
                 .extracting(ILoggingEvent::getFormattedMessage)
                 .containsExactly("Could not read the platform event settings: Forbidden");
+    }
+
+    @Test
+    void listTriggerFieldsSaysWhatConditionsCheckAndSetFieldsSet() {
+        stubFor(get(urlEqualTo("/v1/resources/certificates/filters/rules?settable=false"))
+                .willReturn(okJson(fixture("rule-fields-certificates"))));
+        stubFor(get(urlEqualTo("/v1/resources/certificates/filters/rules?settable=true"))
+                .willReturn(okJson(fixture("rule-fields-certificates-settable"))));
+
+        assertThat(service.listTriggerFields("certificate_expiring"))
+                .contains("Trigger fields for certificate_expiring (certificates)\n", """
+                        Conditions can check:
+                        Source: custom
+                          - attribute-1|STRING | attribute-1 (LIST) — Operators: EQUALS, NOT_EQUALS, EMPTY, \
+                        NOT_EMPTY — Values: value-1, value-2
+                        """,
+                        "  - COMMON_NAME | Common Name (STRING) — Operators: CONTAINS, NOT_CONTAINS, EQUALS, NOT_EQUALS, "
+                                + "EMPTY, NOT_EMPTY, STARTS_WITH, ENDS_WITH, MATCHES, NOT_MATCHES\n",
+                        "  - GROUP_NAME | Groups (LIST) — Operators: EQUALS, NOT_EQUALS, EMPTY, NOT_EMPTY, COUNT_EQUAL, "
+                                + "COUNT_NOT_EQUAL, COUNT_GREATER_THAN, COUNT_LESS_THAN — Values: "
+                                + "group-1 [00000000-0000-4000-8000-000000000201], group-2 [",
+                        "group-10 [00000000-0000-4000-8000-000000000210], and 2 more\n",
+                        "  - KEY_SIZE | Key Size (LIST) — Operators: EQUALS, NOT_EQUALS, EMPTY, NOT_EMPTY — Values: -1, "
+                                + "192, 256\n",
+                        """
+                                setFields can set:
+                                Source: custom
+                                  - attribute-1|STRING | attribute-1 (LIST) — Values: value-1, value-2
+                                Source: property
+                                  - RA_PROFILE_NAME | RA Profile (LIST) — Values: \
+                                ra-profile-1 [00000000-0000-4000-8000-000000000301], \
+                                ra-profile-2 [00000000-0000-4000-8000-000000000302]
+                                """,
+                        "  - OWNER | Owner (LIST) — Values: user-1 [00000000-0000-4000-8000-000000000401], "
+                                + "user-2 [00000000-0000-4000-8000-000000000402]\n")
+                .doesNotContain("group-11");
+    }
+
+    @Test
+    void listTriggerFieldsSaysWhenThereAreNone() {
+        stubFor(get(urlPathEqualTo("/v1/resources/comments/filters/rules")).willReturn(okJson("[]")));
+
+        assertThat(service.listTriggerFields("comment_created"))
+                .contains("Trigger fields for comment_created (comments)\n", "Conditions can check:\n  none\n",
+                        "setFields can set:\n  none\n");
     }
 
     @Test

@@ -274,6 +274,16 @@ public class IlmApiClient {
                 });
     }
 
+    public List<SearchFieldDataByGroupDto> listRuleFilterFields(String resource, boolean settable) {
+        logger.debug("Fetching rule filter fields for {}", resource);
+        return restClient
+                .get()
+                .uri("/v1/resources/{resource}/filters/rules?settable={settable}", resource, settable)
+                .retrieve()
+                .body(new ParameterizedTypeReference<>() {
+                });
+    }
+
     // ---- Cryptographic asset endpoints ----
 
     public CryptographicAssetStatisticsDto getCryptoAssetStatistics() {

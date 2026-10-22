@@ -15,6 +15,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.okJson;
 import static com.github.tomakehurst.wiremock.client.WireMock.patch;
 import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static com.otilm.mcp.IlmTestSupport.fixture;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -39,6 +40,8 @@ class WorkflowToolTest {
         assertThat(tool.listTriggers(null)).contains("Triggers (5)");
         assertThat(tool.getTrigger(SET_FIELD)).contains("Trigger: name-1");
         assertThat(tool.listEventTriggers(null)).contains("Platform event triggers");
+        stubFor(get(urlPathEqualTo("/v1/resources/comments/filters/rules")).willReturn(okJson("[]")));
+        assertThat(tool.listTriggerFields("comment_created")).contains("Conditions can check:\n  none\n");
     }
 
     @Test
@@ -67,13 +70,14 @@ class WorkflowToolTest {
         assertThat(names(AccessLevel.READ_WRITE))
                 .contains("attach_trigger", "detach_trigger")
                 .doesNotContain("delete_trigger");
-        assertThat(names(AccessLevel.FULL)).hasSize(7).contains("delete_trigger");
+        assertThat(names(AccessLevel.FULL)).hasSize(8).contains("delete_trigger");
     }
 
     @Test
     void readToolsAppearAtReadOnly() {
         assertThat(names(AccessLevel.READ_ONLY))
-                .containsExactlyInAnyOrder("list_triggers", "get_trigger", "list_event_triggers");
+                .containsExactlyInAnyOrder("list_triggers", "get_trigger", "list_event_triggers",
+                        "list_trigger_fields");
     }
 
     private static List<String> names(AccessLevel level) {

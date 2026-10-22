@@ -1,6 +1,8 @@
 package com.otilm.mcp.service;
 
 import com.otilm.api.model.core.other.ResourceEvent;
+import com.otilm.api.model.core.search.SearchFieldDataByGroupDto;
+import com.otilm.api.model.core.search.SearchFieldDataDto;
 import com.otilm.api.model.core.settings.EventsSettingsDto;
 import com.otilm.api.model.core.workflows.ConditionItemDto;
 import com.otilm.api.model.core.workflows.ExecutionItemDto;
@@ -8,6 +10,7 @@ import com.otilm.api.model.core.workflows.TriggerDetailDto;
 import com.otilm.api.model.core.workflows.TriggerDto;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -23,6 +26,7 @@ public final class WorkflowText {
     public static final String PLATFORM_NOTE = "Discoveries, RA profiles and groups can carry their own triggers, which are not shown here.";
 
     private static final String ITEM = "  - ";
+    private static final int SHOWN_VALUES = 10;
 
     private WorkflowText() {
     }
@@ -30,6 +34,45 @@ public final class WorkflowText {
     public static String runAsNote(ResourceEvent event) {
         return "ILM re-saved every platform trigger of " + event.getCode()
                 + " to run as the identity that made this change.";
+    }
+
+    /**
+     * Writes fields by source, each with its type, optionally its operators, and at most ten of its possible values.
+     */
+    static void fields(StringBuilder sb, List<SearchFieldDataByGroupDto> groups, boolean operators) {
+        if (groups == null || groups.isEmpty()) {
+            sb.append("  none\n");
+            return;
+        }
+        for (SearchFieldDataByGroupDto group : groups) {
+            sb.append("Source: ").append(group.getFilterFieldSource().getCode()).append("\n");
+            stream(group.getSearchFieldData()).forEach(field -> fieldLine(sb, field, operators));
+        }
+    }
+
+    private static void fieldLine(StringBuilder sb, SearchFieldDataDto field, boolean operators) {
+        sb.append(ITEM).append(field.getFieldIdentifier()).append(" | ").append(field.getFieldLabel());
+        sb.append(" (").append(field.getType().name()).append(")");
+        if (operators && field.getConditions() != null && !field.getConditions().isEmpty()) {
+            sb.append(" — Operators: ");
+            sb.append(field.getConditions().stream().map(Enum::name).collect(Collectors.joining(", ")));
+        }
+        if (field.getValue() instanceof List<?> options && !options.isEmpty()) {
+            sb.append(" — Values: ").append(options(options));
+        }
+        sb.append("\n");
+    }
+
+    private static String options(List<?> options) {
+        String shown = options.stream().limit(SHOWN_VALUES).map(WorkflowText::option).collect(Collectors.joining(", "));
+        int more = options.size() - SHOWN_VALUES;
+        return more > 0 ? shown + ", and " + more + " more" : shown;
+    }
+
+    private static String option(Object option) {
+        return option instanceof Map<?, ?> object && object.containsKey("uuid")
+                ? object.get("name") + " [" + object.get("uuid") + "]"
+                : String.valueOf(option);
     }
 
     public static String eventLine(TriggerDto trigger) {

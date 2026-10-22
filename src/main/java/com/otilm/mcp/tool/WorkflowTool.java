@@ -44,8 +44,15 @@ public class WorkflowTool {
         return workflowService.listEventTriggers(event);
     }
 
+    @McpTool(name = "list_trigger_fields",
+            description = "List the fields a trigger for an event can check in its conditions and set in its setFields, with their operators and up to ten possible values each. list_groups, list_users and list_ra_profiles give the complete lists of groups, users and RA profiles.",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = true))
+    public String listTriggerFields(@McpToolParam(description = "Event code. One of: " + EVENT_CODES) String event) {
+        return workflowService.listTriggerFields(event);
+    }
+
     @McpTool(name = "create_trigger",
-            description = "Set up an ILM workflow in one call: when the event happens and the conditions hold, set fields, send a notification, or ignore the object. Creates the condition, rule, executions, action and trigger behind it, named after the trigger, and removes them again if a step fails. By default it also attaches the trigger to its event platform-wide; ILM then re-saves every platform trigger of that event to run as the identity that made the change. Use get_searchable_fields for condition fields, and list_groups, list_users and list_custom_attributes for set-field targets.",
+            description = "Set up an ILM workflow in one call: when the event happens and the conditions hold, set fields, send a notification, or ignore the object. Creates the condition, rule, executions, action and trigger behind it, named after the trigger, and removes them again if a step fails. By default it also attaches the trigger to its event platform-wide; ILM then re-saves every platform trigger of that event to run as the identity that made the change. Use list_trigger_fields for the fields its conditions can check and its setFields can set.",
             annotations = @McpTool.McpAnnotations(destructiveHint = false))
     public String createTrigger(
             @McpToolParam(

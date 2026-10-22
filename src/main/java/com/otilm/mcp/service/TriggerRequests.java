@@ -90,7 +90,7 @@ public final class TriggerRequests {
         if (filter == null || filter.getFieldSource() == null || isBlank(filter.getFieldIdentifier())
                 || filter.getCondition() == null) {
             throw new IllegalArgumentException("Each condition needs a fieldSource, a fieldIdentifier and a condition; "
-                    + "get_searchable_fields lists the fields.");
+                    + "list_trigger_fields lists the fields.");
         }
         ConditionItemRequestDto item = new ConditionItemRequestDto();
         item.setFieldSource(filter.getFieldSource());
