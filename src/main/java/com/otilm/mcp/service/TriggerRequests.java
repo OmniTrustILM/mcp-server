@@ -114,10 +114,14 @@ public final class TriggerRequests {
                     + "[{\"fieldSource\":\"property\",\"fieldIdentifier\":\"GROUP_NAME\",\"value\":[\"<group uuid>\"]}]. "
                     + "Error: " + e.getOriginalMessage(), e);
         }
-        return fields.stream().map(TriggerRequests::setFieldItem).toList();
+        return fields == null ? List.of() : fields.stream().map(TriggerRequests::setFieldItem).toList();
     }
 
     private static ExecutionItemRequestDto setFieldItem(SetField field) {
+        if (field == null) {
+            throw new IllegalArgumentException(
+                    "Each setFields entry needs a fieldSource, a fieldIdentifier and a value.");
+        }
         if (field.fieldSource() != FilterFieldSource.PROPERTY && field.fieldSource() != FilterFieldSource.CUSTOM) {
             throw new IllegalArgumentException(
                     "setFields can only set property or custom fields, not " + code(field.fieldSource()) + ".");

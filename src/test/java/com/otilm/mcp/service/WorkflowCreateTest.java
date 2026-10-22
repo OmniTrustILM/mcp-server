@@ -219,6 +219,23 @@ class WorkflowCreateTest {
         assertRemovedNewestFirst(result, "Error creating trigger: ILM answered 422");
     }
 
+    @Test
+    void createTriggerAcceptsAnAttachmentMadeMeanwhile() {
+        stubCreates();
+        stubFor(get(urlEqualTo(EVENTS))
+                .willReturn(okJson("{\"eventsMapping\":{\"certificate_expiring\":[\"" + TRIGGER + "\"]}}")));
+
+        String result = service
+                .createTrigger(new TriggerInput("expiring-web", "certificate_expiring", CONDITIONS, SET_FIELDS, null,
+                        null, null));
+
+        verify(0, patchRequestedFor(urlEqualTo(EVENTS)));
+        verify(0, deleteRequestedFor(urlMatching(WORKFLOW_OBJECTS)));
+        assertThat(result)
+                .startsWith("Created trigger expiring-web [" + TRIGGER + "].")
+                .endsWith("Already attached to certificate_expiring platform-wide.\n");
+    }
+
     private static void assertRemovedNewestFirst(String result, String error) {
         assertThat(findAll(deleteRequestedFor(urlMatching(WORKFLOW_OBJECTS))).stream().map(LoggedRequest::getUrl))
                 .containsExactly("/v1/workflows/triggers/" + TRIGGER, "/v1/workflows/actions/" + ACTION,

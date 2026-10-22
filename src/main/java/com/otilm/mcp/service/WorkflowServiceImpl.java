@@ -56,7 +56,7 @@ public class WorkflowServiceImpl implements WorkflowService {
             try {
                 TriggerDetailDto trigger = chain.create(plan);
                 String attachment = plan.attach()
-                        ? attachedText(attachToEvent(trigger.getUuid(), plan.event()).orElseThrow(), plan.event())
+                        ? attachCreated(trigger.getUuid(), plan.event())
                         : "Not attached. Attach it with attach_trigger when it should start running.\n";
                 StringBuilder sb = new StringBuilder();
                 sb.append("Created trigger ").append(trigger.getName()).append(" [").append(trigger.getUuid());
@@ -70,9 +70,13 @@ public class WorkflowServiceImpl implements WorkflowService {
         });
     }
 
-    private static String attachedText(int position, ResourceEvent event) {
-        return "Attached to " + event.getCode() + " platform-wide (position " + position + " of " + position + ").\n"
-                + WorkflowText.runAsNote(event) + "\n";
+    private String attachCreated(String triggerUuid, ResourceEvent event) {
+        OptionalInt position = attachToEvent(triggerUuid, event);
+        if (position.isEmpty()) {
+            return "Already attached to " + event.getCode() + " platform-wide.\n";
+        }
+        return "Attached to " + event.getCode() + " platform-wide (position " + position.getAsInt() + " of "
+                + position.getAsInt() + ").\n" + WorkflowText.runAsNote(event) + "\n";
     }
 
     /**

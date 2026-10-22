@@ -73,12 +73,24 @@ class TriggerRequestsTest {
         TriggerInput meta = input(null, "[{\"fieldSource\":\"meta\",\"fieldIdentifier\":\"x|STRING\",\"value\":\"y\"}]",
                 null, null);
         TriggerInput unnamed = input(null, "[{\"fieldSource\":\"property\",\"value\":\"y\"}]", null, null);
+        TriggerInput nullEntry = input(null, "[null]", null, null);
 
         assertThatThrownBy(() -> TriggerRequests.plan(malformed)).hasMessageStartingWith("Invalid setFields JSON.");
         assertThatThrownBy(() -> TriggerRequests.plan(meta))
                 .hasMessage("setFields can only set property or custom fields, not meta.");
         assertThatThrownBy(() -> TriggerRequests.plan(unnamed))
                 .hasMessage("Each setFields entry needs a fieldIdentifier.");
+        assertThatThrownBy(() -> TriggerRequests.plan(nullEntry))
+                .hasMessage("Each setFields entry needs a fieldSource, a fieldIdentifier and a value.");
+    }
+
+    @Test
+    void planReadsJsonNullAsNothingGiven() {
+        TriggerRequests.TriggerPlan plan = TriggerRequests
+                .plan(input("null", "null", "00000000-0000-4000-8000-000000000102", null));
+
+        assertThat(plan.conditions()).isEmpty();
+        assertThat(plan.setFields()).isEmpty();
     }
 
     @Test
