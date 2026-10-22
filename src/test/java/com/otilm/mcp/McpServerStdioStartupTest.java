@@ -12,22 +12,28 @@ import java.io.UncheckedIOException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.context.annotation.Bean;
 import org.springframework.test.context.ActiveProfiles;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 
-@SpringBootTest
+@SpringBootTest(properties = "logging.level.root=DEBUG")
 @ActiveProfiles({"test", "stdio"})
+@ExtendWith(OutputCaptureExtension.class)
 class McpServerStdioStartupTest {
+
+    private static final String MARKER = "marker-5c1e9a";
 
     private static final String INITIALIZE = """
             {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18",\
-            "capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}
-            """;
+            "capabilities":{},"clientInfo":{"name":"%s","version":"1.0"}}}
+            """.formatted(MARKER);
 
     private static final PipedOutputStream TO_SERVER = new PipedOutputStream();
     private static final PipedInputStream FROM_SERVER = new PipedInputStream();
@@ -43,7 +49,7 @@ class McpServerStdioStartupTest {
     }
 
     @Test
-    void answersInitializeOverStdio() throws Exception {
+    void answersInitializeWithoutLoggingTheRequest(CapturedOutput output) throws Exception {
         TO_SERVER.write(INITIALIZE.getBytes(UTF_8));
         TO_SERVER.flush();
 
@@ -51,6 +57,7 @@ class McpServerStdioStartupTest {
         String response = CompletableFuture.supplyAsync(() -> readLine(reader)).get(10, TimeUnit.SECONDS);
 
         assertThat(response).contains("\"name\":\"ilm-mcp-server\"");
+        assertThat(output).contains("DEBUG").doesNotContain(MARKER);
     }
 
     private static String readLine(BufferedReader reader) {

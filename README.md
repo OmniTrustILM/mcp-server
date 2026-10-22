@@ -10,6 +10,7 @@ Built with [Spring AI MCP](https://docs.spring.io/spring-ai/reference/api/mcp/mc
 
 - **35 read-only tools** for certificates, cryptographic keys, infrastructure, secrets, vaults, signing, CBOMs, and
   the cryptographic asset inventory with its post-quantum (PQC) readiness
+- **Read-only by default**: access levels and toolsets decide which tools clients see
 - **Two transport modes**: HTTP (Streamable HTTP) and STDIO
 - **Three authentication methods**: client certificate, OAuth pass-through, OAuth client credentials
 - **AI-optimized responses**: formatted text output designed for LLM consumption
@@ -167,6 +168,33 @@ No additional configuration needed. The server forwards the Bearer token from in
 | `ILM_OAUTH_SCOPE`         | OAuth scope         | No       |
 | `ILM_OAUTH_AUDIENCE`      | OAuth audience      | No       |
 
+#### Tool Access
+
+| Variable           | Description                                       | Default     |
+|--------------------|---------------------------------------------------|-------------|
+| `ILM_MCP_ACCESS`   | Access level: `read-only`, `read-write` or `full` | `read-only` |
+| `ILM_MCP_TOOLSETS` | `all`, or a comma-separated list of toolsets      | `all`       |
+
+`read-only` offers only tools that read. `read-write` adds tools that create or change things, and `full` adds tools
+that delete, revoke or destroy. The toolsets are `certificates`, `keys`, `infrastructure`, `secrets`, `vaults`,
+`crypto-assets`, `cboms` and `signing`; `get_searchable_fields` is always available. Tools outside the access level or
+the toolsets are not registered, so clients never see them. Each tool tells the client whether it reads, writes or
+destroys, so the client can ask before running it. An unknown value stops the server at startup.
+
+Above `read-only`, HTTP mode requires `ILM_AUTH_METHOD=oauth-passthrough`, and the server refuses to start otherwise.
+With a client certificate or client credentials, the HTTP endpoint has no login of its own, and every caller would act
+as the server's ILM identity. STDIO mode works with every authentication method.
+
+The server can never do more than the ILM identity it uses. Give that identity a dedicated ILM role with only the
+permissions the enabled toolsets need. In HTTP mode without OAuth pass-through, keep the endpoint reachable from
+trusted networks only, even at `read-only`.
+
+#### Logging
+
+A broad setting such as `LOGGING_LEVEL_ROOT=DEBUG` or `TRACE` keeps request contents out of the logs, because the loggers that
+print them are pinned in `logback-spring.xml`. Turning one of them on by name, for example
+`LOGGING_LEVEL_IO_MODELCONTEXTPROTOCOL=DEBUG`, prints whole requests, including secret values.
+
 #### Server
 
 | Variable    | Description                       | Default |
@@ -255,10 +283,10 @@ Add to your `.mcp.json`:
 ## Architecture
 
 ```
-MCP Client (LLM) ──MCP──▶ MCP Tool (@Tool) ──▶ Service (formatting) ──▶ IlmApiClient (RestClient) ──▶ ILM API
+MCP Client (LLM) ──MCP──▶ MCP Tool (@McpTool) ──▶ Service (formatting) ──▶ IlmApiClient (RestClient) ──▶ ILM API
 ```
 
-- **Tools** (`com.otilm.mcp.tool`) — MCP tool definitions with `@Tool` annotations
+- **Tools** (`com.otilm.mcp.tool`) — MCP tool definitions with `@McpTool` annotations
 - **Services** (`com.otilm.mcp.service`) — business logic and AI-friendly response formatting
 - **Client** (`com.otilm.mcp.client`) — ILM API HTTP client using Spring `RestClient`
 - **Config** (`com.otilm.mcp.config`) — Spring configuration and properties
