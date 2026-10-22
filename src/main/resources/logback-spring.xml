@@ -12,6 +12,9 @@
         <root level="OFF">
             <appender-ref ref="STDERR"/>
         </root>
+        <!-- These loggers print request contents at DEBUG or TRACE, so a broad level setting must not turn them on. -->
+        <logger name="io.modelcontextprotocol" level="OFF"/>
+        <logger name="org.springframework.web.client" level="OFF"/>
     </springProfile>
 
     <springProfile name="!stdio">
@@ -20,5 +23,10 @@
             <appender-ref ref="CONSOLE"/>
         </root>
         <logger name="com.otilm.mcp" level="INFO"/>
+        <!-- These loggers print request contents at DEBUG or TRACE, so a broad level setting must not turn them on. -->
+        <logger name="io.modelcontextprotocol" level="INFO"/>
+        <logger name="org.springframework.web.client" level="INFO"/>
+        <logger name="org.apache.coyote" level="INFO"/>
+        <logger name="org.apache.tomcat.util.net" level="INFO"/>
     </springProfile>
 </configuration>

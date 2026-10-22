@@ -2,6 +2,9 @@ package com.otilm.mcp;
 
 import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 import com.otilm.mcp.client.IlmApiClient;
+import io.modelcontextprotocol.client.McpClient;
+import io.modelcontextprotocol.client.McpSyncClient;
+import io.modelcontextprotocol.client.transport.HttpClientStreamableHttpTransport;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
@@ -19,6 +22,10 @@ public final class IlmTestSupport {
 
     public static IlmApiClient client(WireMockRuntimeInfo wmInfo) {
         return new IlmApiClient(IlmApiClient.restClientBuilder(wmInfo.getHttpBaseUrl()).build());
+    }
+
+    public static McpSyncClient mcpClient(int port) {
+        return McpClient.sync(HttpClientStreamableHttpTransport.builder("http://localhost:" + port).build()).build();
     }
 
     public static void stubIlmVersion(String version) {

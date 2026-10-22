@@ -88,10 +88,16 @@ Set via environment variables or application.yml:
 - `ILM_OAUTH_CLIENT_ID`, `ILM_OAUTH_CLIENT_SECRET`, `ILM_OAUTH_TOKEN_URL`
 - `ILM_OAUTH_SCOPE`, `ILM_OAUTH_AUDIENCE` (optional)
 
+### Tool Access
+
+- `ILM_MCP_ACCESS` - `read-only` (default), `read-write` or `full`
+- `ILM_MCP_TOOLSETS` - `all` (default) or a comma-separated list of toolsets (see `Toolset`)
+- Above `read-only`, HTTP mode requires `oauth-passthrough`; the server refuses to start otherwise
+
 ## Architecture
 
 ```
-MCP Tool (@Tool) → Service (formatting) → IlmApiClient (RestClient) → ILM API
+MCP Tool (@McpTool) → Service (formatting) → IlmApiClient (RestClient) → ILM API
 ```
 
 - **Package**: `com.otilm.mcp`
@@ -107,7 +113,10 @@ MCP Tool (@Tool) → Service (formatting) → IlmApiClient (RestClient) → ILM 
 - Service interfaces with `*Impl` suffix for implementations
 - WireMock for integration tests (no Mockito)
 - 80%+ test coverage, <3% code duplication
-- AI-friendly formatted text responses from all tools (not raw JSON); every `@Tool` sets `resultConverter = PlainTextResult.class` so clients receive the text as it is
+- AI-friendly formatted text responses from all tools (not raw JSON)
+- Every tool is an `@McpTool` that states its kind through the hints: `readOnlyHint = true` for reads, `destructiveHint = false` for changes another change can undo. A tool that states neither counts as destructive and only appears at `full`
+- Each tool class is one `Toolset`. `McpToolConfiguration` is the only place tools are registered, so Spring AI's annotation scanner and tool-callback converter stay off
+- Logs carry identifiers such as UUIDs at most, never request bodies or other argument values
 - Services build their text with `TextFormat`, wrap ILM calls in `ToolResponses.run(...)` so errors come back as readable text, and build search requests with `SearchRequests.of(...)`
 - The minimum supported ILM is 2.17. A tool that needs a newer ILM gets an `IlmFeature` entry with its minimum version, runs through `PlatformVersionCheck.run(...)`, and names that version in its description
 - Jackson 3 only: no imports from Jackson 2 `databind`, `core`, `datatype`, `dataformat` or `module` packages (`com.fasterxml.jackson.annotation` is shared and allowed)
