@@ -12,9 +12,11 @@ import com.otilm.mcp.client.IlmApiClient;
 import com.otilm.mcp.client.WorkflowCollection;
 import com.otilm.mcp.service.TriggerRequests.TriggerPlan;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.OptionalInt;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -161,28 +163,33 @@ public class WorkflowServiceImpl implements WorkflowService {
                         + "RA profiles and groups keep their own.";
             }
             PartDeletion parts = new PartDeletion(trigger.getName());
-            for (RuleDetailDto rule : list(trigger.getRules())) {
-                parts.delete(WorkflowCollection.RULES, "rule", rule);
-                list(rule.getConditions())
-                        .forEach(condition -> parts.delete(WorkflowCollection.CONDITIONS, "condition", condition));
-            }
-            for (ActionDetailDto action : list(trigger.getActions())) {
-                parts.delete(WorkflowCollection.ACTIONS, "action", action);
-                list(action.getExecutions())
-                        .forEach(execution -> parts.delete(WorkflowCollection.EXECUTIONS, "execution", execution));
-            }
+            // All rules go before any condition and all actions before any execution, so a shared part is no longer
+            // in use when its turn comes.
+            List<RuleDetailDto> rules = list(trigger.getRules());
+            List<ActionDetailDto> actions = list(trigger.getActions());
+            rules.forEach(rule -> parts.delete(WorkflowCollection.RULES, "rule", rule));
+            rules
+                    .stream()
+                    .flatMap(rule -> list(rule.getConditions()).stream())
+                    .forEach(condition -> parts.delete(WorkflowCollection.CONDITIONS, "condition", condition));
+            actions.forEach(action -> parts.delete(WorkflowCollection.ACTIONS, "action", action));
+            actions
+                    .stream()
+                    .flatMap(action -> list(action.getExecutions()).stream())
+                    .forEach(execution -> parts.delete(WorkflowCollection.EXECUTIONS, "execution", execution));
             return "Deleted trigger " + label(trigger) + "." + parts.report();
         });
     }
 
     /**
-     * Deletes the parts of a deleted trigger that carry its name, and keeps the ones ILM refuses to delete.
+     * Deletes the parts of a deleted trigger that carry its name, each once, and keeps the ones ILM refuses to delete.
      */
     private final class PartDeletion {
 
         private final String triggerName;
         private final List<String> deleted = new ArrayList<>();
         private final List<String> kept = new ArrayList<>();
+        private final Set<String> tried = new HashSet<>();
 
         private PartDeletion(String triggerName) {
             this.triggerName = triggerName;
@@ -191,6 +198,9 @@ public class WorkflowServiceImpl implements WorkflowService {
         private void delete(WorkflowCollection collection, String kind, NameAndUuidDto part) {
             String name = part.getName();
             if (name == null || !(name.equals(triggerName) || name.startsWith(triggerName + " - "))) {
+                return;
+            }
+            if (!tried.add(part.getUuid())) {
                 return;
             }
             String described = kind + " " + name + " [" + part.getUuid() + "]";
@@ -261,7 +271,7 @@ public class WorkflowServiceImpl implements WorkflowService {
         try {
             return WorkflowText.attachment(trigger, ilmApiClient.getEventsSettings());
         } catch (RestClientException e) {
-            logger.debug("Could not read the platform event settings: {}", e.getMessage());
+            logger.debug("Could not read the platform event settings: {}", e.getClass().getSimpleName());
             return "Platform attachment: unknown (the platform event settings could not be read)";
         }
     }

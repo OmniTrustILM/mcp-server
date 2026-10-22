@@ -192,6 +192,42 @@ class WorkflowCreateTest {
     }
 
     @Test
+    void createTriggerRemovesEverythingWhenTheEventSettingsCannotBeRead() {
+        stubCreates();
+        stubFor(get(urlEqualTo(EVENTS)).willReturn(aResponse().withStatus(403)));
+        stubFor(delete(urlMatching(WORKFLOW_OBJECTS)).willReturn(noContent()));
+
+        String result = service
+                .createTrigger(new TriggerInput("expiring-web", "certificate_expiring", CONDITIONS, SET_FIELDS, null,
+                        null, null));
+
+        verify(0, patchRequestedFor(urlEqualTo(EVENTS)));
+        assertRemovedNewestFirst(result, "Error creating trigger: ILM answered 403");
+    }
+
+    @Test
+    void createTriggerRemovesEverythingWhenAttachingIsRefused() {
+        stubCreates();
+        stubFor(get(urlEqualTo(EVENTS)).willReturn(okJson(fixture("events-settings"))));
+        stubFor(patch(urlEqualTo(EVENTS)).willReturn(unprocessable("Trigger cannot be associated with the event.")));
+        stubFor(delete(urlMatching(WORKFLOW_OBJECTS)).willReturn(noContent()));
+
+        String result = service
+                .createTrigger(new TriggerInput("expiring-web", "certificate_expiring", CONDITIONS, SET_FIELDS, null,
+                        null, null));
+
+        assertRemovedNewestFirst(result, "Error creating trigger: ILM answered 422");
+    }
+
+    private static void assertRemovedNewestFirst(String result, String error) {
+        assertThat(findAll(deleteRequestedFor(urlMatching(WORKFLOW_OBJECTS))).stream().map(LoggedRequest::getUrl))
+                .containsExactly("/v1/workflows/triggers/" + TRIGGER, "/v1/workflows/actions/" + ACTION,
+                        "/v1/workflows/executions/" + SET, "/v1/workflows/rules/" + RULE,
+                        "/v1/workflows/conditions/" + CONDITION);
+        assertThat(result).startsWith(error).endsWith("Removed what this call had created.");
+    }
+
+    @Test
     void invalidInputCallsNothing() {
         assertThat(service.createTrigger(new TriggerInput("t", "certificate_expiring", null, null, null, null, null)))
                 .isEqualTo("A trigger needs something to do: setFields, notificationProfileUuid, or ignore=true.");

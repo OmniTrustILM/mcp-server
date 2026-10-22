@@ -179,6 +179,28 @@ class WorkflowChangeTest {
     }
 
     @Test
+    void deleteTriesASharedConditionOnceAfterTheRulesUsingIt() {
+        String otherRule = "00000000-0000-4000-8000-000000000007";
+        stubFor(get(urlEqualTo("/v1/workflows/triggers/" + TRIGGER))
+                .willReturn(
+                        okJson("""
+                                {"uuid":"%s","name":"expiring-web","type":"event","resource":"certificates","event":"certificate_expiring",
+                                 "ignoreTrigger":true,"actions":[],
+                                 "rules":[{"uuid":"%s","name":"expiring-web","conditions":[{"uuid":"%s","name":"expiring-web","items":[]}]},
+                                          {"uuid":"%s","name":"expiring-web - 2","conditions":[{"uuid":"%s","name":"expiring-web","items":[]}]}]}
+                                """
+                                .formatted(TRIGGER, RULE, CONDITION, otherRule, CONDITION))));
+        stubFor(delete(urlMatching(WORKFLOW_OBJECTS)).willReturn(noContent()));
+
+        String result = service.deleteTrigger(TRIGGER);
+
+        assertThat(findAll(deleteRequestedFor(urlMatching(WORKFLOW_OBJECTS))).stream().map(LoggedRequest::getUrl))
+                .containsExactly("/v1/workflows/triggers/" + TRIGGER, "/v1/workflows/rules/" + RULE,
+                        "/v1/workflows/rules/" + otherRule, "/v1/workflows/conditions/" + CONDITION);
+        assertThat(result).containsOnlyOnce("condition expiring-web [" + CONDITION + "]");
+    }
+
+    @Test
     void deleteOfAnAttachedTriggerChangesNothing() {
         stubTrigger(SET_FIELD, "workflow-trigger-set-field");
         stubFor(delete(urlEqualTo("/v1/workflows/triggers/" + SET_FIELD))

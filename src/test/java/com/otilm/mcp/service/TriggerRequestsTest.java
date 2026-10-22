@@ -96,6 +96,32 @@ class TriggerRequestsTest {
                 .hasMessageContaining("\"data\"");
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "[{}]",
+            "[null]",
+            "[{\"fieldSource\":\"property\",\"fieldIdentifier\":\"COMMON_NAME\",\"operator\":\"ENDS_WITH\",\"value\":\".example.com\"}]",
+            "[{\"fieldSource\":\"property\",\"condition\":\"EMPTY\"}]",
+            "[{\"fieldIdentifier\":\"COMMON_NAME\",\"condition\":\"EMPTY\"}]"})
+    void planRejectsIncompleteConditions(String conditions) {
+        TriggerInput input = input(conditions, null, null, true);
+
+        assertThatThrownBy(() -> TriggerRequests.plan(input))
+                .hasMessage("Each condition needs a fieldSource, a fieldIdentifier and a condition; "
+                        + "get_searchable_fields lists the fields.");
+    }
+
+    @Test
+    void planAcceptsAConditionWithoutAValue() {
+        TriggerRequests.TriggerPlan plan = TriggerRequests
+                .plan(input("[{\"fieldSource\":\"property\",\"fieldIdentifier\":\"OWNER\",\"condition\":\"EMPTY\"}]",
+                        null, null, true));
+
+        assertThat(plan.conditions())
+                .singleElement()
+                .satisfies(item -> assertThat(item.getOperator()).isEqualTo(FilterConditionOperator.EMPTY));
+    }
+
     private static TriggerInput input(String conditions, String setFields, String profile, Boolean ignore) {
         return new TriggerInput("expiring-web", "certificate_expiring", conditions, setFields, profile, ignore, null);
     }

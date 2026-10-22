@@ -1,10 +1,15 @@
 package com.otilm.mcp.service;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;
 import com.otilm.mcp.IlmTestSupport;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
@@ -84,6 +89,29 @@ class WorkflowServiceTest {
         assertThat(service.getTrigger(SET_FIELD))
                 .contains("Trigger: name-1 [" + SET_FIELD + "]",
                         "Platform attachment: unknown (the platform event settings could not be read)");
+    }
+
+    @Test
+    void unreadableEventSettingsAreLoggedWithoutTheResponseBody() {
+        stubTrigger(SET_FIELD, "workflow-trigger-set-field");
+        stubFor(get(urlEqualTo("/v1/settings/events"))
+                .willReturn(aResponse().withStatus(403).withBody("{\"message\":\"detail-from-ilm\"}")));
+        Logger logger = (Logger) LoggerFactory.getLogger(WorkflowServiceImpl.class);
+        ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        Level level = logger.getLevel();
+        logger.setLevel(Level.DEBUG);
+        logger.addAppender(appender);
+        try {
+            service.getTrigger(SET_FIELD);
+        } finally {
+            logger.detachAppender(appender);
+            logger.setLevel(level);
+        }
+
+        assertThat(appender.list)
+                .extracting(ILoggingEvent::getFormattedMessage)
+                .containsExactly("Could not read the platform event settings: Forbidden");
     }
 
     @Test
