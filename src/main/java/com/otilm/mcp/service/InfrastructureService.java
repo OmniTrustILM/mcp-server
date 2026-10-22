@@ -17,4 +17,6 @@ public interface InfrastructureService {
     String listTokenInstances();
 
     String listDiscoveries(String filters);
+
+    String createGroup(String name, String description, String email);
 }

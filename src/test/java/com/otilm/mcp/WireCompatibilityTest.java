@@ -4,19 +4,25 @@ import com.github.tomakehurst.wiremock.client.MappingBuilder;
 import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;
 import com.otilm.mcp.client.IlmApiClient;
+import com.otilm.mcp.service.AttributeServiceImpl;
 import com.otilm.mcp.service.CertificateServiceImpl;
 import com.otilm.mcp.service.InfrastructureServiceImpl;
 import com.otilm.mcp.service.KeyServiceImpl;
 import com.otilm.mcp.service.PlatformVersionCheck;
 import com.otilm.mcp.service.SearchServiceImpl;
 import com.otilm.mcp.service.SecretServiceImpl;
+import com.otilm.mcp.service.UserServiceImpl;
 import com.otilm.mcp.service.VaultServiceImpl;
+import com.otilm.mcp.service.WorkflowServiceImpl;
+import com.otilm.mcp.tool.AttributeTool;
 import com.otilm.mcp.tool.CertificateTool;
 import com.otilm.mcp.tool.InfrastructureTool;
 import com.otilm.mcp.tool.KeyTool;
 import com.otilm.mcp.tool.SearchTool;
 import com.otilm.mcp.tool.SecretTool;
+import com.otilm.mcp.tool.UserTool;
 import com.otilm.mcp.tool.VaultTool;
+import com.otilm.mcp.tool.WorkflowTool;
 import java.util.function.Function;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
@@ -42,7 +48,7 @@ class WireCompatibilityTest {
     private Tools tools;
 
     record Tools(CertificateTool certificates, KeyTool keys, InfrastructureTool infrastructure, SearchTool search,
-            SecretTool secrets, VaultTool vaults) {
+            SecretTool secrets, VaultTool vaults, WorkflowTool workflows, AttributeTool attributes, UserTool users) {
     }
 
     @BeforeEach
@@ -51,7 +57,9 @@ class WireCompatibilityTest {
         tools = new Tools(new CertificateTool(new CertificateServiceImpl(client)),
                 new KeyTool(new KeyServiceImpl(client)), new InfrastructureTool(new InfrastructureServiceImpl(client)),
                 new SearchTool(new SearchServiceImpl(client, new PlatformVersionCheck(client))),
-                new SecretTool(new SecretServiceImpl(client)), new VaultTool(new VaultServiceImpl(client)));
+                new SecretTool(new SecretServiceImpl(client)), new VaultTool(new VaultServiceImpl(client)),
+                new WorkflowTool(new WorkflowServiceImpl(client)), new AttributeTool(new AttributeServiceImpl(client)),
+                new UserTool(new UserServiceImpl(client)));
     }
 
     static Stream<Arguments> recordedResponses() {
@@ -106,7 +114,15 @@ class WireCompatibilityTest {
                                 t -> t.vaults().listVaultProfiles(null, null, null), "name-46"),
                         recorded("get_searchable_fields", get(urlEqualTo("/v1/certificates/search")),
                                 "certificate-search-fields", t -> t.search().getSearchableFields("certificates"),
-                                "COMMON_NAME"));
+                                "COMMON_NAME"),
+                        recorded("list_triggers", get(urlEqualTo("/v1/workflows/triggers")), "workflow-triggers",
+                                t -> t.workflows().listTriggers(null), "name-44"),
+                        recorded("list_custom_attributes", get(urlEqualTo("/v1/attributes/custom")),
+                                "custom-attributes", t -> t.attributes().listCustomAttributes(), "name-51"),
+                        recorded("list_users", get(urlEqualTo("/v1/users")), "users", t -> t.users().listUsers(),
+                                "username-63"),
+                        recorded("list_roles", get(urlEqualTo("/v1/roles")), "roles", t -> t.users().listRoles(),
+                                "name-74"));
     }
 
     private static Arguments recorded(String tool, MappingBuilder request, String fixture, Function<Tools, String> call,

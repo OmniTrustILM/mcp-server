@@ -1,0 +1,46 @@
+[
+  {
+    "uuid": "7299c805-5b8b-4a06-a504-f7302b31cf85",
+    "name": "name-42",
+    "description": "description-43",
+    "type": "event",
+    "resource": "comments",
+    "ignoreTrigger": false,
+    "event": "comment_created"
+  },
+  {
+    "uuid": "6daef4cf-2ad8-45f8-8998-de8d3fc44fad",
+    "name": "name-44",
+    "type": "event",
+    "resource": "certificates",
+    "ignoreTrigger": false,
+    "event": "certificate_discovered"
+  },
+  {
+    "uuid": "ba3f51fb-f41d-4027-88f4-c2ca17102eec",
+    "name": "name-45",
+    "description": "description-46",
+    "type": "event",
+    "resource": "certificates",
+    "ignoreTrigger": true,
+    "event": "certificate_discovered"
+  },
+  {
+    "uuid": "cb36ddc3-bb10-4bc0-9624-92442f903dc2",
+    "name": "name-47",
+    "description": "description-48",
+    "type": "event",
+    "resource": "certificates",
+    "ignoreTrigger": false,
+    "event": "certificate_status_changed"
+  },
+  {
+    "uuid": "e4004ce0-2b01-4603-a394-8347314aefe0",
+    "name": "name-49",
+    "description": "description-50",
+    "type": "event",
+    "resource": "jobs",
+    "ignoreTrigger": false,
+    "event": "scheduled_job_finished"
+  }
+]

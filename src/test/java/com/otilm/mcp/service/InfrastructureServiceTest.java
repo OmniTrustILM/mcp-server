@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
+import static com.github.tomakehurst.wiremock.client.WireMock.equalToJson;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath;
 import static com.github.tomakehurst.wiremock.client.WireMock.post;
@@ -349,5 +350,21 @@ class InfrastructureServiceTest {
         String result = service.listAuthorities();
 
         assertThat(result).contains("Error listing authorities");
+    }
+
+    @Test
+    void createsAGroup() {
+        stubFor(post(urlEqualTo("/v1/groups"))
+                .willReturn(aResponse()
+                        .withStatus(201)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody("{\"uuid\":\"00000000-0000-4000-8000-000000000300\"}")));
+
+        assertThat(service.createGroup("Web servers", "Public web", null))
+                .isEqualTo("Created group Web servers [00000000-0000-4000-8000-000000000300].");
+        verify(postRequestedFor(urlEqualTo("/v1/groups"))
+                .withRequestBody(
+                        equalToJson("{\"name\":\"Web servers\",\"description\":\"Public web\"}", false, true)));
+        assertThat(service.createGroup(" ", null, null)).isEqualTo("A group needs a name.");
     }
 }

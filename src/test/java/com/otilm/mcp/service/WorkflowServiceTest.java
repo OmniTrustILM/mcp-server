@@ -1,0 +1,140 @@
+package com.otilm.mcp.service;
+
+import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
+import com.github.tomakehurst.wiremock.junit5.WireMockTest;
+import com.otilm.mcp.IlmTestSupport;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
+import static com.github.tomakehurst.wiremock.client.WireMock.get;
+import static com.github.tomakehurst.wiremock.client.WireMock.okJson;
+import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
+import static com.otilm.mcp.IlmTestSupport.fixture;
+import static org.assertj.core.api.Assertions.assertThat;
+
+@WireMockTest
+class WorkflowServiceTest {
+
+    private static final String SET_FIELD = "6daef4cf-2ad8-45f8-8998-de8d3fc44fad";
+    private static final String NOTIFY = "7299c805-5b8b-4a06-a504-f7302b31cf85";
+    private static final String IGNORE = "ba3f51fb-f41d-4027-88f4-c2ca17102eec";
+
+    private WorkflowService service;
+
+    @BeforeEach
+    void setUp(WireMockRuntimeInfo wmInfo) {
+        service = new WorkflowServiceImpl(IlmTestSupport.client(wmInfo));
+    }
+
+    @Test
+    void getTriggerExplainsASetFieldTrigger() {
+        stubTrigger(SET_FIELD, "workflow-trigger-set-field");
+        stubEventsSettings();
+
+        assertThat(service.getTrigger(SET_FIELD))
+                .contains("Trigger: name-1 [" + SET_FIELD + "]", "Event: certificate_discovered (certificates)",
+                        "When (all must hold):", "  - property ISSUERDN NOT_CONTAINS value-4",
+                        "  - set property GROUP_NAME to 5a58cdc9-604d-4325-bbca-edaf335773cf",
+                        "  - set custom attribute-8|TEXT to value-9",
+                        "Platform attachment: not attached to certificate_discovered platform-wide",
+                        WorkflowText.PLATFORM_NOTE);
+    }
+
+    @Test
+    void getTriggerExplainsANotificationTrigger() {
+        stubTrigger(NOTIFY, "workflow-trigger-notification");
+        stubEventsSettings();
+
+        assertThat(service.getTrigger(NOTIFY))
+                .contains("  - property COMMENT_RESOLVED_AT NOT_EMPTY\n",
+                        "  - notify through profile notificationProfileName-22 [cd9a1f7f-fe48-4f3c-a890-e23f795f4ecc]");
+    }
+
+    @Test
+    void getTriggerExplainsAnIgnoreTrigger() {
+        stubTrigger(IGNORE, "workflow-trigger-ignore");
+        stubEventsSettings();
+
+        assertThat(service.getTrigger(IGNORE))
+                .contains("Then: skip the certificate, so discovery does not import it (ignore trigger)",
+                        "  - meta attribute-29|STRING CONTAINS value-30",
+                        "  - property RA_PROFILE_NAME EQUALS value-33");
+    }
+
+    @Test
+    void getTriggerWithoutEventSaysSo() {
+        stubFor(get(urlEqualTo("/v1/workflows/triggers/" + IGNORE)).willReturn(okJson("""
+                {"uuid": "%s", "name": "manual-1", "resource": "certificates",
+                 "ignoreTrigger": false, "rules": [], "actions": []}
+                """.formatted(IGNORE))));
+        stubEventsSettings();
+
+        assertThat(service.getTrigger(IGNORE))
+                .contains("Event: none (certificates)", "When: every certificates object of this event",
+                        "Platform attachment: none (no event)");
+    }
+
+    @Test
+    void getTriggerStillAnswersWhenEventSettingsCannotBeRead() {
+        stubTrigger(SET_FIELD, "workflow-trigger-set-field");
+        stubFor(get(urlEqualTo("/v1/settings/events")).willReturn(aResponse().withStatus(403)));
+
+        assertThat(service.getTrigger(SET_FIELD))
+                .contains("Trigger: name-1 [" + SET_FIELD + "]",
+                        "Platform attachment: unknown (the platform event settings could not be read)");
+    }
+
+    @Test
+    void listTriggersFiltersByEvent() {
+        stubTriggerList();
+
+        assertThat(service.listTriggers(null))
+                .contains("Triggers (5)", "- name-42 [", "Event: comment_created (comments)", "Ignore Trigger: yes",
+                        "Description: description-43");
+        assertThat(service.listTriggers("certificate_discovered"))
+                .contains("Triggers for certificate_discovered (2)", "name-44", "name-45")
+                .doesNotContain("name-42");
+    }
+
+    @Test
+    void listEventTriggersShowsOrderForOneEvent() {
+        stubEventsSettings();
+        stubTriggerList();
+
+        assertThat(service.listEventTriggers("certificate_status_changed"))
+                .contains("Platform triggers for certificate_status_changed (6)",
+                        "3. name-47 [cb36ddc3-bb10-4bc0-9624-92442f903dc2]", "   description-48",
+                        WorkflowText.PLATFORM_NOTE);
+        assertThat(service.listEventTriggers("certificate_discovered"))
+                .contains("No platform triggers for certificate_discovered.");
+    }
+
+    @Test
+    void listEventTriggersCoversEveryEvent() {
+        stubEventsSettings();
+        stubTriggerList();
+
+        assertThat(service.listEventTriggers(null))
+                .contains("Platform event triggers", "certificate_status_changed (6):", "scheduled_job_finished (1):",
+                        "1. name-49 [e4004ce0-2b01-4603-a394-8347314aefe0]");
+    }
+
+    @Test
+    void unknownEventFilterAnswersWithTheValidEvents() {
+        assertThat(service.listTriggers("certificate_found")).startsWith("Unknown event 'certificate_found'.");
+    }
+
+    static void stubTrigger(String uuid, String fixture) {
+        stubFor(get(urlEqualTo("/v1/workflows/triggers/" + uuid)).willReturn(okJson(fixture(fixture))));
+    }
+
+    static void stubEventsSettings() {
+        stubFor(get(urlEqualTo("/v1/settings/events")).willReturn(okJson(fixture("events-settings"))));
+    }
+
+    static void stubTriggerList() {
+        stubFor(get(urlEqualTo("/v1/workflows/triggers")).willReturn(okJson(fixture("workflow-triggers"))));
+    }
+}

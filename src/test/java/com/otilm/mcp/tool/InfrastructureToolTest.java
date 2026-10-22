@@ -186,4 +186,19 @@ class InfrastructureToolTest {
 
         verify(getRequestedFor(urlEqualTo("/v1/credentials")));
     }
+
+    @Test
+    void createGroupDelegatesAndNeedsReadWrite() {
+        stubFor(post(urlEqualTo("/v1/groups"))
+                .willReturn(aResponse()
+                        .withStatus(201)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody("{\"uuid\":\"00000000-0000-4000-8000-000000000300\"}")));
+
+        assertThat(tool.createGroup("Web servers", null, null))
+                .isEqualTo("Created group Web servers [00000000-0000-4000-8000-000000000300].");
+        assertThat(ToolNames.allowed(AccessLevel.READ_ONLY, new InfrastructureTool(null)))
+                .doesNotContain("create_group");
+        assertThat(ToolNames.allowed(AccessLevel.READ_WRITE, new InfrastructureTool(null))).contains("create_group");
+    }
 }

@@ -1,0 +1,41 @@
+[
+  {
+    "uuid": "295e8f4e-b300-4f19-a8f4-a7cecb9da498",
+    "name": "name-51",
+    "label": "label-52",
+    "contentType": "time",
+    "description": "description-53",
+    "enabled": true,
+    "protectionLevel": "none",
+    "version": "v3",
+    "resources": [
+      "certificates"
+    ],
+    "required": false
+  },
+  {
+    "uuid": "4165cf4d-03dc-4b49-bfbd-7cff553b77d4",
+    "name": "name-54",
+    "label": "label-55",
+    "contentType": "integer",
+    "description": "description-56",
+    "enabled": true,
+    "protectionLevel": "none",
+    "version": "v3",
+    "resources": [
+      "users"
+    ],
+    "required": false
+  },
+  {
+    "uuid": "6dcc133e-5524-4abd-bb5e-a74ca9aa4319",
+    "name": "name-57",
+    "label": "label-58",
+    "contentType": "integer",
+    "enabled": true,
+    "protectionLevel": "none",
+    "version": "v3",
+    "resources": [],
+    "required": false
+  }
+]

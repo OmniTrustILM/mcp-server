@@ -73,4 +73,13 @@ public class InfrastructureTool {
             required = false) String filters) {
         return infrastructureService.listDiscoveries(filters);
     }
+
+    @McpTool(name = "create_group",
+            description = "Create a group for organizing certificates and keys, for example as a target that create_trigger puts certificates into.",
+            annotations = @McpTool.McpAnnotations(destructiveHint = false))
+    public String createGroup(@McpToolParam(description = "Name of the group") String name,
+            @McpToolParam(description = "Description of the group", required = false) String description,
+            @McpToolParam(description = "Contact email of the group", required = false) String email) {
+        return infrastructureService.createGroup(name, description, email);
+    }
 }

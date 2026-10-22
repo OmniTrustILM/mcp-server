@@ -4,8 +4,10 @@ import com.otilm.api.model.client.certificate.DiscoveryResponseDto;
 import com.otilm.api.model.client.certificate.EntityInstanceResponseDto;
 import com.otilm.api.model.client.certificate.SearchRequestDto;
 import com.otilm.api.model.client.discovery.DiscoveryListDto;
+import com.otilm.api.model.common.UuidDto;
 import com.otilm.api.model.core.authority.AuthorityInstanceDto;
 import com.otilm.api.model.core.certificate.group.GroupDto;
+import com.otilm.api.model.core.certificate.group.GroupRequestDto;
 import com.otilm.api.model.core.connector.ConnectorDto;
 import com.otilm.api.model.core.credential.CredentialDto;
 import com.otilm.api.model.core.cryptography.token.TokenInstanceDto;
@@ -172,5 +174,20 @@ public class InfrastructureServiceImpl implements InfrastructureService {
         field(sb, INDENT, "Start Time", discovery.getStartTime());
         field(sb, INDENT, "End Time", discovery.getEndTime());
         field(sb, INDENT, "Certificates Discovered", discovery.getTotalCertificatesDiscovered());
+    }
+
+    @Override
+    public String createGroup(String name, String description, String email) {
+        return ToolResponses.run("creating group", () -> {
+            if (name == null || name.isBlank()) {
+                throw new IllegalArgumentException("A group needs a name.");
+            }
+            GroupRequestDto request = new GroupRequestDto();
+            request.setName(name.trim());
+            request.setDescription(description);
+            request.setEmail(email);
+            UuidDto created = ilmApiClient.createGroup(request);
+            return "Created group " + request.getName() + " [" + created.getUuid() + "].";
+        });
     }
 }

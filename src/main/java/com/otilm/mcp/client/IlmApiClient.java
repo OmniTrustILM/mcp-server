@@ -1,5 +1,8 @@
 package com.otilm.mcp.client;
 
+import com.otilm.api.model.client.attribute.custom.CustomAttributeCreateRequestDto;
+import com.otilm.api.model.client.attribute.custom.CustomAttributeDefinitionDetailDto;
+import com.otilm.api.model.client.attribute.custom.CustomAttributeDefinitionDto;
 import com.otilm.api.model.client.certificate.CertificateResponseDto;
 import com.otilm.api.model.client.certificate.DiscoveryResponseDto;
 import com.otilm.api.model.client.certificate.EntityInstanceResponseDto;
@@ -12,6 +15,9 @@ import com.otilm.api.model.client.signing.profile.SigningProfileDto;
 import com.otilm.api.model.client.signing.profile.SigningProfileListDto;
 import com.otilm.api.model.client.signing.protocols.tsp.TspProfileListDto;
 import com.otilm.api.model.common.PaginationResponseDto;
+import com.otilm.api.model.common.UuidDto;
+import com.otilm.api.model.core.auth.RoleDto;
+import com.otilm.api.model.core.auth.UserDto;
 import com.otilm.api.model.core.authority.AuthorityInstanceDto;
 import com.otilm.api.model.core.cbom.CbomContributedAssetDto;
 import com.otilm.api.model.core.cbom.CbomDetailDto;
@@ -21,6 +27,7 @@ import com.otilm.api.model.core.certificate.CertificateDetailDto;
 import com.otilm.api.model.core.certificate.CertificateEventHistoryDto;
 import com.otilm.api.model.core.certificate.CertificateValidationResultDto;
 import com.otilm.api.model.core.certificate.group.GroupDto;
+import com.otilm.api.model.core.certificate.group.GroupRequestDto;
 import com.otilm.api.model.core.connector.ConnectorDto;
 import com.otilm.api.model.core.credential.CredentialDto;
 import com.otilm.api.model.core.cryptoasset.CryptographicAssetDetailDto;
@@ -34,9 +41,22 @@ import com.otilm.api.model.core.search.SearchFieldDataByGroupDto;
 import com.otilm.api.model.core.secret.SecretDetailDto;
 import com.otilm.api.model.core.secret.SecretDto;
 import com.otilm.api.model.core.secret.SecretVersionDto;
+import com.otilm.api.model.core.settings.EventSettingsDto;
+import com.otilm.api.model.core.settings.EventsSettingsDto;
 import com.otilm.api.model.core.signing.signingrecord.SigningRecordListDto;
 import com.otilm.api.model.core.vault.VaultInstanceDto;
 import com.otilm.api.model.core.vaultprofile.VaultProfileDto;
+import com.otilm.api.model.core.workflows.ActionDetailDto;
+import com.otilm.api.model.core.workflows.ActionRequestDto;
+import com.otilm.api.model.core.workflows.ConditionDto;
+import com.otilm.api.model.core.workflows.ConditionRequestDto;
+import com.otilm.api.model.core.workflows.ExecutionDto;
+import com.otilm.api.model.core.workflows.ExecutionRequestDto;
+import com.otilm.api.model.core.workflows.RuleDetailDto;
+import com.otilm.api.model.core.workflows.RuleRequestDto;
+import com.otilm.api.model.core.workflows.TriggerDetailDto;
+import com.otilm.api.model.core.workflows.TriggerDto;
+import com.otilm.api.model.core.workflows.TriggerRequestDto;
 import java.util.List;
 import java.util.Optional;
 import org.slf4j.Logger;
@@ -374,5 +394,97 @@ public class IlmApiClient {
                 .retrieve()
                 .body(new ParameterizedTypeReference<>() {
                 });
+    }
+
+    // ---- Workflow endpoints ----
+
+    public List<TriggerDto> listTriggers() {
+        logger.debug("Listing triggers");
+        return restClient.get().uri("/v1/workflows/triggers").retrieve().body(new ParameterizedTypeReference<>() {
+        });
+    }
+
+    public TriggerDetailDto getTrigger(String uuid) {
+        logger.debug("Fetching trigger {}", uuid);
+        return restClient.get().uri("/v1/workflows/triggers/{uuid}", uuid).retrieve().body(TriggerDetailDto.class);
+    }
+
+    public EventsSettingsDto getEventsSettings() {
+        logger.debug("Fetching event settings");
+        return restClient.get().uri("/v1/settings/events").retrieve().body(EventsSettingsDto.class);
+    }
+
+    public void updateEventSettings(EventSettingsDto request) {
+        logger.debug("Updating the triggers of event {}", request.getEvent());
+        restClient.patch().uri("/v1/settings/events").body(request).retrieve().toBodilessEntity();
+    }
+
+    public ConditionDto createCondition(ConditionRequestDto request) {
+        logger.debug("Creating condition");
+        return restClient.post().uri("/v1/workflows/conditions").body(request).retrieve().body(ConditionDto.class);
+    }
+
+    public RuleDetailDto createRule(RuleRequestDto request) {
+        logger.debug("Creating rule");
+        return restClient.post().uri("/v1/workflows/rules").body(request).retrieve().body(RuleDetailDto.class);
+    }
+
+    public ExecutionDto createExecution(ExecutionRequestDto request) {
+        logger.debug("Creating execution");
+        return restClient.post().uri("/v1/workflows/executions").body(request).retrieve().body(ExecutionDto.class);
+    }
+
+    public ActionDetailDto createAction(ActionRequestDto request) {
+        logger.debug("Creating action");
+        return restClient.post().uri("/v1/workflows/actions").body(request).retrieve().body(ActionDetailDto.class);
+    }
+
+    public TriggerDetailDto createTrigger(TriggerRequestDto request) {
+        logger.debug("Creating trigger");
+        return restClient.post().uri("/v1/workflows/triggers").body(request).retrieve().body(TriggerDetailDto.class);
+    }
+
+    // ---- Group, custom attribute, user and role endpoints ----
+
+    public UuidDto createGroup(GroupRequestDto request) {
+        logger.debug("Creating group");
+        return restClient.post().uri("/v1/groups").body(request).retrieve().body(UuidDto.class);
+    }
+
+    public List<CustomAttributeDefinitionDto> listCustomAttributes() {
+        logger.debug("Listing custom attributes");
+        return restClient.get().uri("/v1/attributes/custom").retrieve().body(new ParameterizedTypeReference<>() {
+        });
+    }
+
+    public CustomAttributeDefinitionDetailDto createCustomAttribute(CustomAttributeCreateRequestDto request) {
+        logger.debug("Creating custom attribute");
+        return restClient
+                .post()
+                .uri("/v1/attributes/custom")
+                .body(request)
+                .retrieve()
+                .body(CustomAttributeDefinitionDetailDto.class);
+    }
+
+    public List<UserDto> listUsers() {
+        logger.debug("Listing users");
+        return restClient.get().uri("/v1/users").retrieve().body(new ParameterizedTypeReference<>() {
+        });
+    }
+
+    public List<RoleDto> listRoles() {
+        logger.debug("Listing roles");
+        return restClient.get().uri("/v1/roles").retrieve().body(new ParameterizedTypeReference<>() {
+        });
+    }
+
+    public void deleteWorkflowObject(WorkflowCollection collection, String uuid) {
+        logger.debug("Deleting {} {}", collection, uuid);
+        restClient
+                .delete()
+                .uri("/v1/workflows/{collection}/{uuid}", collection.path(), uuid)
+                .retrieve()
+                .toBodilessEntity();
     }
 }

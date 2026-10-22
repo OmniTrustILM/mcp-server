@@ -12,6 +12,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.catchRuntimeException;
 
 @WireMockTest
 class ToolResponsesTest {
@@ -40,6 +41,21 @@ class ToolResponsesTest {
                         .withBody("{\"message\": \"Certificate not found\"}")));
 
         assertThat(retrieveCertificate())
+                .isEqualTo("Error retrieving certificate: ILM answered 404 Not Found: Certificate not found");
+    }
+
+    @Test
+    void errorTextMatchesWhatRunAnswers() {
+        stubFor(get(urlEqualTo(CERTIFICATE_PATH))
+                .willReturn(aResponse()
+                        .withStatus(404)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody("{\"message\": \"Certificate not found\"}")));
+
+        RuntimeException failure = catchRuntimeException(
+                () -> client.getCertificate("0f1e2d3c-4b5a-4968-8776-5a4b3c2d1e0f"));
+
+        assertThat(ToolResponses.errorText("retrieving certificate", failure))
                 .isEqualTo("Error retrieving certificate: ILM answered 404 Not Found: Certificate not found");
     }
 

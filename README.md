@@ -8,8 +8,8 @@ Built with [Spring AI MCP](https://docs.spring.io/spring-ai/reference/api/mcp/mc
 
 ## Features
 
-- **35 read-only tools** for certificates, cryptographic keys, infrastructure, secrets, vaults, signing, CBOMs, and
-  the cryptographic asset inventory with its post-quantum (PQC) readiness
+- **47 tools** for certificates, cryptographic keys, infrastructure, secrets, vaults, signing, CBOMs, the
+  cryptographic asset inventory with its post-quantum (PQC) readiness, and workflows: 41 that read, 6 that change ILM
 - **Read-only by default**: access levels and toolsets decide which tools clients see
 - **Two transport modes**: HTTP (Streamable HTTP) and STDIO
 - **Three authentication methods**: client certificate, OAuth pass-through, OAuth client credentials
@@ -57,6 +57,7 @@ the version it needs.
 | `list_credentials`     | Authentication credentials                            |
 | `list_token_instances` | Cryptographic token instances (HSMs, software tokens) |
 | `list_discoveries`     | Certificate discovery tasks and results               |
+| `create_group`         | Create a group (`read-write`)                         |
 
 ### Secrets
 
@@ -100,6 +101,32 @@ the version it needs.
 | `search_tsp_profiles`     | Search TSP profiles with their signing URLs (ILM 2.18+)                        |
 | `search_signing_records`  | Search signing records, without signature values or content (ILM 2.19+)        |
 | `get_signing_statistics`  | Signing volume and breakdowns by profile, protocol, and scheme (ILM 2.19+)     |
+
+### Workflows
+
+| Tool                  | Description                                                                                        |
+|-----------------------|----------------------------------------------------------------------------------------------------|
+| `list_triggers`       | Workflow triggers with their event and resource                                                    |
+| `get_trigger`         | One trigger in plain words: its event, conditions, outcome, and platform attachment               |
+| `list_event_triggers` | Which platform triggers run when an event happens, in order                                        |
+| `create_trigger`      | Set up a whole workflow in one call and attach it to its event (`read-write`)                      |
+| `attach_trigger`      | Attach a trigger to its event platform-wide (`read-write`)                                         |
+| `detach_trigger`      | Detach a trigger from its event's platform-wide list (`read-write`)                                |
+| `delete_trigger`      | Delete an unattached trigger with the parts created for it (`full`)                                |
+
+### Custom Attributes
+
+| Tool                      | Description                                                         |
+|---------------------------|---------------------------------------------------------------------|
+| `list_custom_attributes`  | Custom attributes with their content type, resources, and field ID  |
+| `create_custom_attribute` | Create a custom attribute (`read-write`)                            |
+
+### Users and Roles
+
+| Tool         | Description                                        |
+|--------------|----------------------------------------------------|
+| `list_users` | Users with username, name, email, and UUID         |
+| `list_roles` | Roles with name, UUID, and description             |
 
 ## Quick Start
 
@@ -177,9 +204,13 @@ No additional configuration needed. The server forwards the Bearer token from in
 
 `read-only` offers only tools that read. `read-write` adds tools that create or change things, and `full` adds tools
 that delete, revoke or destroy. The toolsets are `certificates`, `keys`, `infrastructure`, `secrets`, `vaults`,
-`crypto-assets`, `cboms` and `signing`; `get_searchable_fields` is always available. Tools outside the access level or
-the toolsets are not registered, so clients never see them. Each tool tells the client whether it reads, writes or
-destroys, so the client can ask before running it. An unknown value stops the server at startup.
+`crypto-assets`, `cboms`, `signing`, `workflows`, `attributes` and `users`; `get_searchable_fields` is always
+available. Tools outside the access level or the toolsets are not registered, so clients never see them. Each tool
+tells the client whether it reads, writes or destroys, so the client can ask before running it. An unknown value stops
+the server at startup.
+
+Attaching or detaching a trigger makes ILM re-save every platform trigger of that event to run as the identity that
+made the change.
 
 Above `read-only`, HTTP mode requires `ILM_AUTH_METHOD=oauth-passthrough`, and the server refuses to start otherwise.
 With a client certificate or client credentials, the HTTP endpoint has no login of its own, and every caller would act

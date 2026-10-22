@@ -1,0 +1,66 @@
+{
+  "uuid": "6daef4cf-2ad8-45f8-8998-de8d3fc44fad",
+  "name": "name-1",
+  "type": "event",
+  "resource": "certificates",
+  "ignoreTrigger": false,
+  "event": "certificate_discovered",
+  "rules": [
+    {
+      "uuid": "2a1e1be1-f536-468e-a687-ea8f1848e448",
+      "name": "name-2",
+      "resource": "certificates",
+      "conditions": [
+        {
+          "uuid": "9f828ed1-dfa1-4dc3-ac20-75c28d83b495",
+          "name": "name-3",
+          "type": "checkField",
+          "resource": "certificates",
+          "items": [
+            {
+              "fieldSource": "property",
+              "fieldIdentifier": "ISSUERDN",
+              "operator": "NOT_CONTAINS",
+              "value": "value-4"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "actions": [
+    {
+      "uuid": "14e05059-a801-4648-92d2-20ea5ec886b9",
+      "name": "name-5",
+      "resource": "certificates",
+      "executions": [
+        {
+          "uuid": "ab15dfa8-4192-4086-b9cd-dcea27c3cfdc",
+          "name": "name-6",
+          "description": "description-7",
+          "type": "setField",
+          "resource": "certificates",
+          "items": [
+            {
+              "fieldSource": "property",
+              "fieldIdentifier": "GROUP_NAME",
+              "data": [
+                "5a58cdc9-604d-4325-bbca-edaf335773cf"
+              ]
+            },
+            {
+              "fieldSource": "custom",
+              "fieldIdentifier": "attribute-8|TEXT",
+              "data": "value-9"
+            },
+            {
+              "fieldSource": "custom",
+              "fieldIdentifier": "attribute-10|TEXT",
+              "data": "value-11"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

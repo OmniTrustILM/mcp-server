@@ -1,0 +1,21 @@
+[
+  {
+    "uuid": "189e3021-2238-4398-baf9-8938b5bcf475",
+    "name": "name-72",
+    "description": "description-73",
+    "systemRole": true
+  },
+  {
+    "uuid": "32a8b6a5-613c-40d1-8ea3-f1ba27a3ade5",
+    "name": "name-74",
+    "description": "description-75",
+    "email": "email-76",
+    "systemRole": false
+  },
+  {
+    "uuid": "566582cf-5eb0-4529-857e-b98a880ac022",
+    "name": "name-77",
+    "description": "description-78",
+    "systemRole": false
+  }
+]
