@@ -52,6 +52,7 @@ public class WorkflowServiceImpl implements WorkflowService {
     public String createTrigger(TriggerInput input) {
         return ToolResponses.run(CREATING_TRIGGER, () -> {
             TriggerPlan plan = TriggerRequests.plan(input);
+            checkFieldNames(plan);
             TriggerChain chain = new TriggerChain(ilmApiClient);
             try {
                 TriggerDetailDto trigger = chain.create(plan);
@@ -68,6 +69,16 @@ public class WorkflowServiceImpl implements WorkflowService {
                 return chain.isEmpty() ? error : error + "\n" + chain.undo();
             }
         });
+    }
+
+    private void checkFieldNames(TriggerPlan plan) {
+        String resource = plan.event().getResource().getCode();
+        if (!plan.conditions().isEmpty()) {
+            TriggerRequests.checkConditionFields(plan.conditions(), ilmApiClient.listRuleFilterFields(resource, false));
+        }
+        if (!plan.setFields().isEmpty()) {
+            TriggerRequests.checkSetFields(plan.setFields(), ilmApiClient.listRuleFilterFields(resource, true));
+        }
     }
 
     private String attachCreated(String triggerUuid, ResourceEvent event) {

@@ -3,13 +3,18 @@ package com.otilm.mcp.service;
 import com.otilm.api.model.client.certificate.SearchFilterRequestDto;
 import com.otilm.api.model.core.other.ResourceEvent;
 import com.otilm.api.model.core.search.FilterFieldSource;
+import com.otilm.api.model.core.search.SearchFieldDataByGroupDto;
+import com.otilm.api.model.core.search.SearchFieldDataDto;
 import com.otilm.api.model.core.workflows.ConditionItemRequestDto;
 import com.otilm.api.model.core.workflows.ExecutionItemRequestDto;
 import java.io.Serializable;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import tools.jackson.core.JacksonException;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.DeserializationFeature;
@@ -80,6 +85,43 @@ public final class TriggerRequests {
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Unknown event '%s'. Valid events: %s.".formatted(value, eventCodes())));
+    }
+
+    /**
+     * Refuses conditions on fields that ILM does not list for rule conditions on the trigger's resource.
+     */
+    public static void checkConditionFields(List<ConditionItemRequestDto> conditions,
+            List<SearchFieldDataByGroupDto> fields) {
+        refuseUnlisted(conditions.stream().map(item -> fieldName(item.getFieldSource(), item.getFieldIdentifier())),
+                fields, "Conditions cannot check %s; list_trigger_fields lists the fields they can check.");
+    }
+
+    /**
+     * Refuses setFields entries for fields that ILM does not list as settable on the trigger's resource.
+     */
+    public static void checkSetFields(List<ExecutionItemRequestDto> setFields, List<SearchFieldDataByGroupDto> fields) {
+        refuseUnlisted(setFields.stream().map(item -> fieldName(item.getFieldSource(), item.getFieldIdentifier())),
+                fields, "setFields cannot set %s; list_trigger_fields lists the fields it can set.");
+    }
+
+    private static void refuseUnlisted(Stream<String> requested, List<SearchFieldDataByGroupDto> fields,
+            String refusal) {
+        Set<String> listed = Objects
+                .requireNonNullElse(fields, List.<SearchFieldDataByGroupDto>of())
+                .stream()
+                .flatMap(group -> Objects
+                        .requireNonNullElse(group.getSearchFieldData(), List.<SearchFieldDataDto>of())
+                        .stream()
+                        .map(field -> fieldName(group.getFilterFieldSource(), field.getFieldIdentifier())))
+                .collect(Collectors.toSet());
+        List<String> unlisted = requested.filter(name -> !listed.contains(name)).distinct().toList();
+        if (!unlisted.isEmpty()) {
+            throw new IllegalArgumentException(refusal.formatted(String.join(", ", unlisted)));
+        }
+    }
+
+    private static String fieldName(FilterFieldSource source, String identifier) {
+        return code(source) + " " + identifier;
     }
 
     private static String eventCodes() {

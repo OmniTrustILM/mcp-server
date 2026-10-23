@@ -52,7 +52,7 @@ public class WorkflowTool {
     }
 
     @McpTool(name = "create_trigger",
-            description = "Set up an ILM workflow in one call: when the event happens and the conditions hold, set fields, send a notification, or ignore the object. Creates the condition, rule, executions, action and trigger behind it, named after the trigger, and removes them again if a step fails. By default it also attaches the trigger to its event platform-wide; ILM then re-saves every platform trigger of that event to run as the identity that made the change. Use list_trigger_fields for the fields its conditions can check and its setFields can set.",
+            description = "Set up an ILM workflow in one call: when the event happens and the conditions hold, set fields, send a notification, or ignore the object. Creates the condition, rule, executions, action and trigger behind it, named after the trigger, and removes them again if a step fails. By default it also attaches the trigger to its event platform-wide; ILM then re-saves every platform trigger of that event to run as the identity that made the change. Conditions and setFields can only use the fields list_trigger_fields lists.",
             annotations = @McpTool.McpAnnotations(destructiveHint = false))
     public String createTrigger(
             @McpToolParam(

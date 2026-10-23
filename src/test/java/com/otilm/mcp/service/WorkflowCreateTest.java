@@ -26,6 +26,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlMatching;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.verify;
 import static com.otilm.mcp.IlmTestSupport.fixture;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -44,11 +45,12 @@ class WorkflowCreateTest {
     private static final String PROFILE = "00000000-0000-4000-8000-000000000102";
     private static final String WORKFLOW_OBJECTS = "/v1/workflows/.*";
     private static final String EVENTS = "/v1/settings/events";
+    private static final String RULE_FIELDS = "/v1/resources/certificates/filters/rules";
     private static final String CONDITIONS = "[{\"fieldSource\":\"property\",\"fieldIdentifier\":\"COMMON_NAME\",\"condition\":\"ENDS_WITH\",\"value\":\".example.com\"}]";
     private static final String SET_FIELDS = """
             [{"fieldSource":"property","fieldIdentifier":"GROUP_NAME","value":["%s"]},
              {"fieldSource":"property","fieldIdentifier":"OWNER","value":"%s"},
-             {"fieldSource":"custom","fieldIdentifier":"Category|STRING","value":"web"}]
+             {"fieldSource":"custom","fieldIdentifier":"attribute-1|STRING","value":"web"}]
             """.formatted(GROUP, OWNER);
 
     private WorkflowService service;
@@ -56,6 +58,10 @@ class WorkflowCreateTest {
     @BeforeEach
     void setUp(WireMockRuntimeInfo wmInfo) {
         service = new WorkflowServiceImpl(IlmTestSupport.client(wmInfo));
+        stubFor(get(urlEqualTo(RULE_FIELDS + "?settable=false"))
+                .willReturn(okJson(fixture("rule-fields-certificates"))));
+        stubFor(get(urlEqualTo(RULE_FIELDS + "?settable=true"))
+                .willReturn(okJson(fixture("rule-fields-certificates-settable"))));
     }
 
     @Test
@@ -82,7 +88,7 @@ class WorkflowCreateTest {
                 {"name":"expiring-web - set fields","type":"setField","items":[
                  {"fieldSource":"property","fieldIdentifier":"GROUP_NAME","data":["%s"]},
                  {"fieldSource":"property","fieldIdentifier":"OWNER","data":"%s"},
-                 {"fieldSource":"custom","fieldIdentifier":"Category|STRING","data":"web"}]}
+                 {"fieldSource":"custom","fieldIdentifier":"attribute-1|STRING","data":"web"}]}
                 """.formatted(GROUP, OWNER), false, true)));
         verify(postRequestedFor(urlEqualTo("/v1/workflows/executions")).withRequestBody(equalToJson("""
                 {"name":"expiring-web - notify","type":"sendNotification","items":[{"notificationProfileUuid":"%s"}]}
@@ -115,6 +121,7 @@ class WorkflowCreateTest {
 
         verify(0, postRequestedFor(urlEqualTo("/v1/workflows/conditions")));
         verify(0, postRequestedFor(urlEqualTo("/v1/workflows/rules")));
+        verify(0, getRequestedFor(urlPathEqualTo(RULE_FIELDS)));
         verify(patchRequestedFor(urlEqualTo(EVENTS))
                 .withRequestBody(
                         equalToJson("{\"event\":\"certificate_expiring\",\"triggerUuids\":[\"" + TRIGGER + "\"]}")));
@@ -242,6 +249,51 @@ class WorkflowCreateTest {
                         "/v1/workflows/executions/" + SET, "/v1/workflows/rules/" + RULE,
                         "/v1/workflows/conditions/" + CONDITION);
         assertThat(result).startsWith(error).endsWith("Removed what this call had created.");
+    }
+
+    @Test
+    void createTriggerRefusesConditionsOnUnlistedFieldsAndCreatesNothing() {
+        String conditions = """
+                [{"fieldSource":"property","fieldIdentifier":"COMMON_NAME","condition":"EQUALS","value":"a"},
+                 {"fieldSource":"property","fieldIdentifier":"GROUPNAME","condition":"EQUALS","value":"b"},
+                 {"fieldSource":"custom","fieldIdentifier":"Category|STRING","condition":"EQUALS","value":"c"}]
+                """;
+
+        String result = service
+                .createTrigger(new TriggerInput("expiring-web", "certificate_expiring", conditions, null, PROFILE, null,
+                        null));
+
+        verify(0, postRequestedFor(urlMatching(WORKFLOW_OBJECTS)));
+        verify(0, getRequestedFor(urlEqualTo(RULE_FIELDS + "?settable=true")));
+        assertThat(result)
+                .isEqualTo("Conditions cannot check property GROUPNAME, custom Category|STRING; list_trigger_fields "
+                        + "lists the fields they can check.");
+    }
+
+    @Test
+    void createTriggerCreatesNothingWhenTheFieldsCannotBeRead() {
+        stubFor(get(urlEqualTo(RULE_FIELDS + "?settable=false")).willReturn(aResponse().withStatus(403)));
+
+        String result = service
+                .createTrigger(new TriggerInput("expiring-web", "certificate_expiring", CONDITIONS, null, PROFILE, null,
+                        null));
+
+        verify(0, postRequestedFor(urlMatching(WORKFLOW_OBJECTS)));
+        assertThat(result).startsWith("Error creating trigger: ILM answered 403");
+    }
+
+    @Test
+    void createTriggerRefusesSetFieldsOnUnlistedFieldsAndCreatesNothing() {
+        String setFields = "[{\"fieldSource\":\"property\",\"fieldIdentifier\":\"COMMON_NAME\",\"value\":\"x\"}]";
+
+        String result = service
+                .createTrigger(new TriggerInput("expiring-web", "certificate_expiring", CONDITIONS, setFields, null,
+                        null, null));
+
+        verify(0, postRequestedFor(urlMatching(WORKFLOW_OBJECTS)));
+        assertThat(result)
+                .isEqualTo(
+                        "setFields cannot set property COMMON_NAME; list_trigger_fields lists the fields it can set.");
     }
 
     @Test
