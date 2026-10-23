@@ -23,6 +23,7 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClientException;
 
 import static com.otilm.mcp.service.TextFormat.field;
@@ -52,7 +53,7 @@ public class WorkflowServiceImpl implements WorkflowService {
     public String createTrigger(TriggerInput input) {
         return ToolResponses.run(CREATING_TRIGGER, () -> {
             TriggerPlan plan = TriggerRequests.plan(input);
-            checkFieldNames(plan);
+            checkReferences(plan);
             TriggerChain chain = new TriggerChain(ilmApiClient);
             try {
                 TriggerDetailDto trigger = chain.create(plan);
@@ -71,13 +72,21 @@ public class WorkflowServiceImpl implements WorkflowService {
         });
     }
 
-    private void checkFieldNames(TriggerPlan plan) {
+    private void checkReferences(TriggerPlan plan) {
         String resource = plan.event().getResource().getCode();
         if (!plan.conditions().isEmpty()) {
             TriggerRequests.checkConditionFields(plan.conditions(), ilmApiClient.listRuleFilterFields(resource, false));
         }
         if (!plan.setFields().isEmpty()) {
             TriggerRequests.checkSetFields(plan.setFields(), ilmApiClient.listRuleFilterFields(resource, true));
+        }
+        if (plan.notificationProfileUuid() != null) {
+            try {
+                ilmApiClient.getNotificationProfile(plan.notificationProfileUuid());
+            } catch (HttpClientErrorException.NotFound e) {
+                throw new IllegalArgumentException("Notification profile %s was not found; list_notification_profiles "
+                        .formatted(plan.notificationProfileUuid()) + "lists them.", e);
+            }
         }
     }
 

@@ -11,6 +11,9 @@ import com.otilm.api.model.client.cryptography.CryptographicKeyResponseDto;
 import com.otilm.api.model.client.dashboard.CryptographicAssetStatisticsDto;
 import com.otilm.api.model.client.dashboard.SigningRecordStatisticsDto;
 import com.otilm.api.model.client.dashboard.StatisticsDto;
+import com.otilm.api.model.client.notification.NotificationProfileDetailDto;
+import com.otilm.api.model.client.notification.NotificationProfileRequestDto;
+import com.otilm.api.model.client.notification.NotificationProfileResponseDto;
 import com.otilm.api.model.client.signing.profile.SigningProfileDto;
 import com.otilm.api.model.client.signing.profile.SigningProfileListDto;
 import com.otilm.api.model.client.signing.protocols.tsp.TspProfileListDto;
@@ -36,6 +39,7 @@ import com.otilm.api.model.core.cryptoasset.CryptographicAssetPqcExplanationDto;
 import com.otilm.api.model.core.cryptography.key.KeyDetailDto;
 import com.otilm.api.model.core.cryptography.token.TokenInstanceDto;
 import com.otilm.api.model.core.info.CoreInfoResponseDto;
+import com.otilm.api.model.core.notification.NotificationInstanceDto;
 import com.otilm.api.model.core.raprofile.RaProfileDto;
 import com.otilm.api.model.core.search.SearchFieldDataByGroupDto;
 import com.otilm.api.model.core.secret.SecretDetailDto;
@@ -58,6 +62,7 @@ import com.otilm.api.model.core.workflows.TriggerDetailDto;
 import com.otilm.api.model.core.workflows.TriggerDto;
 import com.otilm.api.model.core.workflows.TriggerRequestDto;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -496,5 +501,93 @@ public class IlmApiClient {
                 .uri("/v1/workflows/{collection}/{uuid}", collection.path(), uuid)
                 .retrieve()
                 .toBodilessEntity();
+    }
+
+    // ---- Notification endpoints ----
+
+    public ConnectorDto getConnector(String uuid) {
+        logger.debug("Fetching connector {}", uuid);
+        return restClient.get().uri("/v1/connectors/{uuid}", uuid).retrieve().body(ConnectorDto.class);
+    }
+
+    public List<ConnectorAttribute> listNotificationFields(String connectorUuid, String kind) {
+        logger.debug("Fetching the notification fields of connector {}", connectorUuid);
+        return restClient
+                .get()
+                .uri("/v1/connectors/{uuid}/attributes/notificationProvider/{kind}", connectorUuid, kind)
+                .retrieve()
+                .body(new ParameterizedTypeReference<>() {
+                });
+    }
+
+    public List<ConnectorAttribute> listNotificationMappings(String connectorUuid, String kind) {
+        logger.debug("Fetching the mappable notification attributes of connector {}", connectorUuid);
+        return restClient
+                .get()
+                .uri("/v1/notificationInstances/attributes/mapping/{uuid}/{kind}", connectorUuid, kind)
+                .retrieve()
+                .body(new ParameterizedTypeReference<>() {
+                });
+    }
+
+    public List<ConnectorAttribute> resolveNotificationCallback(String connectorUuid, String kind,
+            Map<String, Object> request) {
+        logger.debug("Resolving a notification field callback of connector {}", connectorUuid);
+        return restClient
+                .post()
+                .uri("/v1/connectors/{uuid}/notificationProvider/{kind}/callback", connectorUuid, kind)
+                .body(request)
+                .retrieve()
+                .body(new ParameterizedTypeReference<>() {
+                });
+    }
+
+    public List<NotificationInstanceDto> listNotificationInstances() {
+        logger.debug("Listing notification instances");
+        return restClient.get().uri("/v1/notificationInstances").retrieve().body(new ParameterizedTypeReference<>() {
+        });
+    }
+
+    public UuidDto createNotificationInstance(NotificationInstanceRequest request) {
+        logger.debug("Creating notification instance");
+        return restClient.post().uri("/v1/notificationInstances").body(request).retrieve().body(UuidDto.class);
+    }
+
+    public void deleteNotificationInstance(String uuid) {
+        logger.debug("Deleting notification instance {}", uuid);
+        restClient.delete().uri("/v1/notificationInstances/{uuid}", uuid).retrieve().toBodilessEntity();
+    }
+
+    public void deleteNotificationProfile(String uuid) {
+        logger.debug("Deleting notification profile {}", uuid);
+        restClient.delete().uri("/v1/notificationProfiles/{uuid}", uuid).retrieve().toBodilessEntity();
+    }
+
+    public NotificationProfileResponseDto listNotificationProfiles() {
+        logger.debug("Listing notification profiles");
+        return restClient
+                .get()
+                .uri("/v1/notificationProfiles?itemsPerPage=1000&pageNumber=1")
+                .retrieve()
+                .body(NotificationProfileResponseDto.class);
+    }
+
+    public NotificationProfileDetailDto createNotificationProfile(NotificationProfileRequestDto request) {
+        logger.debug("Creating notification profile");
+        return restClient
+                .post()
+                .uri("/v1/notificationProfiles")
+                .body(request)
+                .retrieve()
+                .body(NotificationProfileDetailDto.class);
+    }
+
+    public NotificationProfileDetailDto getNotificationProfile(String uuid) {
+        logger.debug("Fetching notification profile {}", uuid);
+        return restClient
+                .get()
+                .uri("/v1/notificationProfiles/{uuid}", uuid)
+                .retrieve()
+                .body(NotificationProfileDetailDto.class);
     }
 }

@@ -15,7 +15,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import tools.jackson.core.JacksonException;
@@ -30,8 +29,6 @@ import static com.otilm.mcp.service.TextFormat.code;
  */
 public final class TriggerRequests {
 
-    private static final Pattern UUID_FORMAT = Pattern
-            .compile("\\p{XDigit}{8}-\\p{XDigit}{4}-\\p{XDigit}{4}-\\p{XDigit}{4}-\\p{XDigit}{12}");
     private static final JsonMapper JSON_MAPPER = JsonMapper
             .builder()
             .findAndAddModules()
@@ -80,7 +77,7 @@ public final class TriggerRequests {
     }
 
     private static String profileUuid(String profile) {
-        if (profile != null && !UUID_FORMAT.matcher(profile).matches()) {
+        if (profile != null && !Uuids.valid(profile)) {
             throw new IllegalArgumentException("notificationProfileUuid '%s' is not a UUID.".formatted(profile));
         }
         return profile;

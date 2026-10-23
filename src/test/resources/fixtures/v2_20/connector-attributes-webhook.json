@@ -1,0 +1,93 @@
+[
+  {
+    "uuid": "00000000-0000-4000-8000-000000000611",
+    "name": "data_webhookUrl",
+    "version": 2,
+    "type": "data",
+    "content": [
+      {
+        "data": "https://example.com/hooks/ilm"
+      }
+    ],
+    "contentType": "string",
+    "properties": {
+      "label": "Webhook URL",
+      "visible": true,
+      "required": true,
+      "readOnly": false,
+      "list": false,
+      "multiSelect": false,
+      "protectionLevel": "none",
+      "extensibleList": false
+    },
+    "constraints": [
+      {
+        "type": "regExp",
+        "data": "https?://.*"
+      }
+    ]
+  },
+  {
+    "uuid": "00000000-0000-4000-8000-000000000612",
+    "name": "info_contentType",
+    "version": 2,
+    "content": [
+      {
+        "data": "RAW_JSON sends the event data as it is; JSON and XML use a content template."
+      }
+    ],
+    "type": "info",
+    "contentType": "text",
+    "properties": {
+      "label": "Content type information",
+      "visible": true
+    }
+  },
+  {
+    "uuid": "00000000-0000-4000-8000-000000000613",
+    "name": "data_contentType",
+    "version": 2,
+    "type": "data",
+    "content": [
+      {
+        "data": "RAW_JSON"
+      },
+      {
+        "data": "JSON"
+      },
+      {
+        "data": "XML"
+      }
+    ],
+    "contentType": "string",
+    "properties": {
+      "label": "Content type",
+      "visible": true,
+      "required": true,
+      "readOnly": false,
+      "list": true,
+      "multiSelect": false,
+      "protectionLevel": "none",
+      "extensibleList": false
+    }
+  },
+  {
+    "uuid": "00000000-0000-4000-8000-000000000614",
+    "name": "group_contentTemplate",
+    "version": 2,
+    "type": "group",
+    "attributeCallback": {
+      "callbackContext": "/v1/notificationProvider/callbacks/template/{contentType}/attributes",
+      "callbackMethod": "GET",
+      "mappings": [
+        {
+          "from": "data_contentType.data",
+          "to": "contentType",
+          "targets": [
+            "pathVariable"
+          ]
+        }
+      ]
+    }
+  }
+]

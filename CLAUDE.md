@@ -121,6 +121,7 @@ MCP Tool (@McpTool) → Service (formatting) → IlmApiClient (RestClient) → I
 - The minimum supported ILM is 2.17. A tool that needs a newer ILM gets an `IlmFeature` entry with its minimum version, runs through `PlatformVersionCheck.run(...)`, and names that version in its description
 - Jackson 3 only: no imports from Jackson 2 `databind`, `core`, `datatype`, `dataformat` or `module` packages (`com.fasterxml.jackson.annotation` is shared and allowed)
 - Every `RestClient` to ILM comes from `IlmApiClient.restClientBuilder(...)`, which reads responses leniently so older ILM versions parse; tests use `IlmTestSupport.client(...)`
+- Connector attribute definitions and callback answers are read into the server's own records (`ConnectorAttribute`), because the interfaces' attribute classes need Jackson 2
 - Test fixtures hold synthetic values only, with canonical UUIDs; responses recorded from ILM 2.20 live in `src/test/resources/fixtures/v2_20`
 - Write tools validate their input before calling ILM and answer with what they created or changed, including UUIDs; `create_trigger` removes what it created when a later step fails
 - Commits carry a DCO sign-off (`git commit -s`)

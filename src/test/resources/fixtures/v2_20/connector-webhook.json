@@ -1,0 +1,18 @@
+{
+  "uuid": "00000000-0000-4000-8000-000000000502",
+  "name": "name-4",
+  "url": "https://webhook-np.example.com",
+  "authType": "none",
+  "authAttributes": [],
+  "status": "connected",
+  "functionGroups": [
+    {
+      "functionGroupCode": "notificationProvider",
+      "name": "notificationProvider",
+      "kinds": [
+        "WEBHOOK"
+      ],
+      "endPoints": []
+    }
+  ]
+}

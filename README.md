@@ -8,8 +8,9 @@ Built with [Spring AI MCP](https://docs.spring.io/spring-ai/reference/api/mcp/mc
 
 ## Features
 
-- **48 tools** for certificates, cryptographic keys, infrastructure, secrets, vaults, signing, CBOMs, the
-  cryptographic asset inventory with its post-quantum (PQC) readiness, and workflows: 42 that read, 6 that change ILM
+- **56 tools** for certificates, cryptographic keys, infrastructure, secrets, vaults, signing, CBOMs, the
+  cryptographic asset inventory with its post-quantum (PQC) readiness, workflows and notifications: 46 that read, 10
+  that change ILM
 - **Read-only by default**: access levels and toolsets decide which tools clients see
 - **Two transport modes**: HTTP (Streamable HTTP) and STDIO
 - **Three authentication methods**: client certificate, OAuth pass-through, OAuth client credentials
@@ -129,6 +130,19 @@ the version it needs.
 | `list_users` | Users with username, name, email, and UUID         |
 | `list_roles` | Roles with name, UUID, and description             |
 
+### Notifications
+
+| Tool                                  | Description                                                                              |
+|---------------------------------------|------------------------------------------------------------------------------------------|
+| `list_notification_instances`         | Notification instances (email, webhook and other channels) with connector and kind       |
+| `get_notification_connector_settings` | What a new instance needs: fields, defaults, choices and mappable recipient attributes   |
+| `create_notification_instance`        | Create an instance, with connector defaults and callback fields filled in (`read-write`) |
+| `delete_notification_instance`        | Delete an instance that no profile sends through (`full`)                                |
+| `list_notification_profiles`          | Notification profiles with their recipients and instance                                 |
+| `get_notification_profile`            | One profile in plain words: recipients, instance, in-app flag, frequency, repetitions    |
+| `create_notification_profile`         | Create a profile: recipients, instance or in-app, and repeats (`read-write`)             |
+| `delete_notification_profile`         | Delete a profile that no trigger sends through (`full`)                                  |
+
 ## Quick Start
 
 ### Prerequisites
@@ -205,10 +219,10 @@ No additional configuration needed. The server forwards the Bearer token from in
 
 `read-only` offers only tools that read. `read-write` adds tools that create or change things, and `full` adds tools
 that delete, revoke or destroy. The toolsets are `certificates`, `keys`, `infrastructure`, `secrets`, `vaults`,
-`crypto-assets`, `cboms`, `signing`, `workflows`, `attributes` and `users`; `get_searchable_fields` is always
-available. Tools outside the access level or the toolsets are not registered, so clients never see them. Each tool
-tells the client whether it reads, writes or destroys, so the client can ask before running it. An unknown value stops
-the server at startup.
+`crypto-assets`, `cboms`, `signing`, `workflows`, `attributes`, `users` and `notifications`; `get_searchable_fields`
+is always available. Tools outside the access level or the toolsets are not registered, so clients never see them.
+Each tool tells the client whether it reads, writes or destroys, so the client can ask before running it. An unknown
+value stops the server at startup.
 
 Attaching or detaching a trigger makes ILM re-save every platform trigger of that event to run as the identity that
 made the change.

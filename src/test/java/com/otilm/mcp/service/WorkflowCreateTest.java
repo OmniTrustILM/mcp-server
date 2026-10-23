@@ -64,6 +64,9 @@ class WorkflowCreateTest {
                 .willReturn(okJson(fixture("rule-fields-certificates"))));
         stubFor(get(urlEqualTo(RULE_FIELDS + "?settable=true"))
                 .willReturn(okJson(fixture("rule-fields-certificates-settable"))));
+        stubFor(get(urlEqualTo("/v1/notificationProfiles/" + PROFILE)).willReturn(okJson("""
+                {"uuid":"%s","name":"p","version":1,"recipientType":"owner","internalNotification":true}
+                """.formatted(PROFILE))));
     }
 
     @Test
@@ -329,6 +332,20 @@ class WorkflowCreateTest {
         assertThat(result)
                 .isEqualTo(
                         "setFields cannot set property COMMON_NAME; list_trigger_fields lists the fields it can set.");
+    }
+
+    @Test
+    void createTriggerRefusesAnUnknownNotificationProfile() {
+        stubFor(get(urlEqualTo("/v1/notificationProfiles/" + PROFILE)).willReturn(aResponse().withStatus(404)));
+
+        String result = service
+                .createTrigger(new TriggerInput("expiring-web", "certificate_expiring", CONDITIONS, null, PROFILE, null,
+                        null));
+
+        verify(0, postRequestedFor(urlMatching(WORKFLOW_OBJECTS)));
+        assertThat(result)
+                .isEqualTo(
+                        "Notification profile " + PROFILE + " was not found; list_notification_profiles lists them.");
     }
 
     @Test

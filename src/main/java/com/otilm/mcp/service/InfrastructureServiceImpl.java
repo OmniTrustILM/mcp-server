@@ -9,12 +9,14 @@ import com.otilm.api.model.core.authority.AuthorityInstanceDto;
 import com.otilm.api.model.core.certificate.group.GroupDto;
 import com.otilm.api.model.core.certificate.group.GroupRequestDto;
 import com.otilm.api.model.core.connector.ConnectorDto;
+import com.otilm.api.model.core.connector.FunctionGroupDto;
 import com.otilm.api.model.core.credential.CredentialDto;
 import com.otilm.api.model.core.cryptography.token.TokenInstanceDto;
 import com.otilm.api.model.core.entity.EntityInstanceDto;
 import com.otilm.api.model.core.raprofile.RaProfileDto;
 import com.otilm.mcp.client.IlmApiClient;
 import java.util.Collection;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 
 import static com.otilm.mcp.service.TextFormat.code;
@@ -78,7 +80,12 @@ public class InfrastructureServiceImpl implements InfrastructureService {
                         field(sb, INDENT, "URL", connector.getUrl());
                         field(sb, INDENT, "Auth Type", code(connector.getAuthType()));
                         if (connector.getFunctionGroups() != null && !connector.getFunctionGroups().isEmpty()) {
-                            field(sb, INDENT, "Function Groups", connector.getFunctionGroups().size());
+                            field(sb, INDENT, "Function Groups",
+                                    connector
+                                            .getFunctionGroups()
+                                            .stream()
+                                            .map(InfrastructureServiceImpl::functionGroup)
+                                            .collect(Collectors.joining("; ")));
                         }
                     });
         });
@@ -189,5 +196,12 @@ public class InfrastructureServiceImpl implements InfrastructureService {
             UuidDto created = ilmApiClient.createGroup(request);
             return "Created group " + request.getName() + " [" + created.getUuid() + "].";
         });
+    }
+
+    private static String functionGroup(FunctionGroupDto group) {
+        String name = group.getFunctionGroupCode() == null ? group.getName() : group.getFunctionGroupCode().getCode();
+        return group.getKinds() == null || group.getKinds().isEmpty()
+                ? name
+                : name + " (" + String.join(", ", group.getKinds()) + ")";
     }
 }

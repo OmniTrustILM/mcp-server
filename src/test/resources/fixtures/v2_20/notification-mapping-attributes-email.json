@@ -1,0 +1,28 @@
+[
+  {
+    "uuid": "00000000-0000-4000-8000-000000000621",
+    "name": "data_recipientEmailAddress",
+    "version": 3,
+    "type": "data",
+    "contentType": "string",
+    "properties": {
+      "label": "Recipient email address",
+      "visible": true,
+      "required": false,
+      "readOnly": false,
+      "list": true,
+      "multiSelect": true,
+      "protectionLevel": "none",
+      "extensibleList": false
+    },
+    "constraints": [
+      {
+        "description": "Email address(es)",
+        "errorMessage": "Invalid email address format. Separate multiple addresses with ',' or ';'.",
+        "type": "regExp",
+        "data": "^\\s*[a-zA-Z0-9.!#$%&'*+\\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*(?:\\s*[,;]\\s*[a-zA-Z0-9.!#$%&'*+\\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*)*\\s*$"
+      }
+    ],
+    "schemaVersion": "v3"
+  }
+]
