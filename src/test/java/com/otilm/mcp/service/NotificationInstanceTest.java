@@ -74,7 +74,7 @@ class NotificationInstanceTest {
     void webhookSettingsSayWhatTheTemplateDependsOn() {
         assertThat(service.getNotificationConnectorSettings(WEBHOOK_CONNECTOR, "WEBHOOK", null))
                 .contains("- data_contentType | Content type (string, required) — One of: RAW_JSON, JSON, XML",
-                        "Content type information: RAW_JSON sends",
+                        "Content type information: The content type of the data to be sent to the webhook.",
                         "group_contentTemplate needs data_contentType; give it in attributes to see its fields");
         verify(0, postRequestedFor(urlPathMatching(".*/callback")));
     }
@@ -161,7 +161,7 @@ class NotificationInstanceTest {
                                  {"uuid":"00000000-0000-4000-8000-000000000611","name":"data_webhookUrl","contentType":"string",
                                   "content":[{"data":"https://example.com/h"}]},
                                  {"uuid":"00000000-0000-4000-8000-000000000613","name":"data_contentType","contentType":"string",
-                                  "content":[{"data":"JSON"}]},
+                                  "content":[{"reference":"json","data":"JSON"}]},
                                  {"uuid":"00000000-0000-4000-8000-000000000615","name":"data_contentTemplate_json",
                                   "contentType":"codeblock",
                                   "content":[{"data":{"code":"eyJldmVudCI6IiR7ZXZlbnR9In0=","language":"json"}}]}]}
@@ -205,10 +205,9 @@ class NotificationInstanceTest {
                 .willReturn(okJson("""
                         [{"uuid":"00000000-0000-4000-8000-000000000701","name":"data_tags","type":"data",
                           "contentType":"string","properties":{"label":"Tags","required":true,"list":true,
-                          "extensibleList":true},"content":[{"data":"a"},{"data":"b"}]},
+                          "extensibleList":true},"content":[{"reference":"a","data":"a"},{"reference":"b","data":"b"}]},
                          {"uuid":"00000000-0000-4000-8000-000000000702","name":"data_labels","type":"data",
-                          "contentType":"string","properties":{"label":"Labels","list":true,"extensibleList":true},
-                          "content":[]}]
+                          "contentType":"string","properties":{"label":"Labels","list":true,"extensibleList":true}}]
                         """)));
 
         assertThat(service.getNotificationConnectorSettings(EMAIL_CONNECTOR, "EMAIL", null))
@@ -222,7 +221,7 @@ class NotificationInstanceTest {
                   "content":[{"data":"custom"}]},
                  {"uuid":"00000000-0000-4000-8000-000000000702","name":"data_labels","contentType":"string",
                   "content":[{"data":"blue"}]}]}
-                """, false, true)));
+                """, false, true)).withRequestBody(notContaining("reference")));
     }
 
     @ParameterizedTest
@@ -284,7 +283,7 @@ class NotificationInstanceTest {
         verify(postRequestedFor(urlEqualTo(WEBHOOK_CALLBACK))
                 .withRequestBody(equalToJson("{\"pathVariable\":{\"contentType\":\"JSON\"}}", false, true)));
         verify(postRequestedFor(urlEqualTo(INSTANCES))
-                .withRequestBody(containing("\"content\":[{\"data\":\"JSON\"}]")));
+                .withRequestBody(containing("\"content\":[{\"reference\":\"json\",\"data\":\"JSON\"}]")));
     }
 
     @Test
