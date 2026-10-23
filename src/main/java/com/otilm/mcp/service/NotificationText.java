@@ -95,7 +95,11 @@ final class NotificationText {
 
     private static String hint(ConnectorAttribute field) {
         if (field.list()) {
-            return "One of: " + field.options().stream().map(String::valueOf).collect(Collectors.joining(", "));
+            String options = field.options().stream().map(String::valueOf).collect(Collectors.joining(", "));
+            if (field.extensible()) {
+                return options.isEmpty() ? "Any value" : "Suggested: " + options + "; other values are allowed";
+            }
+            return "One of: " + options;
         }
         if (InstanceFields.CODEBLOCK.equals(field.contentType())) {
             boolean template = field.defaultData() instanceof Map<?, ?> code && code.get("code") != null;

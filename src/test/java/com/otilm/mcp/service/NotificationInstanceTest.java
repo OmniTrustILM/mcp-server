@@ -9,6 +9,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
+import static com.github.tomakehurst.wiremock.client.WireMock.containing;
 import static com.github.tomakehurst.wiremock.client.WireMock.delete;
 import static com.github.tomakehurst.wiremock.client.WireMock.deleteRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
@@ -195,6 +196,93 @@ class NotificationInstanceTest {
                         + "(json)");
         assertThat(createWebhook("{\"data_webhookUrl\":\"https://example.com/h\",\"data_contentType\":\"JSON\"}"))
                 .contains("ILM defaults used: data_contentTemplate_json");
+    }
+
+    @Test
+    void extensibleListsTakeValuesOutsideTheirChoices() {
+        stubCreated();
+        stubFor(get(urlEqualTo("/v1/connectors/" + EMAIL_CONNECTOR + "/attributes/notificationProvider/EMAIL"))
+                .willReturn(okJson("""
+                        [{"uuid":"00000000-0000-4000-8000-000000000701","name":"data_tags","type":"data",
+                          "contentType":"string","properties":{"label":"Tags","required":true,"list":true,
+                          "extensibleList":true},"content":[{"data":"a"},{"data":"b"}]},
+                         {"uuid":"00000000-0000-4000-8000-000000000702","name":"data_labels","type":"data",
+                          "contentType":"string","properties":{"label":"Labels","list":true,"extensibleList":true},
+                          "content":[]}]
+                        """)));
+
+        assertThat(service.getNotificationConnectorSettings(EMAIL_CONNECTOR, "EMAIL", null))
+                .contains("- data_tags | Tags (string, required) — Suggested: a, b; other values are allowed",
+                        "- data_labels | Labels (string) — Any value");
+        createEmail("{\"data_tags\":\"custom\",\"data_labels\":\"blue\"}", null);
+
+        verify(postRequestedFor(urlEqualTo(INSTANCES)).withRequestBody(equalToJson("""
+                {"attributes":[
+                 {"uuid":"00000000-0000-4000-8000-000000000701","name":"data_tags","contentType":"string",
+                  "content":[{"data":"custom"}]},
+                 {"uuid":"00000000-0000-4000-8000-000000000702","name":"data_labels","contentType":"string",
+                  "content":[{"data":"blue"}]}]}
+                """, false, true)));
+    }
+
+    @ParameterizedTest
+    @CsvSource(delimiter = '|',
+            value = {
+                    "{\"data_tags\":[\"x\",\"y\"]}|Field data_tags takes one value.",
+                    "{\"data_tags\":[null]}|Field data_tags has no value; leave it out to use the connector's default.",
+                    "{\"data_tags\":[]}|Field data_tags has no value; leave it out to use the connector's default."})
+    void listValuesMustBePresentAndSingle(String attributes, String message) {
+        stubFor(get(urlEqualTo("/v1/connectors/" + EMAIL_CONNECTOR + "/attributes/notificationProvider/EMAIL"))
+                .willReturn(okJson("""
+                        [{"uuid":"00000000-0000-4000-8000-000000000701","name":"data_tags","type":"data",
+                          "contentType":"string","properties":{"label":"Tags","required":true,"list":true,
+                          "extensibleList":true},"content":[]}]
+                        """)));
+
+        assertThat(createEmail(attributes, null)).isEqualTo(message);
+        verify(0, postRequestedFor(urlEqualTo(INSTANCES)));
+    }
+
+    @Test
+    void severalContentTypesAreRefusedBeforeTheCallback() {
+        assertThat(createWebhook(
+                "{\"data_webhookUrl\":\"https://example.com/h\",\"data_contentType\":[\"JSON\",\"XML\"]}"))
+                .isEqualTo("Field data_contentType takes one value.");
+        verify(0, postRequestedFor(urlPathMatching(".*/callback")));
+    }
+
+    @Test
+    void multiSelectSourceReachesTheCallbackAsAList() {
+        String callback = "/v1/connectors/" + EMAIL_CONNECTOR + "/notificationProvider/EMAIL/callback";
+        stubFor(get(urlEqualTo("/v1/connectors/" + EMAIL_CONNECTOR + "/attributes/notificationProvider/EMAIL"))
+                .willReturn(okJson("""
+                        [{"uuid":"00000000-0000-4000-8000-000000000703","name":"data_channels","type":"data",
+                          "contentType":"string","properties":{"label":"Channels","list":true,"multiSelect":true},
+                          "content":[{"data":"a"},{"data":"b"}]},
+                         {"uuid":"00000000-0000-4000-8000-000000000704","name":"group_extra","type":"group",
+                          "attributeCallback":{"callbackMethod":"GET","mappings":[
+                           {"from":"data_channels.data","to":"channels","targets":["requestParameter"]}]}}]
+                        """)));
+        stubFor(post(urlEqualTo(callback)).willReturn(okJson("[]")));
+
+        service.getNotificationConnectorSettings(EMAIL_CONNECTOR, "EMAIL", "{\"data_channels\":[\"a\"]}");
+
+        verify(postRequestedFor(urlEqualTo(callback))
+                .withRequestBody(equalToJson("{\"requestParameter\":{\"channels\":[\"a\"]}}", false, true)));
+    }
+
+    @Test
+    void singleItemArrayResolvesTheCallback() {
+        stubCreated();
+        stubFor(post(urlEqualTo(WEBHOOK_CALLBACK)).willReturn(okJson(fixture("notification-callback-template-json"))));
+
+        createWebhook("{\"data_webhookUrl\":\"https://example.com/h\",\"data_contentType\":[\"JSON\"],"
+                + "\"data_contentTemplate_json\":\"t\"}");
+
+        verify(postRequestedFor(urlEqualTo(WEBHOOK_CALLBACK))
+                .withRequestBody(equalToJson("{\"pathVariable\":{\"contentType\":\"JSON\"}}", false, true)));
+        verify(postRequestedFor(urlEqualTo(INSTANCES))
+                .withRequestBody(containing("\"content\":[{\"data\":\"JSON\"}]")));
     }
 
     @Test

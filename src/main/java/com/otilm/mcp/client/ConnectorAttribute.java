@@ -10,7 +10,8 @@ import java.util.Map;
 public record ConnectorAttribute(String uuid, String name, String type, String contentType, Properties properties,
         List<Map<String, Object>> content, Callback attributeCallback) {
 
-    public record Properties(String label, Boolean required, Boolean list, Boolean multiSelect, Boolean readOnly) {
+    public record Properties(String label, Boolean required, Boolean list, Boolean multiSelect, Boolean readOnly,
+            Boolean extensibleList) {
     }
 
     public record Callback(String callbackContext, String callbackMethod, List<Mapping> mappings) {
@@ -29,6 +30,17 @@ public record ConnectorAttribute(String uuid, String name, String type, String c
 
     public boolean list() {
         return properties != null && Boolean.TRUE.equals(properties.list());
+    }
+
+    public boolean multiSelect() {
+        return properties != null && Boolean.TRUE.equals(properties.multiSelect());
+    }
+
+    /**
+     * Whether a list field also takes values outside its choices.
+     */
+    public boolean extensible() {
+        return properties != null && Boolean.TRUE.equals(properties.extensibleList());
     }
 
     public boolean readOnly() {

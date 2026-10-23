@@ -10,6 +10,7 @@ import com.otilm.mcp.client.NotificationInstanceRequest.Field;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -29,6 +30,7 @@ final class InstanceFields {
     static final String CODEBLOCK = "codeblock";
 
     private static final String LANGUAGE = "language";
+    private static final String NO_VALUE = "Field %s has no value; leave it out to use the connector's default.";
 
     private static final JsonMapper JSON_MAPPER = JsonMapper.builder().findAndAddModules().build();
     private static final Set<String> FILLABLE = Set
@@ -158,17 +160,14 @@ final class InstanceFields {
 
     private static List<Object> content(ConnectorAttribute field, Object value) {
         if (value == null) {
-            throw new IllegalArgumentException(
-                    "Field %s has no value; leave it out to use the connector's default.".formatted(field.name()));
+            throw new IllegalArgumentException(NO_VALUE.formatted(field.name()));
         }
         if (!FILLABLE.contains(field.contentType())) {
             throw new IllegalArgumentException("Field %s has content type %s, which this tool cannot fill."
                     .formatted(field.name(), field.contentType()));
         }
         if (field.list()) {
-            List<?> chosen = value instanceof List<?> items ? items : List.of(value);
-            chosen.forEach(item -> checkOption(field, item));
-            return chosen.stream().map(item -> (Object) Map.of("data", item)).toList();
+            return selections(field, value).stream().map(item -> (Object) Map.of("data", item)).toList();
         }
         if (CODEBLOCK.equals(field.contentType())) {
             if (!(value instanceof String text)) {
@@ -196,8 +195,24 @@ final class InstanceFields {
                 : data != null;
     }
 
+    /**
+     * The values given for a list field: present, one unless the field takes several, and among its choices unless the
+     * list is extensible.
+     */
+    private static List<?> selections(ConnectorAttribute field, Object value) {
+        List<?> chosen = value instanceof List<?> items ? items : Collections.singletonList(value);
+        if (chosen.isEmpty() || chosen.contains(null)) {
+            throw new IllegalArgumentException(NO_VALUE.formatted(field.name()));
+        }
+        if (!field.multiSelect() && chosen.size() > 1) {
+            throw new IllegalArgumentException("Field %s takes one value.".formatted(field.name()));
+        }
+        chosen.forEach(item -> checkOption(field, item));
+        return chosen;
+    }
+
     private static void checkOption(ConnectorAttribute field, Object value) {
-        if (!field.options().contains(value)) {
+        if (!field.extensible() && !field.options().contains(value)) {
             throw new IllegalArgumentException("%s must be one of %s."
                     .formatted(field.name(),
                             field.options().stream().map(String::valueOf).collect(Collectors.joining(", "))));
@@ -258,10 +273,11 @@ final class InstanceFields {
             return source == null ? null : source.defaultData();
         }
         Object value = values.get(name);
-        if (source != null && source.list()) {
-            checkOption(source, value);
+        if (source == null || !source.list()) {
+            return value;
         }
-        return value;
+        List<?> chosen = selections(source, value);
+        return source.multiSelect() ? chosen : chosen.get(0);
     }
 
     private static String sourceName(String from) {
