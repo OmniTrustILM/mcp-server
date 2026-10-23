@@ -33,6 +33,7 @@ final class InstanceFields {
     private static final String NO_VALUE = "Field %s has no value; leave it out to use the connector's default.";
 
     private static final JsonMapper JSON_MAPPER = JsonMapper.builder().findAndAddModules().build();
+    private static final Set<String> TEXT = Set.of("string", "text", CODEBLOCK);
     private static final Set<String> FILLABLE = Set
             .of("string", "text", "integer", "float", "boolean", "date", "time", "datetime", CODEBLOCK);
 
@@ -169,11 +170,9 @@ final class InstanceFields {
         if (field.list()) {
             return selections(field, value).stream().map(item -> (Object) Map.of("data", item)).toList();
         }
+        requireText(field, value);
         if (CODEBLOCK.equals(field.contentType())) {
-            if (!(value instanceof String text)) {
-                throw new IllegalArgumentException("Field %s takes plain text.".formatted(field.name()));
-            }
-            String code = Base64.getEncoder().encodeToString(text.getBytes(StandardCharsets.UTF_8));
+            String code = Base64.getEncoder().encodeToString(((String) value).getBytes(StandardCharsets.UTF_8));
             return List.of(Map.of("data", Map.of("code", code, LANGUAGE, language(field))));
         }
         return List.of(Map.of("data", value));
@@ -207,8 +206,17 @@ final class InstanceFields {
         if (!field.multiSelect() && chosen.size() > 1) {
             throw new IllegalArgumentException("Field %s takes one value.".formatted(field.name()));
         }
-        chosen.forEach(item -> checkOption(field, item));
+        chosen.forEach(item -> {
+            requireText(field, item);
+            checkOption(field, item);
+        });
         return chosen;
+    }
+
+    private static void requireText(ConnectorAttribute field, Object value) {
+        if (TEXT.contains(field.contentType()) && !(value instanceof String)) {
+            throw new IllegalArgumentException("Field %s takes plain text.".formatted(field.name()));
+        }
     }
 
     private static void checkOption(ConnectorAttribute field, Object value) {

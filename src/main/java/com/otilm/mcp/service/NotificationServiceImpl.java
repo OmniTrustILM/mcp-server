@@ -147,7 +147,8 @@ public class NotificationServiceImpl implements NotificationService {
             String wanted = String.valueOf(target);
             CustomAttributeDefinitionDto custom = customAttributes
                     .stream()
-                    .filter(attribute -> wanted.equals(attribute.getName()) || wanted.equals(attribute.getUuid()))
+                    .filter(attribute -> wanted.equals(attribute.getName())
+                            || wanted.equalsIgnoreCase(attribute.getUuid()))
                     .findFirst()
                     .orElseThrow(() -> new IllegalArgumentException(
                             "No custom attribute named or with UUID '%s'. list_custom_attributes lists them."
@@ -226,7 +227,7 @@ public class NotificationServiceImpl implements NotificationService {
             NotificationInstanceDto instance = ilmApiClient
                     .listNotificationInstances()
                     .stream()
-                    .filter(candidate -> candidate.getUuid().equals(uuid == null ? null : uuid.trim()))
+                    .filter(candidate -> candidate.getUuid().equalsIgnoreCase(uuid == null ? null : uuid.trim()))
                     .findFirst()
                     .orElse(null);
             if (instance == null) {

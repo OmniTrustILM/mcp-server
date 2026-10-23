@@ -230,7 +230,9 @@ class NotificationInstanceTest {
             value = {
                     "{\"data_tags\":[\"x\",\"y\"]}|Field data_tags takes one value.",
                     "{\"data_tags\":[null]}|Field data_tags has no value; leave it out to use the connector's default.",
-                    "{\"data_tags\":[]}|Field data_tags has no value; leave it out to use the connector's default."})
+                    "{\"data_tags\":[]}|Field data_tags has no value; leave it out to use the connector's default.",
+                    "{\"data_tags\":{\"text\":\"x\"}}|Field data_tags takes plain text.",
+                    "{\"data_tags\":[[\"x\"]]}|Field data_tags takes plain text."})
     void listValuesMustBePresentAndSingle(String attributes, String message) {
         stubFor(get(urlEqualTo("/v1/connectors/" + EMAIL_CONNECTOR + "/attributes/notificationProvider/EMAIL"))
                 .willReturn(okJson("""
@@ -324,6 +326,30 @@ class NotificationInstanceTest {
     }
 
     @Test
+    void mappingMatchesAnUppercaseUuid() {
+        stubCreated();
+        stubFor(get(urlEqualTo("/v1/attributes/custom")).willReturn(okJson(fixture("custom-attributes"))));
+
+        assertThat(createEmail(TEMPLATE, "{\"data_recipientEmailAddress\":\"295E8F4E-B300-4F19-A8F4-A7CECB9DA498\"}"))
+                .contains("Mapped: data_recipientEmailAddress → custom attribute label-52 "
+                        + "[295e8f4e-b300-4f19-a8f4-a7cecb9da498]");
+    }
+
+    @Test
+    void deleteMatchesAnUppercaseUuid() {
+        String uuid = "0000000a-0000-4000-8000-00000000051b";
+        stubFor(get(urlEqualTo(INSTANCES)).willReturn(okJson("""
+                [{"uuid":"%s","name":"name-1","connectorUuid":"%s","connectorName":"name-2","kind":"EMAIL",
+                  "attributes":[]}]
+                """.formatted(uuid, EMAIL_CONNECTOR))));
+        stubFor(delete(urlEqualTo(INSTANCES + "/" + uuid)).willReturn(noContent()));
+
+        assertThat(service.deleteNotificationInstance(uuid.toUpperCase()))
+                .isEqualTo("Deleted notification instance name-1 [" + uuid + "].");
+        verify(deleteRequestedFor(urlEqualTo(INSTANCES + "/" + uuid)));
+    }
+
+    @Test
     void ilmRefusalComesBackAsText() {
         stubFor(post(urlEqualTo(INSTANCES))
                 .willReturn(aResponse()
@@ -350,7 +376,9 @@ class NotificationInstanceTest {
     @CsvSource(delimiter = '|', value = {
             "{\"data_emailContentTemplate\":null}|Field data_emailContentTemplate has no value; leave it out to use the connector's default.",
             "{\"data_emailSubject\":null,\"data_emailContentTemplate\":\"t\"}|Field data_emailSubject has no value; leave it out to use the connector's default.",
-            "{\"data_emailContentTemplate\":{\"code\":\"<p>x</p>\",\"language\":\"html\"}}|Field data_emailContentTemplate takes plain text."})
+            "{\"data_emailContentTemplate\":{\"code\":\"<p>x</p>\",\"language\":\"html\"}}|Field data_emailContentTemplate takes plain text.",
+            "{\"data_emailSubject\":[\"subject\"],\"data_emailContentTemplate\":\"t\"}|Field data_emailSubject takes plain text.",
+            "{\"data_emailSubject\":{\"text\":\"subject\"},\"data_emailContentTemplate\":\"t\"}|Field data_emailSubject takes plain text."})
     void valuesMustHaveAUsableShape(String attributes, String message) {
         assertThat(createEmail(attributes, null)).isEqualTo(message);
         verify(0, postRequestedFor(urlEqualTo(INSTANCES)));
