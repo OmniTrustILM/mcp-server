@@ -115,7 +115,7 @@ MCP Tool (@McpTool) → Service (formatting) → IlmApiClient (RestClient) → I
 - 80%+ test coverage, <3% code duplication
 - AI-friendly formatted text responses from all tools (not raw JSON)
 - Every tool is an `@McpTool` that states its kind through the hints: `readOnlyHint = true` for reads, `destructiveHint = false` for changes another change can undo. A tool that states neither counts as destructive and only appears at `full`
-- Each tool class is one `Toolset`. `McpToolConfiguration` is the only place tools are registered, so Spring AI's annotation scanner and tool-callback converter stay off
+- Each `Toolset` contains the classes for its area; compatibility aggregates can overlap focused selectors and registration deduplicates classes. `McpToolConfiguration` is the only place tools are registered, so Spring AI's annotation scanner and tool-callback converter stay off
 - Logs carry identifiers such as UUIDs at most, never request bodies or other argument values
 - Services build their text with `TextFormat`, wrap ILM calls in `ToolResponses.run(...)` so errors come back as readable text, and build search requests with `SearchRequests.of(...)`
 - The minimum supported ILM is 2.17. A tool that needs a newer ILM gets an `IlmFeature` entry with its minimum version, runs through `PlatformVersionCheck.run(...)`, and names that version in its description

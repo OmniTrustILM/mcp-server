@@ -22,11 +22,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 class InfrastructureToolTest {
 
     private InfrastructureTool tool;
+    private InfrastructureServiceImpl service;
 
     @BeforeEach
     void setup(WireMockRuntimeInfo wmInfo) {
         IlmApiClient apiClient = IlmTestSupport.client(wmInfo);
-        InfrastructureServiceImpl service = new InfrastructureServiceImpl(apiClient);
+        service = new InfrastructureServiceImpl(apiClient);
         tool = new InfrastructureTool(service);
     }
 
@@ -46,6 +47,7 @@ class InfrastructureToolTest {
                         """)));
 
         String result = tool.listAuthorities();
+        assertThat(new AuthorityInventoryTool(service).listAuthorities()).isEqualTo(result);
 
         assertThat(result).contains("Authority Instances (1)", "Test Authority");
 
@@ -68,6 +70,7 @@ class InfrastructureToolTest {
                         """)));
 
         String result = tool.listConnectors();
+        assertThat(new ConnectorInventoryTool(service).listConnectors()).isEqualTo(result);
 
         assertThat(result).contains("Connectors (1)", "My Connector");
 
@@ -88,6 +91,7 @@ class InfrastructureToolTest {
                         """)));
 
         String result = tool.listGroups();
+        assertThat(new GroupTool(service).listGroups()).isEqualTo(result);
 
         assertThat(result).contains("Groups (1)", "My Group");
 
@@ -109,6 +113,7 @@ class InfrastructureToolTest {
                         """)));
 
         String result = tool.listTokenInstances();
+        assertThat(new TokenInventoryTool(service).listTokenInstances()).isEqualTo(result);
 
         assertThat(result).contains("Token Instances (1)", "SoftHSM");
 
@@ -129,6 +134,7 @@ class InfrastructureToolTest {
                                         """)));
 
         String result = tool.listDiscoveries(null);
+        assertThat(new DiscoveryInventoryTool(service).listDiscoveries(null)).isEqualTo(result);
 
         assertThat(result).contains("Discoveries", "Scan");
 
@@ -143,6 +149,7 @@ class InfrastructureToolTest {
                         """)));
 
         String result = tool.listRaProfiles();
+        assertThat(new RaProfileInventoryTool(service).listRaProfiles()).isEqualTo(result);
 
         assertThat(result).contains("RA Profiles (1)", "Default RA");
 
@@ -160,6 +167,7 @@ class InfrastructureToolTest {
                         """)));
 
         String result = tool.listEntities(null);
+        assertThat(new EntityInventoryTool(service).listEntities(null)).isEqualTo(result);
 
         assertThat(result).contains("Entity Instances", "Web Server");
 
@@ -195,10 +203,11 @@ class InfrastructureToolTest {
                         .withHeader("Content-Type", "application/json")
                         .withBody("{\"uuid\":\"00000000-0000-4000-8000-000000000300\"}")));
 
+        assertThat(new GroupTool(service).createGroup("Web servers", null, null))
+                .isEqualTo(tool.createGroup("Web servers", null, null));
         assertThat(tool.createGroup("Web servers", null, null))
                 .isEqualTo("Created group Web servers [00000000-0000-4000-8000-000000000300].");
-        assertThat(ToolNames.allowed(AccessLevel.READ_ONLY, new InfrastructureTool(null)))
-                .doesNotContain("create_group");
-        assertThat(ToolNames.allowed(AccessLevel.READ_WRITE, new InfrastructureTool(null))).contains("create_group");
+        assertThat(ToolNames.allowed(AccessLevel.READ_ONLY, new GroupTool(null))).doesNotContain("create_group");
+        assertThat(ToolNames.allowed(AccessLevel.READ_WRITE, new GroupTool(null))).contains("create_group");
     }
 }

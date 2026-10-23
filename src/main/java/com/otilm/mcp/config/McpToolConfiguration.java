@@ -35,7 +35,11 @@ public class McpToolConfiguration {
         AccessChecks.verify(level, ilmApi.getAuth().getMethod(), mcpServer);
         List<Object> tools = Stream
                 .concat(Stream.of(searchTool),
-                        toolsets.stream().map(toolset -> beanFactory.getBean(toolset.toolClass())))
+                        toolsets
+                                .stream()
+                                .flatMap(toolset -> toolset.toolClasses().stream())
+                                .distinct()
+                                .map(beanFactory::getBean))
                 .toList();
         List<McpServerFeatures.SyncToolSpecification> specifications = ToolSpecifications.allowed(level, tools);
         String toolsetLabels = toolsets.stream().map(Toolset::label).collect(Collectors.joining(", "));

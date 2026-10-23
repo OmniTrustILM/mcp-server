@@ -1,5 +1,7 @@
 package com.otilm.mcp;
 
+import com.otilm.mcp.tool.AccessLevel;
+import com.otilm.mcp.tool.ToolKind;
 import io.modelcontextprotocol.client.McpSyncClient;
 import io.modelcontextprotocol.spec.McpSchema;
 import org.junit.jupiter.api.Test;
@@ -32,10 +34,16 @@ class McpServerAccessTest {
         try (McpSyncClient client = IlmTestSupport.mcpClient(port)) {
             client.initialize();
             assertThat(client.listTools().tools())
+                    .allSatisfy(
+                            tool -> assertThat(AccessLevel.READ_WRITE.allows(ToolKind.of(tool.annotations()))).isTrue())
                     .extracting(McpSchema.Tool::name)
-                    .containsExactlyInAnyOrder("get_searchable_fields", "search_keys", "get_key");
+                    .contains("get_searchable_fields", "search_keys", "get_key", "get_key_item", "generate_key",
+                            "import_key", "update_key")
+                    .doesNotHaveDuplicates()
+                    .doesNotContain("export_key", "destroy_key_item", "delete_key", "get_secret_content",
+                            "create_connector");
         }
-        assertThat(output).contains("Registered 3 tools for access level read-write and toolsets keys");
+        assertThat(output).contains("tools for access level read-write and toolsets keys");
     }
 
     @Test

@@ -3,16 +3,25 @@ package com.otilm.mcp.service;
 import com.otilm.api.model.client.attribute.ResponseAttribute;
 import com.otilm.api.model.common.NameAndUuidDto;
 import com.otilm.api.model.common.attribute.common.AttributeContent;
+import com.otilm.api.model.common.attribute.common.content.AttributeContentType;
 import com.otilm.api.model.common.enums.IPlatformEnum;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.Collection;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
 public final class TextFormat {
 
     public static final String NOT_AVAILABLE = "N/A";
+    private static final Set<AttributeContentType> DISPLAYABLE = Set
+            .of(AttributeContentType.STRING, AttributeContentType.TEXT, AttributeContentType.INTEGER,
+                    AttributeContentType.FLOAT, AttributeContentType.BOOLEAN, AttributeContentType.DATE,
+                    AttributeContentType.TIME, AttributeContentType.DATETIME);
 
     private TextFormat() {
     }
@@ -65,7 +74,24 @@ public final class TextFormat {
         if (value == null || value.toString().isBlank()) {
             return;
         }
-        sb.append(indent).append(label).append(": ").append(value).append("\n");
+        sb.append(indent).append(label).append(": ").append(metadataValue(label, value.toString())).append("\n");
+    }
+
+    private static String metadataValue(String label, String value) {
+        String key = label.toLowerCase(Locale.ROOT);
+        if (!key.endsWith("url") && !key.endsWith("uri")) {
+            return value;
+        }
+        try {
+            URI uri = URI.create(value);
+            if (uri.getHost() == null || !Set.of("https", "http").contains(uri.getScheme())) {
+                return "URL omitted";
+            }
+            return new URI(uri.getScheme(), null, uri.getHost(), uri.getPort(), uri.getPath(), null, null)
+                    .toASCIIString();
+        } catch (IllegalArgumentException | URISyntaxException invalid) {
+            return "URL omitted";
+        }
     }
 
     public static void pageHeader(StringBuilder sb, Number totalItems, String noun, Number pageNumber,
@@ -96,6 +122,10 @@ public final class TextFormat {
         }
         sb.append("\n").append(indent).append("Custom Attributes:\n");
         for (ResponseAttribute attribute : attributes) {
+            if (attribute.getContentType() == null || !DISPLAYABLE.contains(attribute.getContentType())) {
+                sb.append(indent).append("  ").append(attribute.getName()).append(": value omitted\n");
+                continue;
+            }
             List<? extends AttributeContent> content = attribute.getContent();
             String values = content == null
                     ? ""
@@ -105,7 +135,12 @@ public final class TextFormat {
     }
 
     private static String attributeValue(AttributeContent content) {
-        return content.getReference() != null ? content.getReference() : String.valueOf((Object) content.getData());
+        Object data = content.getData();
+        if (data instanceof CharSequence || data instanceof Number || data instanceof Boolean
+                || data instanceof java.time.temporal.TemporalAccessor) {
+            return content.getReference() != null ? content.getReference() : String.valueOf(data);
+        }
+        return "value omitted";
     }
 
     public static String pairs(Map<String, ?> values) {

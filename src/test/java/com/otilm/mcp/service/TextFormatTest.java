@@ -1,6 +1,10 @@
 package com.otilm.mcp.service;
 
+import com.otilm.api.model.client.attribute.ResponseAttributeV2;
 import com.otilm.api.model.common.NameAndUuidDto;
+import com.otilm.api.model.common.attribute.common.content.AttributeContentType;
+import com.otilm.api.model.common.attribute.common.content.data.SecretAttributeContentData;
+import com.otilm.api.model.common.attribute.v2.content.SecretAttributeContentV2;
 import com.otilm.api.model.core.cryptoasset.PqcVerdict;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -10,6 +14,31 @@ import org.junit.jupiter.api.Test;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class TextFormatTest {
+
+    @Test
+    void ordinaryCustomAttributesSuppressProtectedAndStructuredContent() {
+        var secret = new ResponseAttributeV2();
+        secret.setName("Password");
+        secret.setContentType(AttributeContentType.SECRET);
+        secret
+                .setContent(List
+                        .of(new SecretAttributeContentV2("private-sentinel",
+                                new SecretAttributeContentData("private-sentinel"))));
+        StringBuilder result = new StringBuilder();
+        TextFormat.customAttributes(result, "", List.of(secret));
+        assertThat(result.toString()).contains("Password", "omitted").doesNotContain("private-sentinel");
+    }
+
+    @Test
+    void existingInventoryUrlFieldsDoNotRevealConnectionCredentials() {
+        StringBuilder output = new StringBuilder();
+        TextFormat
+                .field(output, "", "Connector URL",
+                        "https://operator:private-sentinel@example.test/path?token=private-sentinel#private-sentinel");
+        assertThat(output.toString())
+                .contains("https://example.test/path")
+                .doesNotContain("private-sentinel", "operator");
+    }
 
     @Test
     void orNaReplacesNullOnly() {

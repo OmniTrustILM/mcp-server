@@ -43,6 +43,12 @@ final class TriggerChain {
     }
 
     TriggerDetailDto create(TriggerPlan plan) {
+        TriggerDetailDto trigger = ilmApiClient.createTrigger(createParts(plan));
+        remember(WorkflowCollection.TRIGGERS, "trigger", trigger.getName(), trigger.getUuid());
+        return trigger;
+    }
+
+    TriggerRequestDto createParts(TriggerPlan plan) {
         Resource resource = plan.event().getResource();
         List<String> rules = plan.conditions().isEmpty() ? List.of() : List.of(rule(plan, resource));
         List<String> executions = new ArrayList<>();
@@ -68,9 +74,11 @@ final class TriggerChain {
         request.setIgnoreTrigger(plan.ignore());
         request.setRulesUuids(rules);
         request.setActionsUuids(actions);
-        TriggerDetailDto trigger = ilmApiClient.createTrigger(request);
-        remember(WorkflowCollection.TRIGGERS, "trigger", trigger.getName(), trigger.getUuid());
-        return trigger;
+        return request;
+    }
+
+    String retainedParts() {
+        return created.stream().map(Created::label).collect(java.util.stream.Collectors.joining(", "));
     }
 
     boolean isEmpty() {
@@ -78,12 +86,24 @@ final class TriggerChain {
     }
 
     String undo() {
+        return undo(false);
+    }
+
+    String undoSafe() {
+        return undo(true);
+    }
+
+    private String undo(boolean safe) {
         List<String> kept = new ArrayList<>();
         for (Created part : created.reversed()) {
             try {
                 ilmApiClient.deleteWorkflowObject(part.collection(), part.uuid());
             } catch (RuntimeException e) {
-                kept.add("- " + part.label() + ": " + ToolResponses.errorText("removing the " + part.kind(), e));
+                kept
+                        .add("- " + part.label() + ": "
+                                + (safe
+                                        ? "ILM cleanup request failed; inspect this owned object before retrying."
+                                        : ToolResponses.errorText("removing the " + part.kind(), e)));
             }
         }
         created.clear();

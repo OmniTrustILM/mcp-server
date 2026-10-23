@@ -45,11 +45,16 @@ class McpServerHttpStartupTest {
                     .contains("This server runs with access level read-only.", "get_crypto_asset_statistics",
                             "create_trigger sets up a whole workflow in one call", "create_notification_profile");
             assertThat(client.listTools().tools())
-                    .hasSize(46)
+                    .hasSizeGreaterThan(46)
                     .allSatisfy(tool -> assertThat(tool.annotations().readOnlyHint()).as(tool.name()).isTrue())
                     .extracting(McpSchema.Tool::name)
                     .contains("search_certificates", "get_searchable_fields", "get_crypto_asset_statistics",
-                            "search_cboms", "search_signing_records");
+                            "search_cboms", "search_signing_records", "get_connector", "get_scoped_triggers",
+                            "get_compliance_profile")
+                    .doesNotHaveDuplicates()
+                    .doesNotContain("export_key", "get_secret_content", "export_certificate_keystore",
+                            "generate_acme_eab_key", "get_proxy_installation_instructions",
+                            "test_connector_connection");
         }
     }
 
