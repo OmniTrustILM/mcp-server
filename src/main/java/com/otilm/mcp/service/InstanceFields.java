@@ -168,7 +168,7 @@ final class InstanceFields {
                     .formatted(field.name(), field.contentType()));
         }
         if (field.list()) {
-            return selections(field, value).stream().map(item -> (Object) Map.of("data", item)).toList();
+            return selections(field, value).stream().map(item -> (Object) option(field, item)).toList();
         }
         requireText(field, value);
         if (CODEBLOCK.equals(field.contentType())) {
@@ -225,6 +225,19 @@ final class InstanceFields {
                     .formatted(field.name(),
                             field.options().stream().map(String::valueOf).collect(Collectors.joining(", "))));
         }
+    }
+
+    /**
+     * A chosen value as the connector offers it, because ILM takes a choice only when it equals an offered item,
+     * reference included. A value the connector does not offer, which only an extensible list takes, is plain data.
+     */
+    private static Map<String, Object> option(ConnectorAttribute field, Object value) {
+        List<Map<String, Object>> offered = field.content() == null ? List.of() : field.content();
+        return offered
+                .stream()
+                .filter(item -> value.equals(item.get("data")))
+                .findFirst()
+                .orElse(Map.of("data", value));
     }
 
     private static void sort(List<ConnectorAttribute> definitions, List<ConnectorAttribute> settable,

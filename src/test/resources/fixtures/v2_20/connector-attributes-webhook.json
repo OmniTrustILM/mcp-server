@@ -2,11 +2,13 @@
   {
     "uuid": "00000000-0000-4000-8000-000000000611",
     "name": "data_webhookUrl",
+    "description": "Webhook URL to send the event data to",
     "version": 2,
     "type": "data",
     "content": [
       {
-        "data": "https://example.com/hooks/ilm"
+        "reference": "https://example.com/webhook",
+        "data": "https://example.com/webhook"
       }
     ],
     "contentType": "string",
@@ -22,6 +24,8 @@
     },
     "constraints": [
       {
+        "description": "Webhook URL",
+        "errorMessage": "Invalid webhook URL format",
         "type": "regExp",
         "data": "https?://.*"
       }
@@ -30,10 +34,11 @@
   {
     "uuid": "00000000-0000-4000-8000-000000000612",
     "name": "info_contentType",
+    "description": "Information about the content type",
     "version": 2,
     "content": [
       {
-        "data": "RAW_JSON sends the event data as it is; JSON and XML use a content template."
+        "data": "The content type of the data to be sent to the webhook. The following content types are supported:\n- `RAW_JSON` - will send the data as raw JSON to the specified webhook URL\n- `JSON` - prepares the data in JSON format according to the specified template\n- `XML` - prepares the data in XML format according to the specified template\n\nThe template support FreeMarker syntax with variables that can be used to build the content dynamically.\n"
       }
     ],
     "type": "info",
@@ -46,16 +51,20 @@
   {
     "uuid": "00000000-0000-4000-8000-000000000613",
     "name": "data_contentType",
+    "description": "Content type of the data to be sent",
     "version": 2,
     "type": "data",
     "content": [
       {
+        "reference": "raw_json",
         "data": "RAW_JSON"
       },
       {
+        "reference": "json",
         "data": "JSON"
       },
       {
+        "reference": "xml",
         "data": "XML"
       }
     ],
@@ -74,6 +83,7 @@
   {
     "uuid": "00000000-0000-4000-8000-000000000614",
     "name": "group_contentTemplate",
+    "description": "Content template for the webhook to be sent in selected type",
     "version": 2,
     "type": "group",
     "attributeCallback": {
