@@ -16,7 +16,7 @@ import static org.assertj.core.api.Assertions.assertThat;
         properties = {
                 "spring.main.web-application-type=servlet",
                 "ilm.mcp.access=full",
-                "ilm.mcp.toolsets=workflows,attributes,users",
+                "ilm.mcp.toolsets=workflows,attributes,users,notifications",
                 "ilm.api.auth.method=oauth-passthrough"})
 @ActiveProfiles({"test", "http"})
 class McpServerFullAccessTest {
@@ -34,10 +34,14 @@ class McpServerFullAccessTest {
                     .stream()
                     .collect(Collectors.toMap(McpSchema.Tool::name, McpSchema.Tool::annotations));
 
-            assertThat(hints).hasSize(13);
-            assertThat(hints.get("delete_trigger").destructiveHint()).isTrue();
-            assertThat(List.of("create_trigger", "attach_trigger", "detach_trigger", "create_custom_attribute"))
-                    .hasSize(4)
+            assertThat(hints).hasSize(21);
+            assertThat(List.of("delete_trigger", "delete_notification_instance", "delete_notification_profile"))
+                    .hasSize(3)
+                    .allSatisfy(name -> assertThat(hints.get(name).destructiveHint()).isTrue());
+            assertThat(List
+                    .of("create_trigger", "attach_trigger", "detach_trigger", "create_custom_attribute",
+                            "create_notification_instance", "create_notification_profile"))
+                    .hasSize(6)
                     .allSatisfy(name -> assertThat(hints.get(name)).satisfies(hint -> {
                         assertThat(hint.readOnlyHint()).isFalse();
                         assertThat(hint.destructiveHint()).isFalse();

@@ -64,7 +64,8 @@ public class WorkflowTool {
             @McpToolParam(
                     description = "JSON array of fields to set, e.g. [{\"fieldSource\":\"property\",\"fieldIdentifier\":\"GROUP_NAME\",\"value\":[\"<group uuid>\"]}, {\"fieldSource\":\"property\",\"fieldIdentifier\":\"OWNER\",\"value\":\"<user uuid>\"}, {\"fieldSource\":\"property\",\"fieldIdentifier\":\"RA_PROFILE_NAME\",\"value\":\"<RA profile uuid>\"}, {\"fieldSource\":\"custom\",\"fieldIdentifier\":\"<attribute name>|<CONTENT TYPE>\",\"value\":\"<value>\"}]",
                     required = false) String setFields,
-            @McpToolParam(description = "UUID of the notification profile to send a notification through",
+            @McpToolParam(
+                    description = "UUID of the notification profile to send a notification through; create_notification_profile makes one",
                     required = false) String notificationProfileUuid,
             @McpToolParam(
                     description = "true to ignore matching objects: the event's other platform triggers do not run for them, discovery does not import them, and uploads are not stored; needs conditions and nothing to set or send",

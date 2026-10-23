@@ -1,0 +1,21 @@
+{
+  "uuid": "00000000-0000-4000-8000-000000000531",
+  "name": "name-5",
+  "description": "description-5",
+  "version": 2,
+  "recipientType": "group",
+  "recipients": [
+    {
+      "uuid": "00000000-0000-4000-8000-000000000521",
+      "name": "name-7"
+    }
+  ],
+  "notificationInstance": {
+    "uuid": "00000000-0000-4000-8000-000000000511",
+    "name": "name-1"
+  },
+  "internalNotification": false,
+  "frequency": "PT24H",
+  "repetitions": 5,
+  "eventDataCategories": []
+}

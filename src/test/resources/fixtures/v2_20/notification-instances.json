@@ -1,0 +1,20 @@
+[
+  {
+    "uuid": "00000000-0000-4000-8000-000000000511",
+    "name": "name-1",
+    "description": "description-1",
+    "connectorUuid": "00000000-0000-4000-8000-000000000501",
+    "connectorName": "name-2",
+    "kind": "EMAIL",
+    "attributes": []
+  },
+  {
+    "uuid": "00000000-0000-4000-8000-000000000512",
+    "name": "name-3",
+    "description": "description-3",
+    "connectorUuid": "00000000-0000-4000-8000-000000000502",
+    "connectorName": "name-4",
+    "kind": "WEBHOOK",
+    "attributes": []
+  }
+]

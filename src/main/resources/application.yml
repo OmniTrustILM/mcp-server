@@ -19,6 +19,10 @@ spring:
           to its event, and list_event_triggers shows what already happens on an event. list_trigger_fields shows the
           fields a trigger can check and set; look up names with list_users, list_roles and list_groups, and create a
           missing group or custom attribute first with create_group or create_custom_attribute.
+          For notifications, list_connectors shows notification connectors and their kinds, and
+          get_notification_connector_settings shows what an instance needs; create a missing notification instance or
+          profile with create_notification_instance or create_notification_profile, then pass the profile to
+          create_trigger.
           For post-quantum (PQC) readiness questions start with get_crypto_asset_statistics, then use
           search_crypto_assets filtered by PQC verdict, and explain_crypto_asset_pqc_verdict for a single asset.
           Call get_searchable_fields for a resource type before filtering its search.

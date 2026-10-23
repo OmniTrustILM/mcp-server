@@ -1,0 +1,32 @@
+{
+  "itemsPerPage": 1000,
+  "pageNumber": 1,
+  "totalPages": 1,
+  "totalItems": 2,
+  "notificationProfiles": [
+    {
+      "uuid": "00000000-0000-4000-8000-000000000531",
+      "name": "name-5",
+      "description": "description-5",
+      "version": 2,
+      "recipientType": "group",
+      "recipientUuids": [
+        "00000000-0000-4000-8000-000000000521"
+      ],
+      "notificationInstanceUuid": "00000000-0000-4000-8000-000000000511",
+      "internalNotification": false,
+      "eventDataCategories": []
+    },
+    {
+      "uuid": "00000000-0000-4000-8000-000000000532",
+      "name": "name-6",
+      "description": null,
+      "version": 1,
+      "recipientType": "owner",
+      "recipientUuids": [],
+      "notificationInstanceUuid": null,
+      "internalNotification": true,
+      "eventDataCategories": []
+    }
+  ]
+}

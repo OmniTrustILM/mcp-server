@@ -1,0 +1,18 @@
+{
+  "uuid": "00000000-0000-4000-8000-000000000501",
+  "name": "name-2",
+  "url": "https://email-np.example.com",
+  "authType": "none",
+  "authAttributes": [],
+  "status": "connected",
+  "functionGroups": [
+    {
+      "functionGroupCode": "notificationProvider",
+      "name": "notificationProvider",
+      "kinds": [
+        "EMAIL"
+      ],
+      "endPoints": []
+    }
+  ]
+}

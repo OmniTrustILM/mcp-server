@@ -22,7 +22,8 @@ public enum Toolset {
     SIGNING("signing", SigningTool.class),
     WORKFLOWS("workflows", WorkflowTool.class),
     ATTRIBUTES("attributes", AttributeTool.class),
-    USERS("users", UserTool.class);
+    USERS("users", UserTool.class),
+    NOTIFICATIONS("notifications", NotificationTool.class);
 
     private static final String ALL = "all";
 

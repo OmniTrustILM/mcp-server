@@ -1,0 +1,76 @@
+[
+  {
+    "uuid": "00000000-0000-4000-8000-000000000601",
+    "name": "data_senderEmailAddress",
+    "version": 2,
+    "type": "data",
+    "content": [
+      {
+        "data": "ilm@example.com"
+      }
+    ],
+    "contentType": "string",
+    "properties": {
+      "label": "Sender email address",
+      "visible": true,
+      "required": true,
+      "readOnly": false,
+      "list": false,
+      "multiSelect": false,
+      "protectionLevel": "none",
+      "extensibleList": false
+    },
+    "constraints": [
+      {
+        "type": "regExp",
+        "data": "^[a-zA-Z0-9.!#$%&'*+\\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$"
+      }
+    ]
+  },
+  {
+    "uuid": "00000000-0000-4000-8000-000000000602",
+    "name": "data_emailSubject",
+    "version": 2,
+    "type": "data",
+    "content": [
+      {
+        "data": "Certificate notification"
+      }
+    ],
+    "contentType": "string",
+    "properties": {
+      "label": "Email subject",
+      "visible": true,
+      "required": true,
+      "readOnly": false,
+      "list": false,
+      "multiSelect": false,
+      "protectionLevel": "none",
+      "extensibleList": false
+    }
+  },
+  {
+    "uuid": "00000000-0000-4000-8000-000000000603",
+    "name": "data_emailContentTemplate",
+    "version": 2,
+    "type": "data",
+    "content": [
+      {
+        "data": {
+          "language": "html"
+        }
+      }
+    ],
+    "contentType": "codeblock",
+    "properties": {
+      "label": "Email content template",
+      "visible": true,
+      "required": true,
+      "readOnly": false,
+      "list": false,
+      "multiSelect": false,
+      "protectionLevel": "none",
+      "extensibleList": false
+    }
+  }
+]

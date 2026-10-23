@@ -12,6 +12,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalToJson;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath;
+import static com.github.tomakehurst.wiremock.client.WireMock.okJson;
 import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
@@ -105,7 +106,18 @@ class InfrastructureServiceTest {
 
         assertThat(result)
                 .contains("Connectors (1)", "MS-ADCS-Connector", "conn-uuid-1", "Status: connected",
-                        "URL: https://adcs.example.com/api", "Auth Type: certificate", "Function Groups: 1");
+                        "URL: https://adcs.example.com/api", "Auth Type: certificate",
+                        "Function Groups: authorityProvider\n");
+    }
+
+    @Test
+    void shouldShowFunctionGroupKinds() {
+        stubFor(get(urlEqualTo("/v1/connectors")).willReturn(okJson("""
+                [{"uuid":"00000000-0000-4000-8000-000000000501","name":"name-2","status":"connected",
+                  "functionGroups":[{"functionGroupCode":"notificationProvider","kinds":["EMAIL"]}]}]
+                """)));
+
+        assertThat(service.listConnectors()).contains("Function Groups: notificationProvider (EMAIL)");
     }
 
     @Test

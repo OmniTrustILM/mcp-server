@@ -1,0 +1,27 @@
+[
+  {
+    "content": [
+      {
+        "data": {
+          "language": "json"
+        }
+      }
+    ],
+    "contentType": "codeblock",
+    "description": "Content template of the data to be sent",
+    "name": "data_contentTemplate_json",
+    "properties": {
+      "extensibleList": false,
+      "label": "Content template",
+      "list": false,
+      "multiSelect": false,
+      "protectionLevel": "none",
+      "readOnly": false,
+      "required": true,
+      "visible": true
+    },
+    "type": "data",
+    "uuid": "00000000-0000-4000-8000-000000000615",
+    "version": 2
+  }
+]
