@@ -16,7 +16,7 @@ class SearchFilterParserTest {
 
     @ParameterizedTest
     @NullAndEmptySource
-    @ValueSource(strings = {"  ", "[]"})
+    @ValueSource(strings = {"  ", "[]", "null"})
     void shouldReturnEmptyListForNullBlankOrEmptyInput(String input) {
         List<SearchFilterRequestDto> result = SearchFilterParser.parseFilters(input);
         assertThat(result).isEmpty();

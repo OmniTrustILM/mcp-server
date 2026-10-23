@@ -42,9 +42,10 @@ class McpServerHttpStartupTest {
             McpSchema.InitializeResult initialized = client.initialize();
             assertThat(initialized.serverInfo().name()).isEqualTo("ilm-mcp-server");
             assertThat(initialized.instructions())
-                    .contains("This server runs with access level read-only.", "get_crypto_asset_statistics");
+                    .contains("This server runs with access level read-only.", "get_crypto_asset_statistics",
+                            "create_trigger sets up a whole workflow in one call");
             assertThat(client.listTools().tools())
-                    .hasSize(35)
+                    .hasSize(42)
                     .allSatisfy(tool -> assertThat(tool.annotations().readOnlyHint()).as(tool.name()).isTrue())
                     .extracting(McpSchema.Tool::name)
                     .contains("search_certificates", "get_searchable_fields", "get_crypto_asset_statistics",

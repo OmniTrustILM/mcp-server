@@ -19,8 +19,9 @@ public final class SearchFilterParser {
             return Collections.emptyList();
         }
         try {
-            return JSON_MAPPER.readValue(filtersJson, new TypeReference<>() {
+            List<SearchFilterRequestDto> filters = JSON_MAPPER.readValue(filtersJson, new TypeReference<>() {
             });
+            return filters == null ? Collections.emptyList() : filters;
         } catch (JacksonException e) {
             throw new IllegalArgumentException(
                     "Invalid filters JSON. Expected a JSON array of filter objects with fields: "

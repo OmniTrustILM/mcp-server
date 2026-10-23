@@ -1,0 +1,37 @@
+{
+  "eventsMapping": {
+    "certificate_status_changed": [
+      "679fe74b-b728-4b68-87e9-28e742914782",
+      "3407aabf-7497-4686-9152-58fed8056fc9",
+      "cb36ddc3-bb10-4bc0-9624-92442f903dc2",
+      "47b6e99e-34b4-4876-b8db-f15f915013f1",
+      "87ab1393-1b84-42ba-b386-4f6f18aa07bb",
+      "d6fe91c3-720b-477e-9e2a-c5c8dba912d7"
+    ],
+    "certificate_action_performed": [
+      "8cda7b1a-8a0d-4560-9bc7-b66037b0527f"
+    ],
+    "certificate_expiring": [
+      "729af1fb-d1b7-48b0-bf6f-1bdafcad8a91"
+    ],
+    "certificate_not_compliant": [
+      "82e90528-ddc5-4b62-a81e-cc573b35f452"
+    ],
+    "approval_requested": [
+      "41f3b24c-dc27-4533-a3f4-789981a93f5d"
+    ],
+    "approval_closed": [
+      "b88996f7-81f3-41cc-9811-97d2f5c0b6bb"
+    ],
+    "comment_created": [
+      "0b3f32a9-8fc2-4cc5-b1a9-0c64299f4858"
+    ],
+    "comment_resolved": [
+      "836a4aef-bf2b-4870-8564-1d836d50c093",
+      "db8de07f-d190-4e7d-ad15-53377090849f"
+    ],
+    "scheduled_job_finished": [
+      "e4004ce0-2b01-4603-a394-8347314aefe0"
+    ]
+  }
+}

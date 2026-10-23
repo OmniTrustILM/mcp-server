@@ -19,7 +19,10 @@ public enum Toolset {
     VAULTS("vaults", VaultTool.class),
     CRYPTO_ASSETS("crypto-assets", CryptoAssetTool.class),
     CBOMS("cboms", CbomTool.class),
-    SIGNING("signing", SigningTool.class);
+    SIGNING("signing", SigningTool.class),
+    WORKFLOWS("workflows", WorkflowTool.class),
+    ATTRIBUTES("attributes", AttributeTool.class),
+    USERS("users", UserTool.class);
 
     private static final String ALL = "all";
 

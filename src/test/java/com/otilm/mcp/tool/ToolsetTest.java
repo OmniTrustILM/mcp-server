@@ -10,7 +10,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class ToolsetTest {
 
-    private static final String VALID = "Valid values: all, certificates, keys, infrastructure, secrets, vaults, crypto-assets, cboms, signing.";
+    private static final String VALID = "Valid values: all, certificates, keys, infrastructure, secrets, vaults, crypto-assets, cboms, signing, workflows, attributes, users.";
 
     @Test
     void allSelectsEveryToolset() {

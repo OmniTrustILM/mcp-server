@@ -21,15 +21,21 @@ public final class ToolResponses {
     public static String run(String action, Supplier<String> body) {
         try {
             return body.get();
-        } catch (IllegalArgumentException e) {
-            return e.getMessage();
-        } catch (RestClientResponseException e) {
-            logger.warn("ILM answered {} while {}", e.getStatusCode().value(), action);
-            return "Error " + action + ": ILM answered " + status(e) + ilmMessage(e);
         } catch (RuntimeException e) {
-            logger.error("Error {}", action, e);
-            return "Error " + action + ": " + e.getMessage();
+            return errorText(action, e);
         }
+    }
+
+    public static String errorText(String action, RuntimeException e) {
+        if (e instanceof IllegalArgumentException) {
+            return e.getMessage();
+        }
+        if (e instanceof RestClientResponseException ilm) {
+            logger.warn("ILM answered {} while {}", ilm.getStatusCode().value(), action);
+            return "Error " + action + ": ILM answered " + status(ilm) + ilmMessage(ilm);
+        }
+        logger.error("Error {}", action, e);
+        return "Error " + action + ": " + e.getMessage();
     }
 
     private static String status(RestClientResponseException e) {

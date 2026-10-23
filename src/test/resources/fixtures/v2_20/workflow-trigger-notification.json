@@ -1,0 +1,56 @@
+{
+  "uuid": "7299c805-5b8b-4a06-a504-f7302b31cf85",
+  "name": "name-12",
+  "description": "description-13",
+  "type": "event",
+  "resource": "comments",
+  "ignoreTrigger": false,
+  "event": "comment_created",
+  "rules": [
+    {
+      "uuid": "10d72801-7532-4a1b-8976-0a9fc3b3e342",
+      "name": "name-14",
+      "description": "description-15",
+      "resource": "comments",
+      "conditions": [
+        {
+          "uuid": "67e6ff08-9dea-44d3-b7a3-ba2c56b815c7",
+          "name": "name-16",
+          "description": "description-17",
+          "type": "checkField",
+          "resource": "comments",
+          "items": [
+            {
+              "fieldSource": "property",
+              "fieldIdentifier": "COMMENT_RESOLVED_AT",
+              "operator": "NOT_EMPTY"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "actions": [
+    {
+      "uuid": "70d816c6-0397-4705-921f-cba8c7972aa1",
+      "name": "name-18",
+      "description": "description-19",
+      "resource": "comments",
+      "executions": [
+        {
+          "uuid": "91025609-446d-41d4-82aa-ac180de5ed7d",
+          "name": "name-20",
+          "description": "description-21",
+          "type": "sendNotification",
+          "resource": "comments",
+          "items": [
+            {
+              "notificationProfileUuid": "cd9a1f7f-fe48-4f3c-a890-e23f795f4ecc",
+              "notificationProfileName": "notificationProfileName-22"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

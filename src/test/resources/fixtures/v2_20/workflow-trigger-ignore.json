@@ -1,0 +1,92 @@
+{
+  "uuid": "ba3f51fb-f41d-4027-88f4-c2ca17102eec",
+  "name": "name-23",
+  "description": "description-24",
+  "type": "event",
+  "resource": "certificates",
+  "ignoreTrigger": true,
+  "event": "certificate_discovered",
+  "rules": [
+    {
+      "uuid": "1216372e-79f1-427a-9162-50c958326db0",
+      "name": "name-25",
+      "description": "description-26",
+      "resource": "certificates",
+      "conditions": [
+        {
+          "uuid": "ac728034-08a4-436e-9de4-d84a888717a8",
+          "name": "name-27",
+          "description": "description-28",
+          "type": "checkField",
+          "resource": "certificates",
+          "items": [
+            {
+              "fieldSource": "meta",
+              "fieldIdentifier": "attribute-29|STRING",
+              "operator": "CONTAINS",
+              "value": "value-30"
+            }
+          ]
+        },
+        {
+          "uuid": "78cdedd6-717a-42c8-90a7-42125642e17a",
+          "name": "name-31",
+          "description": "description-32",
+          "type": "checkField",
+          "resource": "certificates",
+          "items": [
+            {
+              "fieldSource": "property",
+              "fieldIdentifier": "RA_PROFILE_NAME",
+              "operator": "EQUALS",
+              "value": [
+                "value-33"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "uuid": "47f2c41a-0a97-4cc3-bb39-ece8453a6e5a",
+      "name": "name-34",
+      "description": "description-35",
+      "resource": "certificates",
+      "conditions": [
+        {
+          "uuid": "f7818383-693d-4ac8-948c-b9d305fafa0c",
+          "name": "name-36",
+          "description": "description-37",
+          "type": "checkField",
+          "resource": "certificates",
+          "items": [
+            {
+              "fieldSource": "property",
+              "fieldIdentifier": "SERIAL_NUMBER",
+              "operator": "CONTAINS",
+              "value": "value-38"
+            }
+          ]
+        },
+        {
+          "uuid": "78cdedd6-717a-42c8-90a7-42125642e17a",
+          "name": "name-39",
+          "description": "description-40",
+          "type": "checkField",
+          "resource": "certificates",
+          "items": [
+            {
+              "fieldSource": "property",
+              "fieldIdentifier": "RA_PROFILE_NAME",
+              "operator": "EQUALS",
+              "value": [
+                "value-41"
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "actions": []
+}

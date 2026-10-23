@@ -1,0 +1,147 @@
+[
+  {
+    "filterFieldSource": "custom",
+    "searchFieldData": [
+      {
+        "fieldIdentifier": "attribute-1|STRING",
+        "fieldLabel": "attribute-1",
+        "type": "list",
+        "conditions": [
+          "EQUALS",
+          "NOT_EQUALS",
+          "EMPTY",
+          "NOT_EMPTY"
+        ],
+        "attributeContentType": "string",
+        "value": [
+          "value-1",
+          "value-2"
+        ],
+        "multiValue": true,
+        "displayable": true,
+        "sortable": true
+      }
+    ]
+  },
+  {
+    "filterFieldSource": "property",
+    "searchFieldData": [
+      {
+        "fieldIdentifier": "RA_PROFILE_NAME",
+        "fieldLabel": "RA Profile",
+        "type": "list",
+        "conditions": [
+          "EQUALS",
+          "NOT_EQUALS",
+          "EMPTY",
+          "NOT_EMPTY"
+        ],
+        "value": [
+          {
+            "name": "ra-profile-1",
+            "uuid": "00000000-0000-4000-8000-000000000301"
+          },
+          {
+            "name": "ra-profile-2",
+            "uuid": "00000000-0000-4000-8000-000000000302"
+          }
+        ],
+        "multiValue": true,
+        "displayable": true,
+        "sortable": true
+      },
+      {
+        "fieldIdentifier": "GROUP_NAME",
+        "fieldLabel": "Groups",
+        "type": "list",
+        "conditions": [
+          "EQUALS",
+          "NOT_EQUALS",
+          "EMPTY",
+          "NOT_EMPTY",
+          "COUNT_EQUAL",
+          "COUNT_NOT_EQUAL",
+          "COUNT_GREATER_THAN",
+          "COUNT_LESS_THAN"
+        ],
+        "value": [
+          {
+            "name": "group-1",
+            "uuid": "00000000-0000-4000-8000-000000000201"
+          },
+          {
+            "name": "group-2",
+            "uuid": "00000000-0000-4000-8000-000000000202"
+          },
+          {
+            "name": "group-3",
+            "uuid": "00000000-0000-4000-8000-000000000203"
+          },
+          {
+            "name": "group-4",
+            "uuid": "00000000-0000-4000-8000-000000000204"
+          },
+          {
+            "name": "group-5",
+            "uuid": "00000000-0000-4000-8000-000000000205"
+          },
+          {
+            "name": "group-6",
+            "uuid": "00000000-0000-4000-8000-000000000206"
+          },
+          {
+            "name": "group-7",
+            "uuid": "00000000-0000-4000-8000-000000000207"
+          },
+          {
+            "name": "group-8",
+            "uuid": "00000000-0000-4000-8000-000000000208"
+          },
+          {
+            "name": "group-9",
+            "uuid": "00000000-0000-4000-8000-000000000209"
+          },
+          {
+            "name": "group-10",
+            "uuid": "00000000-0000-4000-8000-000000000210"
+          },
+          {
+            "name": "group-11",
+            "uuid": "00000000-0000-4000-8000-000000000211"
+          },
+          {
+            "name": "group-12",
+            "uuid": "00000000-0000-4000-8000-000000000212"
+          }
+        ],
+        "multiValue": true,
+        "displayable": true,
+        "sortable": true
+      },
+      {
+        "fieldIdentifier": "OWNER",
+        "fieldLabel": "Owner",
+        "type": "list",
+        "conditions": [
+          "EQUALS",
+          "NOT_EQUALS",
+          "EMPTY",
+          "NOT_EMPTY"
+        ],
+        "value": [
+          {
+            "name": "user-1",
+            "uuid": "00000000-0000-4000-8000-000000000401"
+          },
+          {
+            "name": "user-2",
+            "uuid": "00000000-0000-4000-8000-000000000402"
+          }
+        ],
+        "multiValue": true,
+        "displayable": true,
+        "sortable": true
+      }
+    ]
+  }
+]
