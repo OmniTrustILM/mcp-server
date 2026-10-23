@@ -27,7 +27,7 @@ public class AttributeTool {
     public String createCustomAttribute(@McpToolParam(description = "Name of the attribute") String name,
             @McpToolParam(description = "Label shown to users") String label,
             @McpToolParam(
-                    description = "Content type. One of: string, text, integer, boolean, float, date, time, datetime, secret, file, credential, codeblock, object, resource") String contentType,
+                    description = "Content type. One of: string, text, integer, boolean, float, date, time, datetime, secret, file, credential, codeblock, object") String contentType,
             @McpToolParam(
                     description = "Comma-separated resource codes the attribute applies to, e.g. certificates, keys") String resources,
             @McpToolParam(description = "Description of the attribute", required = false) String description) {

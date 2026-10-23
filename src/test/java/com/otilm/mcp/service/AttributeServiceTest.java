@@ -60,6 +60,9 @@ class AttributeServiceTest {
     void rejectsUnknownContentTypesAndResources() {
         assertThat(service.createCustomAttribute("Category", "Category", "words", "certificates", null))
                 .startsWith("Unknown content type 'words'. Valid content types: string, text, ");
+        assertThat(service.createCustomAttribute("Category", "Category", "resource", "certificates", null))
+                .startsWith("Unknown content type 'resource'.")
+                .endsWith("codeblock, object.");
         assertThat(service.createCustomAttribute("Category", "Category", "string", "certs", null))
                 .isEqualTo("Unknown resource 'certs'.");
         assertThat(service.createCustomAttribute("Category", "Category", "string", " ", null))

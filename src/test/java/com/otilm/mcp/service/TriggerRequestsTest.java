@@ -84,6 +84,15 @@ class TriggerRequestsTest {
                 .hasMessage("Each setFields entry needs a fieldSource, a fieldIdentifier and a value.");
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {"not-a-uuid", "1-1-1-1-1"})
+    void planRejectsAMalformedNotificationProfileUuid(String profile) {
+        TriggerInput input = input(null, null, profile, null);
+
+        assertThatThrownBy(() -> TriggerRequests.plan(input))
+                .hasMessage("notificationProfileUuid '" + profile + "' is not a UUID.");
+    }
+
     @Test
     void planReadsJsonNullAsNothingGiven() {
         TriggerRequests.TriggerPlan plan = TriggerRequests

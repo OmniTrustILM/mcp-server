@@ -10,6 +10,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.springframework.stereotype.Service;
 
 import static com.otilm.mcp.service.TextFormat.code;
@@ -73,16 +74,19 @@ public class AttributeServiceImpl implements AttributeService {
 
     private static AttributeContentType contentType(String value) {
         String code = value == null ? "" : value.trim().toLowerCase(Locale.ROOT);
-        return Arrays
-                .stream(AttributeContentType.values())
+        return customContentTypes()
                 .filter(type -> type.getCode().equals(code))
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("Unknown content type '%s'. Valid content types: %s."
                         .formatted(value,
-                                Arrays
-                                        .stream(AttributeContentType.values())
+                                customContentTypes()
                                         .map(AttributeContentType::getCode)
                                         .collect(Collectors.joining(", ")))));
+    }
+
+    private static Stream<AttributeContentType> customContentTypes() {
+        // ILM refuses resource as the content type of a custom attribute.
+        return Arrays.stream(AttributeContentType.values()).filter(type -> type != AttributeContentType.RESOURCE);
     }
 
     private static List<Resource> resources(String value) {

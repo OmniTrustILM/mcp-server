@@ -8,6 +8,8 @@ import com.otilm.api.model.core.other.ResourceEvent;
 import com.otilm.mcp.IlmTestSupport;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.containing;
@@ -268,6 +270,39 @@ class WorkflowCreateTest {
         assertThat(result)
                 .isEqualTo("Conditions cannot check property GROUPNAME, custom Category|STRING; list_trigger_fields "
                         + "lists the fields they can check.");
+    }
+
+    @Test
+    void createTriggerRefusesAnOperatorTheFieldDoesNotTake() {
+        String conditions = "[{\"fieldSource\":\"property\",\"fieldIdentifier\":\"COMMON_NAME\","
+                + "\"condition\":\"COUNT_GREATER_THAN\",\"value\":1}]";
+
+        String result = service
+                .createTrigger(new TriggerInput("expiring-web", "certificate_expiring", conditions, null, PROFILE, null,
+                        null));
+
+        verify(0, postRequestedFor(urlMatching(WORKFLOW_OBJECTS)));
+        assertThat(result)
+                .isEqualTo("Conditions cannot use COUNT_GREATER_THAN on property COMMON_NAME; list_trigger_fields "
+                        + "lists the operators each field takes.");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"\"conditions\":[],", ""})
+    void createTriggerRefusesOperatorsOnAFieldThatListsNone(String operators) {
+        stubFor(get(urlEqualTo(RULE_FIELDS + "?settable=false")).willReturn(okJson("""
+                [{"filterFieldSource":"property","searchFieldData":[
+                  {"fieldIdentifier":"COMMON_NAME","fieldLabel":"Common Name","type":"string",%s"multiValue":false}]}]
+                """.formatted(operators))));
+
+        String result = service
+                .createTrigger(new TriggerInput("expiring-web", "certificate_expiring", CONDITIONS, null, PROFILE, null,
+                        null));
+
+        verify(0, postRequestedFor(urlMatching(WORKFLOW_OBJECTS)));
+        assertThat(result)
+                .isEqualTo("Conditions cannot use ENDS_WITH on property COMMON_NAME; list_trigger_fields lists the "
+                        + "operators each field takes.");
     }
 
     @Test
