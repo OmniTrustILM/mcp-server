@@ -4,6 +4,7 @@ import java.util.Arrays;
 import java.util.Objects;
 import java.util.function.Supplier;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -59,6 +60,7 @@ public class ConfigurationApiClient {
     public BinaryContent download(String path, Object body, Object... variables) {
         return safely(() -> {
             ResponseEntity<byte[]> response = request(HttpMethod.POST, path, body, variables)
+                    .accept(MediaType.ALL)
                     .retrieve()
                     .toEntity(byte[].class);
             String filename = response.getHeaders().getContentDisposition().getFilename();

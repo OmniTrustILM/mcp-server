@@ -17,6 +17,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.created;
 import static com.github.tomakehurst.wiremock.client.WireMock.delete;
 import static com.github.tomakehurst.wiremock.client.WireMock.deleteRequestedFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalToJson;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.noContent;
@@ -45,13 +46,16 @@ class ConfigurationApiClientTest {
 
     @Test
     void readsJsonWithEncodedPathVariables() {
-        stubFor(get(urlEqualTo("/objects/a%2Fb")).willReturn(okJson("{\"name\":\"example\"}")));
+        stubFor(get(urlEqualTo("/objects/a%2Fb"))
+                .withHeader("Accept", equalTo("application/json"))
+                .willReturn(okJson("{\"name\":\"example\"}")));
         assertThat(api.get("/objects/{id}", "a/b").path("name").asString()).isEqualTo("example");
     }
 
     @Test
     void writesExactJsonAndReadsCreatedIdentifier() {
         stubFor(post(urlEqualTo("/objects"))
+                .withHeader("Accept", equalTo("application/json"))
                 .withRequestBody(equalToJson("{\"name\":\"example\"}"))
                 .willReturn(created()
                         .withHeader("Content-Type", "application/json")
@@ -142,7 +146,12 @@ class ConfigurationApiClientTest {
 
     @Test
     void downloadsMaterialWithItsMediaTypeAndSafeFilename() {
+        stubFor(post(urlEqualTo("/export")).atPriority(10).willReturn(aResponse().withStatus(406)));
         stubFor(post(urlEqualTo("/export"))
+                .atPriority(1)
+                .withHeader("Accept", equalTo("*/*"))
+                .withHeader("Content-Type", equalTo("application/json"))
+                .withRequestBody(equalToJson("{\"passphrase\":\"test-passphrase\"}"))
                 .willReturn(ok("encrypted-material")
                         .withHeader("Content-Type", "application/octet-stream")
                         .withHeader("Content-Disposition", "attachment; filename=key.pem")));
