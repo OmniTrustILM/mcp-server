@@ -93,6 +93,17 @@ class TextFormatTest {
     }
 
     @Test
+    void protocolRelativeUrlFieldsAreOmittedWithoutExposingSensitiveComponents() {
+        StringBuilder output = new StringBuilder();
+
+        TextFormat
+                .field(output, "  ", "Connector URL",
+                        "//operator:private-sentinel@example.test/path?token=private-sentinel#private-sentinel");
+
+        assertThat(output).hasToString("  Connector URL: URL omitted\n");
+    }
+
+    @Test
     void orNaReplacesNullOnly() {
         assertThat(TextFormat.orNa(null)).isEqualTo("N/A");
         assertThat(TextFormat.orNa(42)).isEqualTo("42");

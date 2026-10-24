@@ -78,7 +78,8 @@ public final class TextFormat {
         }
         try {
             URI uri = URI.create(value);
-            if (uri.getHost() == null || !Set.of("https", "http").contains(uri.getScheme())) {
+            if (uri.getHost() == null || uri.getScheme() == null
+                    || !Set.of("https", "http").contains(uri.getScheme())) {
                 return "URL omitted";
             }
             return new URI(uri.getScheme(), null, uri.getHost(), uri.getPort(), uri.getPath(), null, null)

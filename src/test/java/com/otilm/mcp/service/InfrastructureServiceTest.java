@@ -111,6 +111,25 @@ class InfrastructureServiceTest {
     }
 
     @Test
+    void connectorInventorySurvivesProtocolRelativeUrlWithoutDisclosingSensitiveParts() {
+        stubFor(get(urlEqualTo("/v1/connectors"))
+                .willReturn(
+                        okJson("""
+                                [
+                                  {"uuid":"11111111-1111-4111-8111-111111111111","name":"Relative connector","status":"connected",
+                                   "url":"//operator:private-url-sentinel@example.test/path?token=private-query-sentinel#private-fragment-sentinel"},
+                                  {"uuid":"22222222-2222-4222-8222-222222222222","name":"Healthy connector","status":"connected",
+                                   "url":"https://healthy.example.test/api"}
+                                ]
+                                """)));
+
+        assertThat(service.listConnectors())
+                .contains("Connectors (2)", "Relative connector", "Healthy connector", "URL: URL omitted",
+                        "URL: https://healthy.example.test/api")
+                .doesNotContain("private-url-sentinel", "private-query-sentinel", "private-fragment-sentinel");
+    }
+
+    @Test
     void shouldShowFunctionGroupKinds() {
         stubFor(get(urlEqualTo("/v1/connectors")).willReturn(okJson("""
                 [{"uuid":"00000000-0000-4000-8000-000000000501","name":"name-2","status":"connected",
