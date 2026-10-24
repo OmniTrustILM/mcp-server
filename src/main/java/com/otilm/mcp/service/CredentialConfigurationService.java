@@ -5,7 +5,7 @@ public interface CredentialConfigurationService {
 
     String getCredential(String uuid);
 
-    String getCredentialAttributes(String connectorUuid, String kind);
+    String getCredentialAttributes(String connectorUuid, String kind, String values);
 
     String createCredential(String configuration);
 

@@ -27,11 +27,13 @@ public class CredentialConfigurationTool {
     }
 
     @McpTool(name = "get_credential_attributes",
-            description = "Get credential provider attribute definitions. Values use plain name-to-value objects for writes.",
+            description = "Get credential provider settings after resolving callbacks. Supply values when provider choices or fields depend on other attributes.",
             annotations = @McpTool.McpAnnotations(readOnlyHint = true))
     public String getCredentialAttributes(@McpToolParam(description = "Connector UUID") String connectorUuid,
-            @McpToolParam(description = "Provider credential kind") String kind) {
-        return service.getCredentialAttributes(connectorUuid, kind);
+            @McpToolParam(description = "Provider credential kind") String kind,
+            @McpToolParam(description = "Optional plain attribute-name to value JSON for callback dependencies",
+                    required = false) String values) {
+        return service.getCredentialAttributes(connectorUuid, kind, values);
     }
 
     @McpTool(name = "create_credential",

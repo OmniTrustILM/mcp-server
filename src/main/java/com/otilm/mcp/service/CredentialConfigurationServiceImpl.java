@@ -39,9 +39,14 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
     }
 
     @Override
-    public String getCredentialAttributes(String connectorUuid, String kind) {
-        return run("getting credential attributes",
-                () -> ConfigurationAttributes.settings("Credential attributes", definitions(connectorUuid, kind)));
+    public String getCredentialAttributes(String connectorUuid, String kind, String values) {
+        return run("getting credential attributes", () -> {
+            var context = new ConfigurationAttributes.ConnectorContext(connectorUuid,
+                    FunctionGroupCode.CREDENTIAL_PROVIDER, kind);
+            return ConfigurationAttributes
+                    .settings("Credential attributes", ConfigurationAttributes
+                            .resolve(api, context, definitions(context.connectorUuid(), context.kind()), values));
+        });
     }
 
     @Override
