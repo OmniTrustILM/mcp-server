@@ -210,8 +210,10 @@ class ConnectorConfigurationTest {
                 .willReturn(aResponse()
                         .withStatus(422)
                         .withHeader("Content-Type", "application/json")
-                        .withBody("{\"message\":\"Vault production still uses connector.\"}")));
-        assertThat(tool.deleteConnector(ID)).contains("Vault production");
+                        .withBody("{\"message\":\"Vault private-sentinel still uses connector.\"}")));
+        assertThat(tool.deleteConnector(ID))
+                .isEqualTo("ILM answered HTTP 422. Deletion was refused; check dependencies in ILM.")
+                .doesNotContain("private-sentinel");
         verify(1, deleteRequestedFor(urlEqualTo("/v2/connectors/" + ID)));
         verify(0, deleteRequestedFor(urlPathMatching(".*force.*")));
     }

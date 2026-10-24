@@ -147,8 +147,8 @@ class CbomServiceTest {
 
         assertThat(service.getCbom(CBOM_UUID))
                 .contains("CBOM: urn:uuid:3b9d2f1a-6c4e-4a8b-9d7f-2e1c0b9a8f7e v3", "  UUID: " + CBOM_UUID,
-                        "  Created: 2026-10-14T18:00:01Z", "  Custom Attributes:", "    owner: team-1")
-                .doesNotContain("contentMarker", "CycloneDX");
+                        "  Created: 2026-10-14T18:00:01Z", "  Custom Attributes:", "    owner: value omitted")
+                .doesNotContain("contentMarker", "CycloneDX", "team-1");
     }
 
     @Test

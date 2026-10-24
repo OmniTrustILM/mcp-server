@@ -49,6 +49,17 @@ final class SecretContentValues {
         if (!value.path(CONTENT).isObject()) {
             throw new IllegalArgumentException("Key-value secret content must be a JSON object.");
         }
+        validateKeyValueStrings(value.path(CONTENT));
+    }
+
+    private static void validateKeyValueStrings(JsonNode value) {
+        if (value.isString()) {
+            text(value, true);
+        } else if (value.isObject() || value.isArray()) {
+            for (JsonNode child : value) {
+                validateKeyValueStrings(child);
+            }
+        }
     }
 
     private static void validateFields(JsonNode value, String type) {

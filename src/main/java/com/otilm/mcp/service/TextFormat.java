@@ -2,8 +2,6 @@ package com.otilm.mcp.service;
 
 import com.otilm.api.model.client.attribute.ResponseAttribute;
 import com.otilm.api.model.common.NameAndUuidDto;
-import com.otilm.api.model.common.attribute.common.AttributeContent;
-import com.otilm.api.model.common.attribute.common.content.AttributeContentType;
 import com.otilm.api.model.common.enums.IPlatformEnum;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -18,10 +16,6 @@ import java.util.stream.Collectors;
 public final class TextFormat {
 
     public static final String NOT_AVAILABLE = "N/A";
-    private static final Set<AttributeContentType> DISPLAYABLE = Set
-            .of(AttributeContentType.STRING, AttributeContentType.TEXT, AttributeContentType.INTEGER,
-                    AttributeContentType.FLOAT, AttributeContentType.BOOLEAN, AttributeContentType.DATE,
-                    AttributeContentType.TIME, AttributeContentType.DATETIME);
 
     private TextFormat() {
     }
@@ -121,26 +115,10 @@ public final class TextFormat {
             return;
         }
         sb.append("\n").append(indent).append("Custom Attributes:\n");
+        // Detail responses omit protection metadata even when Core has decrypted scalar content.
         for (ResponseAttribute attribute : attributes) {
-            if (attribute.getContentType() == null || !DISPLAYABLE.contains(attribute.getContentType())) {
-                sb.append(indent).append("  ").append(attribute.getName()).append(": value omitted\n");
-                continue;
-            }
-            List<? extends AttributeContent> content = attribute.getContent();
-            String values = content == null
-                    ? ""
-                    : content.stream().map(TextFormat::attributeValue).collect(Collectors.joining(", "));
-            sb.append(indent).append("  ").append(attribute.getName()).append(": ").append(values).append("\n");
+            sb.append(indent).append("  ").append(attribute.getName()).append(": value omitted\n");
         }
-    }
-
-    private static String attributeValue(AttributeContent content) {
-        Object data = content.getData();
-        if (data instanceof CharSequence || data instanceof Number || data instanceof Boolean
-                || data instanceof java.time.temporal.TemporalAccessor) {
-            return content.getReference() != null ? content.getReference() : String.valueOf(data);
-        }
-        return "value omitted";
     }
 
     public static String pairs(Map<String, ?> values) {

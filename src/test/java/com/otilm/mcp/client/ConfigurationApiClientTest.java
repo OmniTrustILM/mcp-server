@@ -7,6 +7,11 @@ import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.created;
@@ -28,6 +33,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @WireMockTest
+@ExtendWith(OutputCaptureExtension.class)
 class ConfigurationApiClientTest {
 
     private ConfigurationApiClient api;
@@ -93,14 +99,33 @@ class ConfigurationApiClientTest {
     }
 
     @Test
-    void deletionRetainsOnlyTheUsefulDependencyRefusal() {
+    void deletionReportsSafeDependencyRefusal() {
         stubFor(delete(urlEqualTo("/objects/one"))
                 .willReturn(aResponse()
                         .withStatus(422)
                         .withHeader("Content-Type", "application/json")
                         .withBody("{\"message\":\"Cannot delete: vault example still uses the connector.\"}")));
         assertThatThrownBy(() -> api.deleteWithDependencies("/objects/{id}", "one"))
-                .hasMessageContaining("vault example still uses the connector");
+                .hasMessage("ILM answered HTTP 422. Deletion was refused; check dependencies in ILM.");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "{\"message\":\"Dependent credentials: OAuth client_secret=private-sentinel at https://user:private-sentinel@connector.example.test\"}",
+            "[\"Dependent Vault Instances: production\",\"OAuth client secret is private-sentinel\",\"-----BEGIN PRIVATE KEY----- private-sentinel\"]"})
+    void dependencyRefusalNeverExposesUpstreamDiagnostics(String diagnostic, CapturedOutput output) {
+        stubFor(delete(urlEqualTo("/objects/one"))
+                .willReturn(aResponse()
+                        .withStatus(422)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody(diagnostic)));
+
+        assertThatThrownBy(() -> api.deleteWithDependencies("/objects/{id}", "one"))
+                .isInstanceOf(ConfigurationApiClient.ApiException.class)
+                .hasMessage("ILM answered HTTP 422. Deletion was refused; check dependencies in ILM.")
+                .hasNoCause();
+        assertThat(output.getAll()).doesNotContain("private-sentinel", "-----BEGIN PRIVATE KEY-----");
+        verify(1, deleteRequestedFor(urlEqualTo("/objects/one")));
     }
 
     @Test

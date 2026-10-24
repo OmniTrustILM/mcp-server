@@ -64,8 +64,9 @@ applies the caller's authorization. ILM permissions and dependency checks remain
 Only explicit full-access tools return private key/keystore exports, secret content, ACME EAB keys or proxy provisioning
 instructions. These operations retain their actual read/write MCP hints. Ordinary detail, schema, list and update
 responses exclude secret/file/credential values and key material. Error messages suppress upstream bodies; ordinary
-URL displays omit credentials, query strings and fragments. Request/response contents are not logged under the
-provided logging configuration.
+URL displays omit credentials, query strings and fragments. Ordinary custom-attribute details show names only:
+ILM response attributes do not include protection settings, so their values and references are omitted.
+Request/response contents are not logged under the provided logging configuration.
 
 ## Version support and boundaries
 

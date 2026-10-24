@@ -8,8 +8,11 @@ import com.otilm.mcp.tool.AccessLevel;
 import com.otilm.mcp.tool.SecretOperationsTool;
 import com.otilm.mcp.tool.ToolSpecifications;
 import java.util.List;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.anyUrl;
 import static com.github.tomakehurst.wiremock.client.WireMock.delete;
@@ -118,6 +121,71 @@ class SecretConfigurationTest {
             verify(postRequestedFor(urlEqualTo(path))
                     .withRequestBody(equalToJson("{\"secret\":" + content + "}", true, true)));
         }
+    }
+
+    @ParameterizedTest
+    @MethodSource("maskedKeyValueContent")
+    void refusesMaskedKeyValueContentBeforeCreation(String content) {
+        String path = "/v1/vaults/" + VAULT + "/vaultProfiles/" + PROFILE + "/secrets";
+        stubFor(post(urlEqualTo(path)).willReturn(okJson(keyValueSecret())));
+        assertThat(tool
+                .createSecret(VAULT, PROFILE,
+                        "{\"name\":\"Secret\",\"secret\":{\"type\":\"keyValue\",\"content\":" + content
+                                + "},\"attributes\":{\"region\":\"eu\",\"password\":{\"secret\":\"fresh\"}}}"))
+                .contains("fresh", "masked")
+                .doesNotContain("FRESH_NEIGHBOR_SENTINEL");
+        verify(0, postRequestedFor(anyUrl()));
+        verify(0, putRequestedFor(anyUrl()));
+    }
+
+    @ParameterizedTest
+    @MethodSource("maskedKeyValueContent")
+    void refusesMaskedKeyValueContentBeforeReplacement(String content) {
+        stubFor(get(urlEqualTo("/v1/secrets/" + SECRET)).willReturn(okJson(keyValueSecret())));
+        stubFor(put(urlEqualTo("/v1/secrets/" + SECRET)).willReturn(okJson(keyValueSecret())));
+        assertThat(tool
+                .updateSecret(SECRET, VAULT,
+                        "{\"secret\":{\"type\":\"keyValue\",\"content\":" + content
+                                + "},\"attributes\":{\"password\":{\"secret\":\"fresh\"}}}"))
+                .contains("fresh", "masked")
+                .doesNotContain("FRESH_NEIGHBOR_SENTINEL", "PROTECTED_SENTINEL");
+        verify(0, postRequestedFor(anyUrl()));
+        verify(0, putRequestedFor(anyUrl()));
+    }
+
+    @Test
+    void keyValueCreationAndReplacementPreserveMixedJsonDataAndStringsThatAreNotMasks() {
+        String path = "/v1/vaults/" + VAULT + "/vaultProfiles/" + PROFILE + "/secrets";
+        stubFor(post(urlEqualTo(path)).willReturn(okJson(keyValueSecret())));
+        stubFor(get(urlEqualTo("/v1/secrets/" + SECRET)).willReturn(okJson(keyValueSecret())));
+        stubFor(put(urlEqualTo("/v1/secrets/" + SECRET)).willReturn(okJson(keyValueSecret())));
+        String secret = """
+                {"type":"keyValue","content":{"token":"prefix********suffix","empty":"","number":7,"active":true,
+                 "nothing":null,"nested":{"label":"[redacted]-suffix","values":[1,false,"unmasked"]}}}
+                """;
+        assertThat(tool
+                .createSecret(VAULT, PROFILE,
+                        "{\"name\":\"Secret\",\"secret\":" + secret
+                                + ",\"attributes\":{\"region\":\"eu\",\"password\":{\"secret\":\"fresh\"}}}"))
+                .contains("accepted")
+                .doesNotContain("prefix********suffix", "PROTECTED_SENTINEL");
+        assertThat(tool
+                .updateSecret(SECRET, VAULT,
+                        "{\"secret\":" + secret + ",\"attributes\":{\"password\":{\"secret\":\"fresh\"}}}"))
+                .contains("accepted")
+                .doesNotContain("prefix********suffix", "PROTECTED_SENTINEL");
+        verify(postRequestedFor(urlEqualTo(path))
+                .withRequestBody(equalToJson("{\"secret\":" + secret + "}", true, true)));
+        verify(putRequestedFor(urlEqualTo("/v1/secrets/" + SECRET))
+                .withRequestBody(equalToJson("{\"secret\":" + secret + "}", true, true)));
+    }
+
+    private static Stream<String> maskedKeyValueContent() {
+        return Stream
+                .of("{\"token\":\"********\",\"neighbor\":\"FRESH_NEIGHBOR_SENTINEL\"}", "{\"token\":\"••••\"}",
+                        "{\"token\":\"<redacted>\"}", "{\"token\":\"[REDACTED]\"}", "{\"token\":\"rEdAcTeD\"}",
+                        "{\"token\":\"MASKED\"}", "{\"nested\":{\"token\":\"********\"}}",
+                        "{\"tokens\":[\"fresh\",\"********\"]}");
     }
 
     @Test
@@ -235,5 +303,11 @@ class SecretConfigurationTest {
                 "attributes":[{"name":"region","content":[{"data":"eu"}]},{"name":"password","content":[{"data":{"secret":"PROTECTED_SENTINEL"}}]}],
                 "customAttributes":[],"secret":{"type":"generic","content":"PROTECTED_SENTINEL"}}
                 """;
+    }
+
+    private static String keyValueSecret() {
+        return secret()
+                .replace("\"type\":\"generic\"", "\"type\":\"keyValue\"")
+                .replace("\"content\":\"PROTECTED_SENTINEL\"", "\"content\":{\"token\":\"PROTECTED_SENTINEL\"}");
     }
 }

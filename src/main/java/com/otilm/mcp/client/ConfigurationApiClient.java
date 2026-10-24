@@ -10,14 +10,11 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
 import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.json.JsonMapper;
 import tools.jackson.databind.node.NullNode;
 
 /** Internal transport for fixed configuration endpoints; credential-bearing failures never expose response bodies. */
 @Component
 public class ConfigurationApiClient {
-
-    private static final JsonMapper JSON = JsonMapper.builder().build();
 
     private final RestClient client;
 
@@ -94,34 +91,13 @@ public class ConfigurationApiClient {
         } catch (RestClientResponseException failure) {
             String message = "ILM answered HTTP " + failure.getStatusCode().value() + ".";
             if (dependencyMessage && failure.getStatusCode().value() == 422) {
-                message += dependency(failure);
+                message += " Deletion was refused; check dependencies in ILM.";
             }
             throw new ApiException(message);
         } catch (RestClientException failure) {
             throw new ApiException(
                     "ILM could not complete the request. Check the connection and server configuration.");
         }
-    }
-
-    private static String dependency(RestClientResponseException failure) {
-        try {
-            JsonNode body = JSON.readTree(failure.getResponseBodyAsByteArray());
-            if (body != null && body.path("message").isString()) {
-                return " " + body.path("message").asString();
-            }
-            if (body != null && body.isArray()) {
-                StringBuilder messages = new StringBuilder();
-                for (JsonNode item : body) {
-                    if (item.isString()) {
-                        messages.append(" ").append(item.asString());
-                    }
-                }
-                return messages.toString();
-            }
-        } catch (RuntimeException unreadable) {
-            return "";
-        }
-        return "";
     }
 
     private static String safeFilename(String filename) {

@@ -4,6 +4,7 @@ import com.otilm.api.model.core.auth.Resource;
 import com.otilm.mcp.client.ConfigurationApiClient;
 import java.text.Normalizer;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.Base64;
 import java.util.HashSet;
 import java.util.Set;
@@ -512,7 +513,9 @@ public class CertificateOperationsServiceImpl implements CertificateOperationsSe
         }
         if (body.hasNonNull(EXPIRES_AT)) {
             try {
-                if (!OffsetDateTime.parse(body.path(EXPIRES_AT).asString()).isAfter(OffsetDateTime.now())) {
+                if (!OffsetDateTime
+                        .parse(body.path(EXPIRES_AT).asString())
+                        .isAfter(OffsetDateTime.now(ZoneOffset.UTC))) {
                     throw new IllegalArgumentException();
                 }
             } catch (RuntimeException invalid) {
