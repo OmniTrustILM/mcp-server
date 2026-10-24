@@ -34,7 +34,9 @@ class McpServerFullAccessTest {
                     .stream()
                     .collect(Collectors.toMap(McpSchema.Tool::name, McpSchema.Tool::annotations));
 
-            assertThat(hints).hasSize(21);
+            assertThat(hints)
+                    .containsKeys("update_user", "set_role_resource_grant", "update_custom_attribute", "update_trigger",
+                            "update_notification_profile");
             assertThat(List.of("delete_trigger", "delete_notification_instance", "delete_notification_profile"))
                     .hasSize(3)
                     .allSatisfy(name -> assertThat(hints.get(name).destructiveHint()).isTrue());

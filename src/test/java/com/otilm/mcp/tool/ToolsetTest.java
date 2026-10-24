@@ -10,7 +10,16 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class ToolsetTest {
 
-    private static final String VALID = "Valid values: all, certificates, keys, infrastructure, secrets, vaults, crypto-assets, cboms, signing, workflows, attributes, users, notifications.";
+    private static final String VALID = "Valid values: all, certificates, keys, infrastructure, secrets, vaults, crypto-assets, cboms, signing, workflows, attributes, users, notifications, connectors, credentials, authorities, ra-profiles, tokens, enrollment, entities, approvals, scheduler, settings, metadata, oids, trust, discovery, compliance.";
+
+    @Test
+    void existingSelectorsIncludeConfigurationComponents() {
+        assertThat(Toolset.CERTIFICATES.toolClasses()).contains(CertificateTool.class, CertificateOperationsTool.class);
+        assertThat(Toolset.KEYS.toolClasses()).contains(KeyTool.class, KeyManagementTool.class);
+        assertThat(Toolset.USERS.toolClasses()).contains(UserTool.class, AdministrationTool.class);
+        assertThat(Toolset.INFRASTRUCTURE.toolClasses())
+                .contains(InfrastructureTool.class, ConnectorTool.class, TokenTool.class);
+    }
 
     @Test
     void allSelectsEveryToolset() {

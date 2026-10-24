@@ -2,11 +2,14 @@ package com.otilm.mcp.service;
 
 import com.otilm.api.model.client.attribute.ResponseAttribute;
 import com.otilm.api.model.common.NameAndUuidDto;
-import com.otilm.api.model.common.attribute.common.AttributeContent;
 import com.otilm.api.model.common.enums.IPlatformEnum;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.Collection;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
@@ -65,7 +68,25 @@ public final class TextFormat {
         if (value == null || value.toString().isBlank()) {
             return;
         }
-        sb.append(indent).append(label).append(": ").append(value).append("\n");
+        sb.append(indent).append(label).append(": ").append(metadataValue(label, value.toString())).append("\n");
+    }
+
+    private static String metadataValue(String label, String value) {
+        String key = label.toLowerCase(Locale.ROOT);
+        if (!key.endsWith("url") && !key.endsWith("uri")) {
+            return value;
+        }
+        try {
+            URI uri = URI.create(value);
+            if (uri.getHost() == null || uri.getScheme() == null
+                    || !Set.of("https", "http").contains(uri.getScheme())) {
+                return "URL omitted";
+            }
+            URI authority = new URI(uri.getScheme(), null, uri.getHost(), uri.getPort(), null, null, null);
+            return URI.create(authority + uri.getRawPath()).toASCIIString();
+        } catch (IllegalArgumentException | URISyntaxException invalid) {
+            return "URL omitted";
+        }
     }
 
     public static void pageHeader(StringBuilder sb, Number totalItems, String noun, Number pageNumber,
@@ -95,17 +116,10 @@ public final class TextFormat {
             return;
         }
         sb.append("\n").append(indent).append("Custom Attributes:\n");
+        // Detail responses omit protection metadata even when Core has decrypted scalar content.
         for (ResponseAttribute attribute : attributes) {
-            List<? extends AttributeContent> content = attribute.getContent();
-            String values = content == null
-                    ? ""
-                    : content.stream().map(TextFormat::attributeValue).collect(Collectors.joining(", "));
-            sb.append(indent).append("  ").append(attribute.getName()).append(": ").append(values).append("\n");
+            sb.append(indent).append("  ").append(attribute.getName()).append(": value omitted\n");
         }
-    }
-
-    private static String attributeValue(AttributeContent content) {
-        return content.getReference() != null ? content.getReference() : String.valueOf((Object) content.getData());
     }
 
     public static String pairs(Map<String, ?> values) {

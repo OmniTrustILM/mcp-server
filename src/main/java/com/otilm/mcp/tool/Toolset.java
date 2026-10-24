@@ -8,39 +8,59 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * An area of tools the operator can switch on or off. Each tool class is one toolset.
+ * An area of tools the operator can switch on or off. Compatibility aggregates can overlap focused areas.
  */
 public enum Toolset {
 
-    CERTIFICATES("certificates", CertificateTool.class),
-    KEYS("keys", KeyTool.class),
-    INFRASTRUCTURE("infrastructure", InfrastructureTool.class),
-    SECRETS("secrets", SecretTool.class),
-    VAULTS("vaults", VaultTool.class),
+    CERTIFICATES("certificates", CertificateTool.class, CertificateOperationsTool.class),
+    KEYS("keys", KeyTool.class, KeyManagementTool.class),
+    INFRASTRUCTURE("infrastructure", InfrastructureTool.class, ConnectorInventoryTool.class,
+            AuthorityInventoryTool.class, RaProfileInventoryTool.class, TokenInventoryTool.class,
+            EntityInventoryTool.class, DiscoveryInventoryTool.class, GroupTool.class, ConnectorTool.class,
+            ProxyTool.class, CredentialConfigurationTool.class, AuthorityTool.class, RaProfileTool.class,
+            TokenTool.class, EntityTool.class, LocationTool.class, DiscoveryManagementTool.class, ComplianceTool.class),
+    SECRETS("secrets", SecretTool.class, SecretOperationsTool.class),
+    VAULTS("vaults", VaultTool.class, VaultConfigurationTool.class),
     CRYPTO_ASSETS("crypto-assets", CryptoAssetTool.class),
     CBOMS("cboms", CbomTool.class),
-    SIGNING("signing", SigningTool.class),
-    WORKFLOWS("workflows", WorkflowTool.class),
-    ATTRIBUTES("attributes", AttributeTool.class),
-    USERS("users", UserTool.class),
-    NOTIFICATIONS("notifications", NotificationTool.class);
+    SIGNING("signing", SigningTool.class, SigningConfigurationTool.class, TimestampConfigurationTool.class),
+    WORKFLOWS("workflows", WorkflowTool.class, AutomationMaintenanceTool.class),
+    ATTRIBUTES("attributes", AttributeTool.class, AttributeConfigurationTool.class, MetadataTool.class),
+    USERS("users", UserTool.class, AdministrationTool.class, GroupTool.class),
+    NOTIFICATIONS("notifications", NotificationTool.class, NotificationMaintenanceTool.class),
+    CONNECTORS("connectors", ConnectorInventoryTool.class, ConnectorTool.class, ProxyTool.class),
+    CREDENTIALS("credentials", CredentialConfigurationTool.class),
+    AUTHORITIES("authorities", AuthorityInventoryTool.class, AuthorityTool.class),
+    RA_PROFILES("ra-profiles", RaProfileInventoryTool.class, RaProfileTool.class),
+    TOKENS("tokens", TokenInventoryTool.class, TokenTool.class),
+    ENROLLMENT("enrollment", EnrollmentTool.class),
+    ENTITIES("entities", EntityInventoryTool.class, EntityTool.class, LocationTool.class),
+    APPROVALS("approvals", ApprovalTool.class),
+    SCHEDULER("scheduler", SchedulerTool.class),
+    SETTINGS("settings", SettingsTool.class),
+    METADATA("metadata", MetadataTool.class),
+    OIDS("oids", OidTool.class),
+    TRUST("trust", TrustTool.class),
+    DISCOVERY("discovery", DiscoveryInventoryTool.class, DiscoveryManagementTool.class,
+            AutomationMaintenanceTool.class),
+    COMPLIANCE("compliance", ComplianceTool.class);
 
     private static final String ALL = "all";
 
     private final String label;
-    private final Class<?> toolClass;
+    private final List<Class<?>> toolClasses;
 
-    Toolset(String label, Class<?> toolClass) {
+    Toolset(String label, Class<?>... toolClasses) {
         this.label = label;
-        this.toolClass = toolClass;
+        this.toolClasses = List.of(toolClasses);
     }
 
     public String label() {
         return label;
     }
 
-    public Class<?> toolClass() {
-        return toolClass;
+    public List<Class<?>> toolClasses() {
+        return toolClasses;
     }
 
     public static Set<Toolset> parse(List<String> values) {

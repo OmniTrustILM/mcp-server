@@ -11,10 +11,15 @@ spring:
           enabled: false
         tool-callback-converter: false
         instructions: >
-          Access to an ILM platform: certificates, keys, secrets, signing, CBOMs and cryptographic assets.
+          Access to ILM inventory, configuration and lifecycle operations: certificates, keys/tokens, connectors, vaults,
+          secrets, authorities/RA profiles, enrollment, users/permissions, discovery, compliance/approvals, attributes,
+          signing/timestamping, scheduler/platform settings, CBOMs and cryptographic assets.
           This server runs with access level ${ilm.mcp.access}. At read-only it offers only tools that read; read-write
           adds tools that create and change, and full adds tools that delete, revoke or destroy. Tools above the
           access level are not available; the operator sets the level with ILM_MCP_ACCESS.
+          Private key/keystore exports, secret content, ACME EAB keys and proxy provisioning instructions are returned only
+          through explicit full-access tools. Ordinary responses omit protected material. Retrieve provider attribute
+          schemas before configuration writes; updates retain readable values and require fresh protected values.
           To automate something, describe the goal: create_trigger sets up a whole workflow in one call and attaches it
           to its event, and list_event_triggers shows what already happens on an event. list_trigger_fields shows the
           fields a trigger can check and set; look up names with list_users, list_roles and list_groups, and create a

@@ -8,16 +8,15 @@ Built with [Spring AI MCP](https://docs.spring.io/spring-ai/reference/api/mcp/mc
 
 ## Features
 
-- **56 tools** for certificates, cryptographic keys, infrastructure, secrets, vaults, signing, CBOMs, the
-  cryptographic asset inventory with its post-quantum (PQC) readiness, workflows and notifications: 46 that read, 10
-  that change ILM
+- **Inventory, configuration, and lifecycle tools** for certificates, keys, tokens, connectors, vaults, secrets,
+  enrollment, permissions, discovery, compliance, approvals, signing, platform settings, and automation
 - **Read-only by default**: access levels and toolsets decide which tools clients see
 - **Two transport modes**: HTTP (Streamable HTTP) and STDIO
 - **Three authentication methods**: client certificate, OAuth pass-through, OAuth client credentials
 - **AI-optimized responses**: formatted text output designed for LLM consumption
 - **Lightweight Docker image**: multi-stage build with custom JRE (jlink)
 
-## Available Tools
+## Inventory and Workflow Tools
 
 Every tool works with ILM 2.17 or later unless it names a newer version. On an older ILM, such a tool answers with
 the version it needs.
@@ -143,6 +142,27 @@ the version it needs.
 | `create_notification_profile`         | Create a profile: recipients, instance or in-app, and repeats (`read-write`)             |
 | `delete_notification_profile`         | Delete a profile that no trigger sends through (`full`)                                  |
 
+## Configuration and Lifecycle Tools
+
+The server also supports the configuration areas below. MCP tool discovery supplies each operation's parameters and
+minimum ILM version. See [configuration examples and update behavior](docs/configuration.md).
+
+| Area | Operations |
+|------|------------|
+| Connectors and proxies | Authentication schemas, connection probes, registration, configuration, reconnect, approval and normal deletion; proxy provisioning |
+| Vaults and secrets | Vault/profile configuration, typed secret creation and versions, ownership/groups, source/synchronization profiles and explicit content retrieval |
+| Authorities and RA profiles | Provider schemas, instance/profile configuration, enrollment bindings and activation |
+| Certificates | Requests and issuance, registration, renewal/rekey, revocation, manual completion/cancellation, import/export, metadata, relations and archival |
+| Keys and tokens | Token instances/profiles, activation, key generation/import/export, metadata, usage, state transitions and destruction |
+| Credentials | Provider schemas, creation, replacement, activation and deletion |
+| Users, groups and roles | User/group configuration, memberships, roles, resource grants, object allow/deny grants and effective permissions |
+| Discovery and workflows | Discovery creation, scheduling, results/control; ordered scoped triggers, history and trigger/notification updates |
+| Compliance and approvals | Profiles, internal/provider rules and groups, associations, checks/results, approval policies and eligible-recipient decisions |
+| Attributes and catalogs | Full custom definitions and individual values, global metadata/promotion, custom/system OIDs and trusted certificates |
+| Entities and locations | Instance/location configuration and certificate deployment, removal and issuance |
+| Signing and timestamping | Signing/TSP profiles, formatter settings, time quality and TSP basic credentials |
+| Platform | Scheduler job configuration/state/history, platform/authentication/OAuth/logging/event settings |
+
 ## Quick Start
 
 ### Prerequisites
@@ -217,19 +237,25 @@ No additional configuration needed. The server forwards the Bearer token from in
 | `ILM_MCP_ACCESS`   | Access level: `read-only`, `read-write` or `full` | `read-only` |
 | `ILM_MCP_TOOLSETS` | `all`, or a comma-separated list of toolsets      | `all`       |
 
-`read-only` offers only tools that read. `read-write` adds tools that create or change things, and `full` adds tools
-that delete, revoke or destroy. The toolsets are `certificates`, `keys`, `infrastructure`, `secrets`, `vaults`,
-`crypto-assets`, `cboms`, `signing`, `workflows`, `attributes`, `users` and `notifications`; `get_searchable_fields`
-is always available. Tools outside the access level or the toolsets are not registered, so clients never see them.
-Each tool tells the client whether it reads, writes or destroys, so the client can ask before running it. An unknown
-value stops the server at startup.
+`read-only` offers ordinary reads. `read-write` adds reversible creation and configuration changes. `full` also
+permits destructive operations and explicitly named sensitive-output tools such as `export_key`,
+`export_certificate_keystore`, `get_secret_content`, `generate_acme_eab_key` and
+`get_proxy_installation_instructions`. Sensitive reads retain truthful read-only MCP hints but are unavailable below
+`full`. Ordinary responses omit protected material, including when ILM returns decrypted values.
+
+Toolsets are `certificates`, `keys`, `infrastructure`, `secrets`, `vaults`, `crypto-assets`, `cboms`, `signing`,
+`workflows`, `attributes`, `users`, `notifications`, `connectors`, `credentials`, `authorities`, `ra-profiles`,
+`tokens`, `enrollment`, `entities`, `approvals`, `scheduler`, `settings`, `metadata`, `oids`, `trust`, `discovery`
+and `compliance`. The original selectors remain available; `infrastructure` groups the original infrastructure
+inventory with its configuration tools, and `users` includes group/role/permission administration. Some selectors
+share components; selecting overlapping areas registers each tool once. Focused selectors include their relevant inventory lists. `get_searchable_fields` is always available. Unknown settings stop startup.
 
 Attaching or detaching a trigger makes ILM re-save every platform trigger of that event to run as the identity that
 made the change.
 
 Above `read-only`, HTTP mode requires `ILM_AUTH_METHOD=oauth-passthrough`, and the server refuses to start otherwise.
 With a client certificate or client credentials, the HTTP endpoint has no login of its own, and every caller would act
-as the server's ILM identity. STDIO mode works with every authentication method.
+as the server's ILM identity. STDIO mode supports certificate and OAuth client-credentials authentication. OAuth pass-through requires HTTP mode.
 
 The server can never do more than the ILM identity it uses. Give that identity a dedicated ILM role with only the
 permissions the enabled toolsets need. In HTTP mode without OAuth pass-through, keep the endpoint reachable from

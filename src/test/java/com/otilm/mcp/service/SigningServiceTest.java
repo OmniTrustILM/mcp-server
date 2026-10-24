@@ -6,6 +6,8 @@ import com.otilm.mcp.IlmTestSupport;
 import com.otilm.mcp.client.IlmApiClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.anyUrl;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
@@ -93,8 +95,25 @@ class SigningServiceTest {
         assertThat(service.getSigningProfile(PROFILE_UUID))
                 .contains("  Signing Scheme: managed (one_time_key)", "  RA Profile: signing-ra",
                         "  CSR Template: signing-csr", "  Token Profile: hsm-profile", "  Workflow: content_signing",
-                        "  Recording: enabled, retention 30 days", "  Custom Attributes:", "    department: team-1")
-                .doesNotContain("Protocols:");
+                        "  Recording: enabled, retention 30 days", "  Custom Attributes:",
+                        "    department: value omitted")
+                .doesNotContain("Protocols:", "team-1");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"string", "text"})
+    void profileDetailOmitsDecryptedCustomAttributeScalars(String contentType) {
+        stubIlmVersion("2.20.0");
+        stubFor(get(urlEqualTo("/v1/signingProfiles/" + PROFILE_UUID)).willReturn(okJson("""
+                {"uuid":"38f6e529-8123-4ead-a5f1-f3e65d8c06a9","name":"document-signing",
+                 "customAttributes":[{"name":"protected attribute","type":"custom","version":"v3",
+                  "contentType":"%s","content":[{"contentType":"%s","reference":"private-reference",
+                  "data":"decrypted-private-sentinel"}]}]}
+                """.formatted(contentType, contentType))));
+
+        assertThat(service.getSigningProfile(PROFILE_UUID))
+                .contains("Signing Profile: document-signing", "protected attribute: value omitted")
+                .doesNotContain("decrypted-private-sentinel", "private-reference");
     }
 
     @Test

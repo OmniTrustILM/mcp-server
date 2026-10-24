@@ -1,15 +1,123 @@
 package com.otilm.mcp.service;
 
+import com.otilm.api.model.client.attribute.ResponseAttributeV2;
+import com.otilm.api.model.client.attribute.ResponseAttributeV3;
 import com.otilm.api.model.common.NameAndUuidDto;
+import com.otilm.api.model.common.attribute.common.content.AttributeContentType;
+import com.otilm.api.model.common.attribute.common.content.data.SecretAttributeContentData;
+import com.otilm.api.model.common.attribute.v2.content.SecretAttributeContentV2;
+import com.otilm.api.model.common.attribute.v2.content.StringAttributeContentV2;
+import com.otilm.api.model.common.attribute.v2.content.TextAttributeContentV2;
+import com.otilm.api.model.common.attribute.v3.content.StringAttributeContentV3;
+import com.otilm.api.model.common.attribute.v3.content.TextAttributeContentV3;
 import com.otilm.api.model.core.cryptoasset.PqcVerdict;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 class TextFormatTest {
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void ordinaryCustomAttributesOmitDecryptedScalarsAndTheirReferences(boolean versionThree) {
+        StringBuilder result = new StringBuilder();
+        if (versionThree) {
+            var string = new ResponseAttributeV3();
+            string.setName("Protected string");
+            string.setContentType(AttributeContentType.STRING);
+            string.setContent(List.of(new StringAttributeContentV3("private-reference", "decrypted-string-sentinel")));
+            var text = new ResponseAttributeV3();
+            text.setName("Protected text");
+            text.setContentType(AttributeContentType.TEXT);
+            text.setContent(List.of(new TextAttributeContentV3("private-reference", "decrypted-text-sentinel")));
+            TextFormat.customAttributes(result, "  ", List.of(string, text));
+        } else {
+            var string = new ResponseAttributeV2();
+            string.setName("Protected string");
+            string.setContentType(AttributeContentType.STRING);
+            string.setContent(List.of(new StringAttributeContentV2("private-reference", "decrypted-string-sentinel")));
+            var text = new ResponseAttributeV2();
+            text.setName("Protected text");
+            text.setContentType(AttributeContentType.TEXT);
+            text.setContent(List.of(new TextAttributeContentV2("private-reference", "decrypted-text-sentinel")));
+            TextFormat.customAttributes(result, "  ", List.of(string, text));
+        }
+        assertThat(result.toString())
+                .contains("    Protected string: value omitted", "    Protected text: value omitted")
+                .doesNotContain("private-reference", "decrypted-string-sentinel", "decrypted-text-sentinel");
+    }
+
+    @Test
+    void ordinaryCustomAttributesOmitScalarsWithUnknownProtection() {
+        var attribute = new ResponseAttributeV3();
+        attribute.setName("Department");
+        attribute.setContentType(AttributeContentType.STRING);
+        attribute.setContent(List.of(new StringAttributeContentV3("unknown-protection-sentinel")));
+
+        StringBuilder result = new StringBuilder();
+        TextFormat.customAttributes(result, "", List.of(attribute));
+
+        assertThat(result.toString())
+                .contains("Department: value omitted")
+                .doesNotContain("unknown-protection-sentinel");
+    }
+
+    @Test
+    void ordinaryCustomAttributesSuppressProtectedAndStructuredContent() {
+        var secret = new ResponseAttributeV2();
+        secret.setName("Password");
+        secret.setContentType(AttributeContentType.SECRET);
+        secret
+                .setContent(List
+                        .of(new SecretAttributeContentV2("private-sentinel",
+                                new SecretAttributeContentData("private-sentinel"))));
+        StringBuilder result = new StringBuilder();
+        TextFormat.customAttributes(result, "", List.of(secret));
+        assertThat(result.toString()).contains("Password", "omitted").doesNotContain("private-sentinel");
+    }
+
+    @Test
+    void existingInventoryUrlFieldsDoNotRevealConnectionCredentials() {
+        StringBuilder output = new StringBuilder();
+        TextFormat
+                .field(output, "", "Connector URL",
+                        "https://operator:private-sentinel@example.test/path?token=private-sentinel#private-sentinel");
+        assertThat(output.toString())
+                .contains("https://example.test/path")
+                .doesNotContain("private-sentinel", "operator");
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "/tenant%2Fproduction/api, https://example.test:8443/tenant%2Fproduction/api",
+            "/tenant%2fproduction/%252F/%25/%3F/%23, https://example.test:8443/tenant%2fproduction/%252F/%25/%3F/%23",
+            "/café/%2F, https://example.test:8443/caf%C3%A9/%2F"})
+    void metadataUrlsPreserveEncodedPathsWhileSuppressingSensitiveComponents(String path, String expectedUrl) {
+        StringBuilder output = new StringBuilder();
+
+        TextFormat
+                .field(output, "", "Connector URL", "https://operator:private-sentinel@example.test:8443" + path
+                        + "?token=private-sentinel#private-sentinel");
+
+        assertThat(output).hasToString("Connector URL: " + expectedUrl + "\n");
+    }
+
+    @Test
+    void protocolRelativeUrlFieldsAreOmittedWithoutExposingSensitiveComponents() {
+        StringBuilder output = new StringBuilder();
+
+        TextFormat
+                .field(output, "  ", "Connector URL",
+                        "//operator:private-sentinel@example.test/path?token=private-sentinel#private-sentinel");
+
+        assertThat(output).hasToString("  Connector URL: URL omitted\n");
+    }
 
     @Test
     void orNaReplacesNullOnly() {
