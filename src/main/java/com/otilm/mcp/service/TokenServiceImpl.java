@@ -1,9 +1,15 @@
 package com.otilm.mcp.service;
 
+import com.otilm.api.model.client.cryptography.key.KeyRequestType;
+import com.otilm.api.model.common.enums.cryptography.KeyAlgorithm;
 import com.otilm.api.model.core.auth.Resource;
 import com.otilm.api.model.core.connector.FunctionGroupCode;
 import com.otilm.mcp.client.ConfigurationApiClient;
+import java.util.Arrays;
+import java.util.Set;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 import org.springframework.stereotype.Service;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.node.ArrayNode;
@@ -18,6 +24,10 @@ public class TokenServiceImpl implements TokenService {
     private static final String ENABLED = "enabled";
     private static final String USAGE = "usage";
     private static final String USAGES = "usages";
+    private static final Set<String> KEY_ALGORITHM_CODES = Arrays
+            .stream(KeyAlgorithm.values())
+            .map(KeyAlgorithm::getCode)
+            .collect(Collectors.toUnmodifiableSet());
 
     private static final String TOKEN = "/v1/tokens/{uuid}";
     private static final String PROFILE = "/v1/tokens/{tokenUuid}/tokenProfiles/{profileUuid}";
@@ -380,11 +390,33 @@ public class TokenServiceImpl implements TokenService {
     @Override
     public String getTokenProfileCapabilities(String tokenUuid, String profileUuid) {
         return modern("retrieving token profile capabilities",
-                () -> ConfigurationSupport
-                        .describe("Token profile capabilities",
-                                client.get(PROFILE, CryptoInput.uuid(tokenUuid), CryptoInput.uuid(profileUuid)), "uuid",
-                                "name", USAGES, "keyTransfer.importAvailable", "keyTransfer.exportAvailable",
-                                "keyTransfer.importableKeyTypes", "keyTransfer.exportableKeyTypes"));
+                () -> capabilities(client.get(PROFILE, CryptoInput.uuid(tokenUuid), CryptoInput.uuid(profileUuid))));
+    }
+
+    private static String capabilities(JsonNode profile) {
+        StringBuilder output = new StringBuilder(ConfigurationSupport
+                .describe("Token profile capabilities", profile, "uuid", "name", USAGES, "keyTransfer.importAvailable",
+                        "keyTransfer.exportAvailable"));
+        appendKeyTypes(output, profile, "importableKeyTypes");
+        appendKeyTypes(output, profile, "exportableKeyTypes");
+        return output.toString();
+    }
+
+    private static void appendKeyTypes(StringBuilder output, JsonNode profile, String direction) {
+        JsonNode types = profile.path("keyTransfer").path(direction);
+        for (KeyRequestType type : KeyRequestType.values()) {
+            JsonNode supported = types.path(type.getCode());
+            if (supported.isArray()) {
+                String algorithms = StreamSupport
+                        .stream(supported.spliterator(), false)
+                        .filter(JsonNode::isString)
+                        .map(JsonNode::asString)
+                        .filter(KEY_ALGORITHM_CODES::contains)
+                        .distinct()
+                        .collect(Collectors.joining(", "));
+                TextFormat.field(output, "", "keyTransfer." + direction + "." + type.getCode(), algorithms);
+            }
+        }
     }
 
     @Override

@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -90,6 +91,21 @@ class TextFormatTest {
         assertThat(output.toString())
                 .contains("https://example.test/path")
                 .doesNotContain("private-sentinel", "operator");
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "/tenant%2Fproduction/api, https://example.test:8443/tenant%2Fproduction/api",
+            "/tenant%2fproduction/%252F/%25/%3F/%23, https://example.test:8443/tenant%2fproduction/%252F/%25/%3F/%23",
+            "/café/%2F, https://example.test:8443/caf%C3%A9/%2F"})
+    void metadataUrlsPreserveEncodedPathsWhileSuppressingSensitiveComponents(String path, String expectedUrl) {
+        StringBuilder output = new StringBuilder();
+
+        TextFormat
+                .field(output, "", "Connector URL", "https://operator:private-sentinel@example.test:8443" + path
+                        + "?token=private-sentinel#private-sentinel");
+
+        assertThat(output).hasToString("Connector URL: " + expectedUrl + "\n");
     }
 
     @Test

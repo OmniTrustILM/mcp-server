@@ -180,6 +180,24 @@ class TokenConfigurationTest {
         assertThat(tool.getTokenProfileCapabilities(TOKEN, PROFILE)).contains("2.20");
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {"importableKeyTypes", "exportableKeyTypes"})
+    void profileCapabilitiesPreserveSecretKeyTypesWithoutReturningMaterial(String direction) {
+        stubFor(get(urlEqualTo(PROFILE_PATH)).willReturn(okJson("""
+                {"uuid":"%s","name":"profile","usages":["sign"],
+                 "secret":"SENTINEL_TOP_LEVEL","keyData":"SENTINEL_KEY_DATA",
+                 "attributes":[{"content":[{"data":{"secret":"SENTINEL_ATTRIBUTE"}}]}],
+                 "keyTransfer":{"importAvailable":true,"exportAvailable":true,"secret":"SENTINEL_TRANSFER",
+                   "%s":{"keyPair":["RSA","SENTINEL_ALGORITHM",{"secret":"SENTINEL_NESTED"}],
+                     "secret":["AES"],"unknownType":["SENTINEL_UNKNOWN"],
+                     "privateKey":"SENTINEL_PRIVATE_KEY","password":"SENTINEL_PASSWORD"}}}
+                """.formatted(PROFILE, direction))));
+
+        assertThat(tool.getTokenProfileCapabilities(TOKEN, PROFILE))
+                .contains(direction, "keyPair", "RSA", "secret", "AES")
+                .doesNotContain("SENTINEL_", "unknownType", "privateKey", "password");
+    }
+
     @Test
     void invalidUsagesUnknownFieldsAndProtectedUpstreamErrorsAreSafe() {
         assertThat(tool.updateTokenProfileUsages(TOKEN, PROFILE, "[\"SENTINEL_SECRET\"]"))

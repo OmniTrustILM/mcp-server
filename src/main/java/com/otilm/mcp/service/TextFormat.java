@@ -82,8 +82,8 @@ public final class TextFormat {
                     || !Set.of("https", "http").contains(uri.getScheme())) {
                 return "URL omitted";
             }
-            return new URI(uri.getScheme(), null, uri.getHost(), uri.getPort(), uri.getPath(), null, null)
-                    .toASCIIString();
+            URI authority = new URI(uri.getScheme(), null, uri.getHost(), uri.getPort(), null, null, null);
+            return URI.create(authority + uri.getRawPath()).toASCIIString();
         } catch (IllegalArgumentException | URISyntaxException invalid) {
             return "URL omitted";
         }
