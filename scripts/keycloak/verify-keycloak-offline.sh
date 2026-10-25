@@ -4,7 +4,7 @@ set -euo pipefail
 set +x
 SCRIPT_DIR="$(cd -- "$(dirname -- "$0")" && pwd)"
 python3 - "$SCRIPT_DIR" <<'PY'
-import ast,contextlib,copy,io,json,os,pathlib,sys,tempfile,urllib.parse,urllib.request
+import ast,base64,contextlib,copy,http.client,io,json,os,pathlib,sys,tempfile,time,traceback,urllib.parse,urllib.request
 root=pathlib.Path(sys.argv[1])
 examples=root.parent.parent/'docs'/'keycloak'
 code=(root/'configure-keycloak.sh').read_text().split("<<'PY'\n",1)[1].rsplit('\nPY',1)[0]
@@ -303,7 +303,7 @@ def register(f,payload,expect_failure=False):
      if e.code not in (None,0):failure=str(e)
   finally:urllib.request.build_opener=old;sys.argv=oldargv
   assert bool(failure)==expect_failure,(failure,output.getvalue())
-  assert not any(v in output.getvalue()+(failure or '')+json.dumps(f.writes) for v in (SECRET,ROTATED,REG))
+  assert not any(v in output.getvalue()+(failure or '')+json.dumps(f.writes) for v in (SECRET,ROTATED,REG,'OFFLINE_URI_USER','OFFLINE_URI_PASSWORD'))
 for frontend in ('codex','claude-code'):
  payload=json.loads((examples/('public-source-'+frontend+'.example.json')).read_text())
  f=Fixture();register(f,payload,expect_failure=True);assert not f.writes and not f.reads
@@ -315,5 +315,101 @@ for frontend in ('codex','claude-code'):
  payload['redirectUris']=['http://localhost:19483/*'];before=len(f.reads)
  register(f,payload,expect_failure=True);assert len(f.reads)==before
 print('PASS: both public frontend templates reject placeholders/wildcards, POST once, no-op on repeat and refuse existing redirect mismatches without PUT.')
+
+unsafe_registration_callbacks=(None,42,'','/callback','http://source.invalid/callback','https://',
+ 'https://OFFLINE_URI_USER:OFFLINE_URI_PASSWORD@source.invalid/callback',
+ 'https://source.invalid:70000/callback','https://source.invalid:invalid/callback',
+ 'https://source.invalid:0/callback','https://source.invalid:/callback',
+ 'https://source.invalid/callback#fragment','https://source.invalid/callback#',
+ 'https://source.invalid/callback%0A','https://source.invalid/call\nback',
+ ' https://source.invalid/callback','https://source.invalid/callback ',
+ 'https://source.invalid/callback%20','https://source.invalid/callback%7F',
+ 'https://source.invalid/%2A','https://source.invalid/%3Ccallback%3E',
+ 'https://source.invalid/callback%5Cextra','https://source%2einvalid/callback')
+for uri in unsafe_registration_callbacks:
+ payload=json.loads((examples/'public-source-codex.example.json').read_text())
+ payload['redirectUris']=[uri];f=Fixture()
+ register(f,payload,expect_failure=True);assert not f.reads and not f.writes
+payload=json.loads((examples/'public-source-codex.example.json').read_text())
+callbacks=['https://source.invalid/exact-callback?state=fixture&flow=code',
+ 'http://127.0.0.1:19483/callback?state=fixture','http://localhost:19483/callback',
+ 'http://[::1]:19483/callback','https://[2001:db8::1]:9443/callback']
+payload['redirectUris']=callbacks;f=Fixture();register(f,payload);register(f,payload)
+assert len(f.writes)==1 and f.clients[payload['clientId']]['redirectUris']==callbacks
+c=config('standard');c['sourceClientIds']=[payload['clientId']];run(f,c)
+assert f.clients[payload['clientId']]['redirectUris']==callbacks
+print('PASS: unsafe new-client callbacks fail before all reads/writes; exact HTTPS/loopback callbacks including queries remain unchanged and pass configuration.')
+
+for key in ('oauth2.device.authorization.grant.enabled','oidc.ciba.grant.enabled','oauth2.jwt.authorization.grant.enabled'):
+ payload=json.loads((examples/'public-source-codex.example.json').read_text())
+ payload['redirectUris']=['http://127.0.0.1:19483/fixture-callback']
+ f=Fixture();register(f,payload)
+ existing=f.clients[payload['clientId']]
+ existing['attributes'].update({'keep':'yes',key:'false'})
+ before=copy.deepcopy(existing);writes=copy.deepcopy(f.writes)
+ register(f,payload);assert existing==before and f.writes==writes
+ for enabled in ('true','TrUe',True):
+  existing['attributes'][key]=enabled;before=copy.deepcopy(existing)
+  register(f,payload,expect_failure=True)
+  assert existing==before and f.writes==writes,key+' grant was silently changed'
+print('PASS: existing public registrations allow unrelated/disabled attributes and reject enabled device, CIBA and JWT grants without mutation.')
+
+# Protocol failures can contain reflected credentials before an HTTP response
+# exists or while its body is read. Every helper must suppress both paths.
+class BrokenHttp:
+ def __init__(self,stage,reflected):self.stage=stage;self.reflected=reflected
+ def open(self,request,timeout):
+  if self.stage=='status':raise http.client.BadStatusLine(self.reflected)
+  return self
+ def __enter__(self):return self
+ def __exit__(self,*args):pass
+ def read(self):raise http.client.IncompleteRead(self.reflected.encode(),1)
+
+def helper_http_failure(name,stage):
+ helper_code=(root/name).read_text().split("<<'PY'\n",1)[1].rsplit('\nPY',1)[0]
+ with tempfile.TemporaryDirectory() as d:
+  d=pathlib.Path(d);c=config('standard');c['ilmProviderName']='fixture-provider'
+  if name=='update-ilm-provider.sh':c['mode']='delegation'
+  cf=d/'config';cf.write_text(json.dumps(c))
+  token=d/'token';token.write_text('OFFLINE_ADMIN_TOKEN_SENTINEL');token.chmod(0o600)
+  secret=d/'secret';secret.write_text(SECRET);secret.chmod(0o600)
+  claims={'iss':c['issuer'],'exp':int(time.time())+300,'aud':[c['resource'],'ilm-mcp'],
+   'scope':'mcp:access','sub':'OFFLINE_SOURCE_TOKEN_SENTINEL'}
+  source=d/'source';source.write_text('fixture.'+base64.urlsafe_b64encode(json.dumps(claims).encode()).decode().rstrip('=')+'.fixture');source.chmod(0o600)
+  payload=json.loads((examples/'public-source-codex.example.json').read_text())
+  payload['redirectUris']=['http://127.0.0.1:19483/fixture-callback']
+  pf=d/'public';pf.write_text(json.dumps(payload))
+  sentinels=(SECRET,ROTATED,REG,token.read_text(),claims['sub'])
+  fixture=BrokenHttp(stage,' '.join(sentinels))
+  argv=['-',str(cf)]
+  if name=='configure-keycloak.sh':argv=['-','inspect',str(cf)]
+  elif name=='read-mcp-secret.sh':argv.append(str(d/'saved-secret'))
+  elif name=='register-public-source-client.sh':argv.append(str(pf))
+  env={'KC_ADMIN_TOKEN_FILE':str(token),'ILM_ADMIN_TOKEN_FILE':str(token),
+   'MCP_SECRET_FILE':str(secret),'SOURCE_TOKEN_FILE':str(source),'PROBE_OUTPUT_DIR':str(d)}
+  oldenv={k:os.environ.get(k) for k in env};old=urllib.request.build_opener;oldargv=sys.argv
+  os.environ.update(env);urllib.request.build_opener=lambda *a:fixture;sys.argv=argv
+  output=io.StringIO();errors=io.StringIO();failure=None
+  try:
+   with contextlib.redirect_stdout(output),contextlib.redirect_stderr(errors):
+    try:exec(compile(helper_code,name,'exec'),{})
+    except SystemExit as e:
+     if e.code not in (None,0):failure=str(e)
+    except http.client.HTTPException:traceback.print_exc()
+  finally:
+   urllib.request.build_opener=old;sys.argv=oldargv
+   for k,v in oldenv.items():
+    if v is None:os.environ.pop(k,None)
+    else:os.environ[k]=v
+  text=output.getvalue()+errors.getvalue()+(failure or '')
+  return bool(failure and 'details suppressed' in failure and not output.getvalue() and
+   not errors.getvalue() and not any(value in text for value in sentinels))
+
+unsafe_http=[]
+for name in ('configure-keycloak.sh','exchange-token-probe.sh','read-mcp-secret.sh','register-public-source-client.sh','update-ilm-provider.sh'):
+ for stage in ('status','body'):
+  if not helper_http_failure(name,stage):unsafe_http.append(name+':'+stage)
+assert not unsafe_http,'Unsanitized HTTP protocol failures: '+', '.join(unsafe_http)
+print('PASS: all five helpers suppress reflected token/secret sentinels in stdout, stderr and fixed diagnostics for malformed HTTP status and truncated bodies.')
 print('OFFLINE FIXTURES COMPLETE. No live network, real credentials, server acceptance or deployment validation performed.')
 PY

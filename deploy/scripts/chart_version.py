@@ -1,5 +1,6 @@
 """Validate source chart versions and resolve immutable publication versions."""
 import argparse
+from pathlib import Path
 import re
 
 import yaml
@@ -21,12 +22,12 @@ def resolve(source, ref_type, ref_name, sha):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--chart', default='deploy/charts/mcp-server/Chart.yaml')
     parser.add_argument('--ref-type', required=True, choices=['branch', 'tag'])
     parser.add_argument('--ref-name', required=True)
     parser.add_argument('--sha', required=True)
     args = parser.parse_args()
-    with open(args.chart, encoding='utf-8') as chart:
+    chart_path = Path(__file__).resolve().parents[1] / 'charts/mcp-server/Chart.yaml'
+    with chart_path.open(encoding='utf-8') as chart:
         source = yaml.safe_load(chart)['version']
     print(resolve(source, args.ref_type, args.ref_name, args.sha))
 

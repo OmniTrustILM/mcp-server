@@ -45,10 +45,42 @@ class ChartPublicationTests(unittest.TestCase):
         resolve = script('chart_version').resolve
         self.assertEqual(resolve('0.1.0-develop', 'branch', 'main', 'a' * 40),
                          '0.1.0-develop.' + 'a' * 40)
-        for ref_type, ref_name, sha in [('branch', 'feature', 'a' * 40),
-                                        ('branch', 'main', 'a' * 7)]:
+        for source, ref_type, ref_name, sha in [('0.1.0-develop', 'branch', 'feature', 'a' * 40),
+                                               ('0.1.0-develop', 'branch', 'main', 'a' * 7),
+                                               ('0.1.0', 'branch', 'main', 'a' * 40)]:
             with self.assertRaises(ValueError):
-                resolve('0.1.0-develop', ref_type, ref_name, sha)
+                resolve(source, ref_type, ref_name, sha)
+
+    def test_version_cli_resolves_repository_chart_from_another_directory(self):
+        root = Path(__file__).resolve().parents[2]
+        source = yaml.safe_load((root / 'deploy/charts/mcp-server/Chart.yaml').read_text())['version']
+        with tempfile.TemporaryDirectory(prefix='ilm-mcp-version-cwd-') as cwd:
+            result = subprocess.run([
+                sys.executable, str(root / 'deploy/scripts/chart_version.py'),
+                '--ref-type', 'branch', '--ref-name', 'main', '--sha', 'a' * 40,
+            ], cwd=cwd, capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.strip(), source + '.' + 'a' * 40)
+
+    def test_version_cli_rejects_invalid_publication_context(self):
+        root = Path(__file__).resolve().parents[2]
+        for ref_name, sha in [('feature', 'a' * 40), ('main', 'a' * 7)]:
+            with self.subTest(ref_name=ref_name, sha=sha):
+                result = subprocess.run([
+                    sys.executable, str(root / 'deploy/scripts/chart_version.py'),
+                    '--ref-type', 'branch', '--ref-name', ref_name, '--sha', sha,
+                ], capture_output=True, text=True)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertEqual(result.stdout, '')
+
+    def test_digest_cli_reads_helm_output_from_stdin(self):
+        root = Path(__file__).resolve().parents[2]
+        result = subprocess.run([
+            sys.executable, str(root / 'deploy/scripts/push_digest.py'),
+        ], input='Pushed: registry.invalid/chart:0.1.0\nDigest: sha256:' + 'a' * 64 + '\n',
+            capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.strip(), 'sha256:' + 'a' * 64)
 
     def test_release_version_must_match_stable_tag(self):
         resolve = script('chart_version').resolve
@@ -111,6 +143,7 @@ def harbor_fixture(module, responses):
             self.wfile.write(body if isinstance(body, bytes) else json.dumps(body).encode())
 
         def log_message(self, *_args):
+            # Requests are asserted through observed; keep synthetic HTTP logs quiet.
             pass
 
     server = ThreadingHTTPServer(('127.0.0.1', 0), Handler)
@@ -141,9 +174,9 @@ class DevelopmentAliasTests(unittest.TestCase):
         self.module = script('development_alias')
 
     def update(self, client, **overrides):
-        arguments = dict(event_name='push', ref_type='branch', ref_name='main',
-                         version=DEVELOP_VERSION, digest=SIGNED_DIGEST, client=client,
-                         sha='c' * 40, current_main=lambda: 'c' * 40)
+        arguments = {'event_name': 'push', 'ref_type': 'branch', 'ref_name': 'main',
+                     'version': DEVELOP_VERSION, 'digest': SIGNED_DIGEST, 'client': client,
+                     'sha': 'c' * 40, 'current_main': lambda: 'c' * 40}
         arguments.update(overrides)
         return self.module.update_alias(**arguments)
 
@@ -198,9 +231,9 @@ class DevelopmentAliasTests(unittest.TestCase):
             raise self.module.PublicationError('Main ref lookup failed')
 
         responses = [(200, {'digest': SIGNED_DIGEST}), (200, {'digest': OLD_DIGEST})]
-        with harbor_fixture(self.module, responses) as (client, observed, _):
-            with self.assertRaises(self.module.PublicationError):
-                self.update(client, current_main=failed_lookup)
+        with harbor_fixture(self.module, responses) as (client, observed, _), \
+                self.assertRaises(self.module.PublicationError):
+            self.update(client, current_main=failed_lookup)
         self.assertEqual([request[0] for request in observed], ['GET', 'GET'])
 
     def test_current_main_lookup_requires_one_exact_sha_and_ref(self):
@@ -213,7 +246,7 @@ class DevelopmentAliasTests(unittest.TestCase):
                    subprocess.CompletedProcess([], 0, good.stdout + good.stdout, '')]
         for response in invalid:
             with self.subTest(response=response), self.assertRaises(self.module.PublicationError) as failure:
-                self.module.read_main_sha(run=lambda *_args, **_kwargs: response)
+                self.module.read_main_sha(run=lambda *_args, response=response, **_kwargs: response)
             self.assertNotIn('synthetic-sensitive-error', str(failure.exception))
 
     def test_missing_or_failed_target_lookup_cannot_change_alias(self):
@@ -277,17 +310,17 @@ class DevelopmentAliasTests(unittest.TestCase):
                 self.assertEqual([(method, path) for method, path, *_ in observed], [('GET', TARGET_PATH)])
 
     def test_malformed_http_status_is_sanitized(self):
-        with harbor_fixture(self.module, [(None, b'synthetic-sensitive-server-response\n')]) as (client, _, _):
-            with self.assertRaises(self.module.PublicationError) as failure:
-                client.artifact_digest(SIGNED_DIGEST)
+        with harbor_fixture(self.module, [(None, b'synthetic-sensitive-server-response\n')]) as (client, _, _), \
+                self.assertRaises(self.module.PublicationError) as failure:
+            client.artifact_digest(SIGNED_DIGEST)
         self.assertNotIn('synthetic-sensitive-server-response', str(failure.exception))
 
     def test_forbidden_refs_versions_and_digests_make_no_requests(self):
-        invalid = [dict(event_name='pull_request'), dict(ref_type='tag'),
-                   dict(ref_name='feature'), dict(version='0.1.0'), dict(version='0.0.0'),
-                   dict(version='0.1.0-develop.abcdef0'), dict(digest='sha256:broken'),
-                   dict(digest='https://registry.invalid'), dict(digest=SIGNED_DIGEST + '/tags'),
-                   dict(sha='d' * 40)]
+        invalid = [{'event_name': 'pull_request'}, {'ref_type': 'tag'},
+                   {'ref_name': 'feature'}, {'version': '0.1.0'}, {'version': '0.0.0'},
+                   {'version': '0.1.0-develop.abcdef0'}, {'digest': 'sha256:broken'},
+                   {'digest': 'https://registry.invalid'}, {'digest': SIGNED_DIGEST + '/tags'},
+                   {'sha': 'd' * 40}]
         for overrides in invalid:
             with self.subTest(overrides=overrides), harbor_fixture(self.module, []) as (client, observed, _):
                 with self.assertRaises(self.module.PublicationError):
@@ -297,7 +330,7 @@ class DevelopmentAliasTests(unittest.TestCase):
     def test_cli_failure_does_not_log_credentials(self):
         root = Path(__file__).resolve().parents[2]
         result = subprocess.run([
-            'python3', str(root / 'deploy/scripts/development_alias.py'), '--event-name', 'push',
+            sys.executable, str(root / 'deploy/scripts/development_alias.py'), '--event-name', 'push',
             '--ref-type', 'branch', '--ref-name', 'feature', '--version', DEVELOP_VERSION,
             '--digest', SIGNED_DIGEST, '--sha', 'c' * 40,
         ], env={**os.environ, 'HELM_USERNAME': 'secret-user', 'HELM_PASSWORD': 'secret-password'},

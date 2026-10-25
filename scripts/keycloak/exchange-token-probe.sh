@@ -4,7 +4,7 @@ set -euo pipefail
 set +x
 umask 077
 python3 - "$@" <<'PY'
-import base64, json, os, pathlib, stat, sys, time, urllib.error, urllib.parse, urllib.request
+import base64, http.client, json, os, pathlib, stat, sys, time, urllib.error, urllib.parse, urllib.request
 
 def fail(s): raise SystemExit(s)
 if len(sys.argv)!=2: fail('Usage: MCP_SECRET_FILE=... SOURCE_TOKEN_FILE=... PROBE_OUTPUT_DIR=... ./scripts/keycloak/exchange-token-probe.sh config.json')
@@ -50,7 +50,7 @@ def token_request(fields,filename):
             headers={'Content-Type':'application/x-www-form-urlencoded','Accept':'application/json'}),timeout=30) as r:
             raw=r.read(); response=json.loads(raw)
     except urllib.error.HTTPError as e: fail('Token request failed with HTTP '+str(e.code)+'; body suppressed.')
-    except (urllib.error.URLError,ValueError): fail('Token request failed; details suppressed.')
+    except (urllib.error.URLError,http.client.HTTPException,ValueError): fail('Token request failed; details suppressed.')
     if 'access_token' not in response: fail('No access token in response; body suppressed.')
     path=out/filename
     # Refuse existing/symlink targets; rerun in a new private directory.

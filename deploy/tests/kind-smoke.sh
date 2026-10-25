@@ -12,6 +12,14 @@ cleanup() {
   rm -rf "$work"
 }
 trap cleanup EXIT
+check_application_args() {
+  kubectl --context "$context" --namespace chart-testing exec deployment/mcp-smoke -- cat /proc/1/cmdline > "$work/argv"
+  python3 - "$work/argv" <<'PY'
+from pathlib import Path
+import sys
+assert b'--server.port=8080' in Path(sys.argv[1]).read_bytes().split(b'\0'), 'default entrypoint did not forward image.args'
+PY
+}
 start_forward() {
   kubectl --context "$context" --namespace chart-testing port-forward service/mcp-smoke 18080:8080 >"$work/forward.log" 2>&1 &
   forward_pid=$!
@@ -37,8 +45,10 @@ kubectl --context "$context" --namespace chart-testing create secret generic mcp
 helm upgrade --install mcp-smoke deploy/charts/mcp-server \
   --kube-context "$context" --namespace chart-testing \
   --values deploy/charts/mcp-server/ci/default-values.yaml --set-string "image.digest=$digest" \
+  --set-json 'image.args=["--server.port=8080"]' \
   --set-json 'security.authorizationScopes=["openid"]' --wait --timeout 5m
 kubectl --context "$context" --namespace chart-testing rollout status deployment/mcp-smoke --timeout=60s
+check_application_args
 start_forward
 python3 deploy/tests/smoke_http.py
 kill "$forward_pid"
@@ -48,9 +58,11 @@ forward_pid=
 helm upgrade mcp-smoke deploy/charts/mcp-server \
   --kube-context "$context" --namespace chart-testing \
   --values deploy/charts/mcp-server/ci/default-values.yaml --set-string "image.digest=$digest" \
+  --set-json 'image.args=["--server.port=8080"]' \
   --set replicaCount=2 --set security.exchangeMode=delegation \
   --set-json 'security.authorizationScopes=["openid","mcp:delegate"]' --wait --timeout 5m
 kubectl --context "$context" --namespace chart-testing rollout restart deployment/mcp-smoke
 kubectl --context "$context" --namespace chart-testing rollout status deployment/mcp-smoke --timeout=180s
+check_application_args
 start_forward
 python3 deploy/tests/smoke_http.py openid mcp:delegate

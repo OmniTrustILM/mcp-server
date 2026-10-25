@@ -66,6 +66,16 @@ mvn verify
 
 Runs `mvn verify`, analyses the project with the pull-request workflow's scope in an ephemeral SonarQube container (Docker required), and fails unless the quality gate passes (ratings A, hotspots reviewed, coverage >= 80%, duplication <= 3%) and no open issue touches a line changed since `origin/main`.
 
+The local analysis also runs chart-script tests with Python coverage. Python dependencies are pinned with wheel hashes; use Python 3.12 and Helm for these checks. Keep production scripts in the analysis scope and import both JaCoCo and Python coverage reports.
+
+### Quality and review rules
+
+- Coverage must be at least 80%, including SonarCloud coverage on new code; duplication must be below 3%. Address valid SonarCloud issues and review findings. A local overall gate does not establish that the Cloud pull-request gate passed: inspect the checks and findings for the current commit after each push.
+- Review each change with the local Copilot CLI using a different model family and a model/effort at least as strong as the implementation. Apply the organization's `pr-hygiene` skill. Skip nitpicks that add noise or complexity without improving the code.
+- Keep local design and planning documents ignored by Git. Do not add TODO/FIXME markers, planning references, sensitive values or deployment-specific details to shipped code or comments.
+- Keep descriptions and comments simple, accurate and properly formatted. Commit and PR descriptions contain only what changed, with no AI attribution, co-author lines, test notes or plans.
+- Obtain explicit approval before pushing or opening a PR. Squash before the first push; keep later fixes as normal DCO-signed commits. Prefer the simplest maintainable fix, and clarify material design uncertainty before implementing it.
+
 ## Configuration
 
 ### ILM API Connection

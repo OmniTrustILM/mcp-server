@@ -4,7 +4,7 @@ set -euo pipefail
 set +x
 umask 077
 python3 - "$@" <<'PY'
-import json,os,pathlib,sys,urllib.error,urllib.parse,urllib.request
+import http.client,json,os,pathlib,sys,urllib.error,urllib.parse,urllib.request
 if len(sys.argv)!=3:raise SystemExit('Usage: KC_ADMIN_TOKEN_FILE=... ./scripts/keycloak/read-mcp-secret.sh config.json /private/path/mcp.secret')
 c=json.loads(pathlib.Path(sys.argv[1]).read_text());p=pathlib.Path(os.environ['KC_ADMIN_TOKEN_FILE'])
 if p.stat().st_mode & 0o077:raise SystemExit('Admin token file must be private (0600).')
@@ -26,7 +26,7 @@ def get(url):
      (row.get('attributes') or {}).pop('client.secret.rotated',None)
    return value
  except urllib.error.HTTPError as e:raise SystemExit('Admin GET failed: HTTP '+str(e.code)+'; response suppressed.')
- except urllib.error.URLError:raise SystemExit('Admin connection/TLS failure; details suppressed.')
+ except (urllib.error.URLError,http.client.HTTPException):raise SystemExit('Admin connection/TLS failure; details suppressed.')
 rows=[x for x in get(prefix+'?clientId=ilm-mcp') if x.get('clientId')=='ilm-mcp']
 if len(rows)!=1:raise SystemExit('Expected one existing ilm-mcp client.')
 out=pathlib.Path(sys.argv[2]);parent=out.parent

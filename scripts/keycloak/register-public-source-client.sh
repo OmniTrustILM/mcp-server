@@ -5,7 +5,7 @@ set -euo pipefail
 set +x
 umask 077
 python3 - "$@" <<'PY'
-import json,os,pathlib,sys,urllib.error,urllib.parse,urllib.request
+import http.client,json,os,pathlib,sys,urllib.error,urllib.parse,urllib.request
 if len(sys.argv)!=3:raise SystemExit('Usage: KC_ADMIN_TOKEN_FILE=... ./scripts/keycloak/register-public-source-client.sh config.json public-client.json')
 c=json.loads(pathlib.Path(sys.argv[1]).read_text());wanted=json.loads(pathlib.Path(sys.argv[2]).read_text())
 base=c['keycloakBaseUrl'].rstrip('/');realm=c['realm']
@@ -21,11 +21,23 @@ if wanted.get('attributes')!={'pkce.code.challenge.method':'S256'}:raise SystemE
 if wanted.get('consentRequired') is not True:raise SystemExit('These templates require consent for delegation; leave it enabled.')
 redirects=wanted.get('redirectUris')
 if not isinstance(redirects,list) or not redirects:raise SystemExit('Supply exact callback URI(s) displayed/documented by the chosen client.')
-for uri in redirects:
- if not isinstance(uri,str) or 'REQUIRED_' in uri or '*' in uri:raise SystemExit('Replace callback placeholders with exact URI(s); wildcards prohibited.')
- u=urllib.parse.urlsplit(uri)
- if not u.hostname or u.fragment or (u.scheme!='https' and not (u.scheme=='http' and u.hostname in ('localhost','127.0.0.1','::1'))):
-  raise SystemExit('Callback must be the exact client-provided HTTPS or loopback HTTP URI.')
+def safe_exact_callback(uri):
+ if not isinstance(uri,str) or not uri:return False
+ decoded=urllib.parse.unquote(uri)
+ if ('REQUIRED_' in uri or '#' in uri or any(ch in decoded for ch in '*\\<>{}') or
+   any(ch.isspace() or ord(ch)<32 or ord(ch)==127 for ch in decoded)):
+  return False
+ try:
+  parsed=urllib.parse.urlsplit(uri);port=parsed.port
+  return bool(parsed.hostname and '%' not in parsed.hostname and not parsed.fragment and
+   parsed.username is None and parsed.password is None and port!=0 and
+   not parsed.netloc.endswith(':') and
+   (parsed.scheme=='https' or (parsed.scheme=='http' and
+    parsed.hostname in ('localhost','127.0.0.1','::1'))))
+ except ValueError:
+  return False
+if not all(safe_exact_callback(uri) for uri in redirects):
+ raise SystemExit('Callbacks must be exact HTTPS/loopback URIs with valid ports and no placeholders, userinfo, fragments, wildcards, backslashes, whitespace or controls.')
 p=pathlib.Path(os.environ['KC_ADMIN_TOKEN_FILE'])
 if not p.is_file() or p.stat().st_mode & 0o077:raise SystemExit('Private 0600 admin token file required.')
 t=p.read_text().strip()
@@ -45,14 +57,18 @@ def request(method,url,body=None):
      (row.get('attributes') or {}).pop('client.secret.rotated',None)
    return value
  except urllib.error.HTTPError as e:raise SystemExit('Public client '+method+' HTTP '+str(e.code)+'; response suppressed.')
- except urllib.error.URLError:raise SystemExit('Public client connection/TLS failure; details suppressed.')
+ except (urllib.error.URLError,http.client.HTTPException):raise SystemExit('Public client connection/TLS failure; details suppressed.')
 rows=[r for r in request('GET',prefix+'?'+urllib.parse.urlencode({'clientId':cid})) if r.get('clientId')==cid]
 if len(rows)>1:raise SystemExit('Ambiguous existing client ID.')
 if rows:
  existing=request('GET',prefix+'/'+urllib.parse.quote(rows[0]['id'],safe=''))
+ attributes=existing.get('attributes') or {}
+ for key in ('oauth2.device.authorization.grant.enabled','oidc.ciba.grant.enabled','oauth2.jwt.authorization.grant.enabled'):
+  if str(attributes.get(key,'false')).lower()=='true':
+   raise SystemExit('Existing source client has non-code grant '+key+' enabled; no mutation performed. Review its existing registration separately.')
  for key,value in wanted.items():
   if key=='attributes':
-   same=all((existing.get('attributes') or {}).get(k)==v for k,v in value.items())
+   same=all(attributes.get(k)==v for k,v in value.items())
   elif key=='redirectUris':same=set(existing.get(key,[]))==set(value)
   else:same=existing.get(key)==value
   if not same:raise SystemExit('Existing source client differs at '+key+'; no mutation performed. Review its existing registration separately.')

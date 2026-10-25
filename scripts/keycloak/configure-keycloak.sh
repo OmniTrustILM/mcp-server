@@ -4,7 +4,7 @@ set -euo pipefail
 set +x
 umask 077
 python3 - "$@" <<'PY'
-import ipaddress, json, os, pathlib, re, stat, sys, urllib.error, urllib.parse, urllib.request
+import http.client, ipaddress, json, os, pathlib, re, stat, sys, urllib.error, urllib.parse, urllib.request
 
 def fail(message):
     raise SystemExit(message)
@@ -107,7 +107,7 @@ def req(method, path, body=None, missing=False):
     except urllib.error.HTTPError as e:
         if missing and e.code==404: return None
         fail(f'{method} {path.split("?")[0]} failed with HTTP {e.code}; response body suppressed.')
-    except urllib.error.URLError:
+    except (urllib.error.URLError,http.client.HTTPException):
         fail('Connection/TLS error; details suppressed.')
 
 def get(path): return req('GET', admin+path)

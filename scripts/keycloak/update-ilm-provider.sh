@@ -4,7 +4,7 @@ set -euo pipefail
 set +x
 umask 077
 python3 - "$@" <<'PY'
-import json, os, pathlib, sys, urllib.error, urllib.parse, urllib.request
+import http.client, json, os, pathlib, sys, urllib.error, urllib.parse, urllib.request
 if len(sys.argv)!=2: raise SystemExit('Usage: ILM_ADMIN_TOKEN_FILE=... ./scripts/keycloak/update-ilm-provider.sh config.json')
 c=json.loads(pathlib.Path(sys.argv[1]).read_text())
 if c['mode']!='delegation': raise SystemExit('Standard mode needs no allowedDelegates change. Do not run this script.')
@@ -29,7 +29,7 @@ def req(method,body=None):
             if isinstance(value,dict): value.pop('clientSecret',None)
             return value
     except urllib.error.HTTPError as e: raise SystemExit('ILM provider '+method+' HTTP '+str(e.code)+'; response suppressed.')
-    except urllib.error.URLError: raise SystemExit('ILM connection/TLS failure; details suppressed.')
+    except (urllib.error.URLError,http.client.HTTPException): raise SystemExit('ILM connection/TLS failure; details suppressed.')
 p=req('GET')
 if p.get('issuerUrl')!=c['issuer'] or p.get('clientId')!='ilm': raise SystemExit('Existing issuer/provider client ID differs; stop and review.')
 if 'allowedDelegates' not in p or 'delegateClaim' not in p:
