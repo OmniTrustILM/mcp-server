@@ -122,9 +122,11 @@ ingress access logs or traces.
 
 Publish HTTPS routes for `/mcp` and its subpaths and for
 `/.well-known/oauth-protected-resource/mcp`. The root metadata alias
-`/.well-known/oauth-protected-resource` returns the same configured resource. Missing/invalid tokens receive a
-401 bearer challenge pointing at metadata; insufficient scope receives 403. An unavailable issuer/exchange cannot
-become an anonymous request. Every MCP request authenticates, including initialization and tool discovery.
+`/.well-known/oauth-protected-resource` returns the same configured resource. With an external prefix or servlet
+context path, also map the advertised origin-root metadata route to the application's metadata endpoint.
+Missing/invalid tokens receive a 401 bearer challenge pointing at metadata; insufficient scope receives 403.
+An unavailable issuer/exchange cannot become an anonymous request. Every MCP request authenticates, including
+initialization and tool discovery.
 
 The local public health endpoints are `/actuator/health`, `/actuator/health/liveness` and
 `/actuator/health/readiness`; do not publish actuator through the edge. Health checks do not log in or test a

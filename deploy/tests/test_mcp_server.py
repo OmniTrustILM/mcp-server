@@ -51,12 +51,14 @@ class SharedMcpChartTests(unittest.TestCase):
     def test_parent_alias_and_condition_control_only_the_parent_dependency(self):
         with tempfile.TemporaryDirectory(prefix='ilm-mcp-parent-test-') as temp:
             parent = Path(temp)
+            subchart = parent / 'charts/mcp-server'
+            shutil.copytree(ROOT / 'deploy/charts/mcp-server', subchart)
+            version = yaml.safe_load((subchart / 'Chart.yaml').read_text())['version']
             (parent / 'Chart.yaml').write_text(yaml.safe_dump({
                 'apiVersion': 'v2', 'name': 'ilm', 'version': '0.1.0',
                 'dependencies': [{'name': 'mcp-server', 'alias': 'mcpServer',
-                                  'version': '0.1.0-develop', 'condition': 'mcpServer.enabled'}],
+                                  'version': version, 'condition': 'mcpServer.enabled'}],
             }))
-            shutil.copytree(ROOT / 'deploy/charts/mcp-server', parent / 'charts/mcp-server')
             values = configured_values()
             values['enabled'] = False
             self.assertEqual(render_path(parent, {'mcpServer': values}), [])

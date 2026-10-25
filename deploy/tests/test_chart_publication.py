@@ -51,16 +51,32 @@ class ChartPublicationTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 resolve(source, ref_type, ref_name, sha)
 
-    def test_version_cli_resolves_repository_chart_from_another_directory(self):
+    def test_version_cli_resolves_script_relative_chart_for_development_and_release(self):
         root = Path(__file__).resolve().parents[2]
-        source = yaml.safe_load((root / 'deploy/charts/mcp-server/Chart.yaml').read_text())['version']
-        with tempfile.TemporaryDirectory(prefix='ilm-mcp-version-cwd-') as cwd:
-            result = subprocess.run([
-                sys.executable, str(root / 'deploy/scripts/chart_version.py'),
-                '--ref-type', 'branch', '--ref-name', 'main', '--sha', 'a' * 40,
-            ], cwd=cwd, capture_output=True, text=True)
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(result.stdout.strip(), source + '.' + 'a' * 40)
+        cases = [
+            ('0.1.0-develop', 'branch', 'main', '0.1.0-develop.' + 'a' * 40),
+            ('0.1.0', 'tag', 'v0.1.0', '0.1.0'),
+            ('0.1.0', 'tag', '0.1.0', '0.1.0'),
+        ]
+        with tempfile.TemporaryDirectory(prefix='ilm-mcp-version-cwd-') as temp:
+            fixture = Path(temp)
+            cli = fixture / 'checkout/deploy/scripts/chart_version.py'
+            cli.parent.mkdir(parents=True)
+            cli.write_bytes((root / 'deploy/scripts/chart_version.py').read_bytes())
+            chart = fixture / 'checkout/deploy/charts/mcp-server/Chart.yaml'
+            chart.parent.mkdir(parents=True)
+            cwd = fixture / 'elsewhere'
+            cwd.mkdir()
+            for source, ref_type, ref_name, expected in cases:
+                with self.subTest(source=source, ref_type=ref_type, ref_name=ref_name):
+                    chart.write_text(f'apiVersion: v2\nname: mcp-server\nversion: {source}\n',
+                                     encoding='utf-8')
+                    result = subprocess.run([
+                        sys.executable, str(cli), '--ref-type', ref_type,
+                        '--ref-name', ref_name, '--sha', 'a' * 40,
+                    ], cwd=cwd, capture_output=True, text=True)
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertEqual(result.stdout.strip(), expected)
 
     def test_version_cli_rejects_invalid_publication_context(self):
         root = Path(__file__).resolve().parents[2]
