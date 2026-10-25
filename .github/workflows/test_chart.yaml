@@ -1,0 +1,91 @@
+name: Test Chart
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'deploy/**'
+      - '.github/workflows/test_chart.yaml'
+      - '.github/workflows/publish_chart.yaml'
+      - 'src/**'
+      - 'pom.xml'
+      - 'Dockerfile'
+      - 'docker/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chart-test-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Lint, render and install the standalone chart
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Helm
+        uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
+        with:
+          version: v4.2.3
+
+      - name: Set up chart-testing
+        uses: helm/chart-testing-action@6ec842c01de15ebb84c8627d2744a0c2f2755c9f # v2.8.0
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+
+      - name: Install test dependencies
+        run: |
+          python -m pip install --require-hashes --only-binary=:all: -r deploy/tests/requirements.txt
+
+      - name: Check source chart version
+        env:
+          HEAD_REF: ${{ github.head_ref || github.ref_name }}
+          REF_TYPE: ${{ github.ref_type }}
+        run: |
+          python - <<'PY'
+          import os, re, yaml
+          with open('deploy/charts/mcp-server/Chart.yaml') as chart:
+              version = yaml.safe_load(chart)['version']
+          stable = os.environ['HEAD_REF'].startswith('release') or os.environ['REF_TYPE'] == 'tag'
+          pattern = r'\d+\.\d+\.\d+' if stable else r'\d+\.\d+\.\d+-develop'
+          assert re.fullmatch(pattern, version), f'Unexpected source chart version: {version}'
+          if os.environ['REF_TYPE'] == 'tag':
+              assert os.environ['HEAD_REF'].removeprefix('v') == version, 'Release tag must match chart version'
+          PY
+
+      - name: Build locked chart dependencies
+        run: helm dependency build deploy/charts/mcp-server
+
+      - name: Render contract and publication tests
+        run: python -m unittest discover -s deploy/tests -p 'test_*.py' -v
+
+      # Explicit chart selection covers first publication and workflow-only changes.
+      - name: Run chart-testing lint
+        run: |
+          ct lint --charts deploy/charts/mcp-server --check-version-increment=false --validate-maintainers=false
+          helm lint deploy/charts/mcp-server --strict --values deploy/charts/mcp-server/ci/default-values.yaml
+
+      - name: Create dedicated kind cluster
+        uses: helm/kind-action@ef37e7f390d99f746eb8b610417061a60e82a6cc # v1.14.0
+        with:
+          cluster_name: chart-testing
+
+      # No registry/identity-provider credentials are used by pull-request jobs.
+      # This installs the image built from this exact checkout.
+      - name: Build and smoke-test the shared MCP workload
+        run: bash deploy/tests/kind-smoke.sh
+
+      - name: Capture install diagnostics
+        if: failure()
+        run: |
+          kubectl --context kind-chart-testing --namespace chart-testing get pods,events || true
+          kubectl --context kind-chart-testing --namespace chart-testing describe deployment mcp-smoke || true
+          kubectl --context kind-chart-testing --namespace chart-testing logs deployment/mcp-smoke --all-containers --tail=100 || true

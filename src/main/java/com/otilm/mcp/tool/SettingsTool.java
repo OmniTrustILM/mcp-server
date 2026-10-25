@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 public class SettingsTool {
     private static final String PLATFORM_SECTION = "platform (default), utils, validation, requestAttributes (ILM 2.19+), registration (ILM 2.19+) or cbom (ILM 2.20+)";
     private static final String PROVIDER = "OAuth provider registration name (letters, digits, dot, underscore or hyphen)";
-    private static final String OAUTH_SCHEMA = "JSON object: issuerUrl, clientId, clientSecret (fresh value only), authorizationUrl, tokenUrl, jwkSetUrl, jwkSet, scope/string array, logoutUrl, postLogoutUrl, userInfoUrl, audiences/string array, skew/nonnegative integer, sessionMaxInactiveInterval/nonnegative integer, usernameClaim (ILM 2.18+). Omitted readable values are preserved; omitted clientSecret retains the stored secret.";
+    private static final String OAUTH_SCHEMA = "JSON object: issuerUrl, clientId, clientSecret (fresh value only), authorizationUrl, tokenUrl, jwkSetUrl, jwkSet, scope/string array, logoutUrl, postLogoutUrl, userInfoUrl, audiences/string array, skew/nonnegative integer, sessionMaxInactiveInterval/nonnegative integer, usernameClaim (ILM 2.18+), allowedDelegates (ILM 2.21+, array of nonblank strings, each at most 255 characters and unique after trimming, case sensitive; [] disables delegation), delegateClaim (ILM 2.21+, nonblank string). Supplied arrays replace their complete lists. Omitted readable values are preserved; omitted clientSecret retains the stored secret.";
     private static final String LOG_SCHEMA = "JSON object with auditLogs and/or eventLogs groups. Each accepts logAllModules/logAllResources booleans and loggedModules/ignoredModules/loggedResources/ignoredResources code arrays. auditLogs also accepts output (NONE, ALL, CONSOLE, DATABASE) and verbose boolean. Omitted groups and fields are preserved.";
     private final SettingsService service;
 
@@ -55,7 +55,7 @@ public class SettingsTool {
     }
 
     @McpTool(name = "update_oauth_provider_settings",
-            description = "Merge one existing OAuth provider with supplied values, preserving omitted URLs and stored client secret. Explicit replacement credentials must be fresh. usernameClaim requires ILM 2.18+.",
+            description = "Merge one existing OAuth provider with supplied values, preserving omitted URLs, delegation settings and stored client secret. Explicit replacement credentials must be fresh. usernameClaim requires ILM 2.18+; allowedDelegates and delegateClaim changes require ILM 2.21+.",
             annotations = @McpTool.McpAnnotations(destructiveHint = false))
     public String updateOAuthProviderSettings(@McpToolParam(description = PROVIDER) String providerName,
             @McpToolParam(description = OAUTH_SCHEMA) String settings) {
@@ -63,10 +63,10 @@ public class SettingsTool {
     }
 
     @McpTool(name = "replace_oauth_providers",
-            description = "Replace the entire OAuth provider registration list. Omitted providers and their stored credentials are removed. Every included provider needs fresh credentials; an empty list removes all providers. usernameClaim requires ILM 2.18+.",
+            description = "Replace the entire OAuth provider registration list. Omitted providers and their stored credentials are removed. Every included provider needs fresh credentials; an empty list removes all providers. usernameClaim requires ILM 2.18+; allowedDelegates and delegateClaim require ILM 2.21+.",
             annotations = @McpTool.McpAnnotations(destructiveHint = true))
     public String replaceOAuthProviders(@McpToolParam(
-            description = "JSON object with oauth2Providers: complete provider objects including name, fresh clientSecret and JWK Set URL or encoded JWK Set. [] removes all providers. The existing localhost flag is preserved.") String settings) {
+            description = "JSON object with oauth2Providers: complete provider objects including name, fresh clientSecret and JWK Set URL or encoded JWK Set. allowedDelegates (ILM 2.21+) is an array of nonblank strings, each at most 255 characters and unique after trimming, case sensitive; [] disables delegation. delegateClaim (ILM 2.21+) is a nonblank string. [] for oauth2Providers removes all providers. The existing localhost flag is preserved.") String settings) {
         return service.replaceOAuthProviders(settings);
     }
 

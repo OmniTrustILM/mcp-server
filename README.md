@@ -11,8 +11,9 @@ Built with [Spring AI MCP](https://docs.spring.io/spring-ai/reference/api/mcp/mc
 - **Inventory, configuration, and lifecycle tools** for certificates, keys, tokens, connectors, vaults, secrets,
   enrollment, permissions, discovery, compliance, approvals, signing, platform settings, and automation
 - **Read-only by default**: access levels and toolsets decide which tools clients see
-- **Two transport modes**: HTTP (Streamable HTTP) and STDIO
-- **Three authentication methods**: client certificate, OAuth pass-through, OAuth client credentials
+- **HTTP and STDIO transports**, with stateless HTTP for shared deployments
+- **Shared OAuth authentication**: validated MCP tokens exchanged for separate ILM tokens, preserving each caller's identity
+- **Local authentication**: client certificate and OAuth client credentials
 - **AI-optimized responses**: formatted text output designed for LLM consumption
 - **Lightweight Docker image**: multi-stage build with custom JRE (jlink)
 
@@ -187,7 +188,9 @@ java -jar target/mcp-server-0.1.0-SNAPSHOT.jar --spring.profiles.active=stdio
 
 ### Run in HTTP Mode
 
-HTTP mode exposes a Streamable HTTP endpoint for network-based MCP clients.
+HTTP mode exposes a Streamable HTTP endpoint for network-based MCP clients. For a shared remote service, use the
+[stateless OAuth configuration](docs/shared-http-authentication.md) and the [Helm deployment](deploy/README.md).
+The command below starts the existing HTTP profile; shared authentication requires the additional configuration.
 
 ```bash
 java -jar target/mcp-server-0.1.0-SNAPSHOT.jar --spring.profiles.active=http
@@ -208,6 +211,14 @@ The server starts on port 8080 by default.
 
 #### Authentication
 
+**Shared OAuth** (`ILM_AUTH_METHOD=oauth-delegation`):
+
+Enable `ILM_MCP_SECURITY_ENABLED=true` and `SPRING_AI_MCP_SERVER_PROTOCOL=STATELESS`. Each request must carry an
+access token for the MCP resource. The server validates it and exchanges it through the configured issuer for an
+ILM token for the same user. Select `standard` exchange or explicit `delegation`; the server never switches modes
+after an error. See [all settings and identity guarantees](docs/shared-http-authentication.md), the
+[example Keycloak integration](docs/keycloak/README.md), and the [deployment chart](deploy/charts/mcp-server/README.md).
+
 **Client Certificate** (`ILM_AUTH_METHOD=certificate`):
 
 | Variable         | Description            | Default      |
@@ -218,7 +229,8 @@ Configure the SSL bundle in `application.yml` or via Spring Boot SSL bundle prop
 
 **OAuth Pass-through** (`ILM_AUTH_METHOD=oauth-passthrough`):
 
-No additional configuration needed. The server forwards the Bearer token from incoming HTTP requests to the ILM API. Only works in HTTP mode.
+Legacy HTTP integration: forwards the incoming bearer token to ILM. Use shared OAuth for a shared remote MCP
+server so the MCP and ILM resource audiences are validated separately.
 
 **OAuth Client Credentials** (`ILM_AUTH_METHOD=oauth-client-credentials`):
 
@@ -253,13 +265,11 @@ share components; selecting overlapping areas registers each tool once. Focused 
 Attaching or detaching a trigger makes ILM re-save every platform trigger of that event to run as the identity that
 made the change.
 
-Above `read-only`, HTTP mode requires `ILM_AUTH_METHOD=oauth-passthrough`, and the server refuses to start otherwise.
-With a client certificate or client credentials, the HTTP endpoint has no login of its own, and every caller would act
-as the server's ILM identity. STDIO mode supports certificate and OAuth client-credentials authentication. OAuth pass-through requires HTTP mode.
-
-The server can never do more than the ILM identity it uses. Give that identity a dedicated ILM role with only the
-permissions the enabled toolsets need. In HTTP mode without OAuth pass-through, keep the endpoint reachable from
-trusted networks only, even at `read-only`.
+Shared HTTP uses `ILM_AUTH_METHOD=oauth-delegation`; ILM checks the authenticated user's permissions on every API
+operation. The access level and toolsets only narrow that access. Existing HTTP write configurations also accept
+the legacy `oauth-passthrough` mode. Certificate and client-credentials authentication over HTTP are restricted to
+`read-only` and use the server's identity, so keep those endpoints on trusted networks. STDIO supports certificate
+and OAuth client-credentials authentication with a dedicated, narrowly permitted ILM identity.
 
 #### Logging
 
@@ -293,18 +303,22 @@ docker build -t ilm-mcp-server .
 
 ```bash
 docker run \
-  -e ILM_API_URL=https://my-instance.example.com/api \
+  -e ILM_API_URL=https://ilm.example.invalid/api \
   -e ILM_AUTH_METHOD=oauth-client-credentials \
   -e ILM_OAUTH_CLIENT_ID=my-client \
   -e ILM_OAUTH_CLIENT_SECRET=my-secret \
-  -e ILM_OAUTH_TOKEN_URL=https://auth.example.com/token \
+  -e ILM_OAUTH_TOKEN_URL=https://identity.example.invalid/tenant/token \
   -p 8080:8080 \
   ilm-mcp-server
 ```
 
+These reserved example URLs must be replaced with the deployment's API URL and the token endpoint from its issuer metadata.
 The Docker image runs in HTTP mode by default.
 
 ## MCP Client Configuration
+
+For a shared remote deployment, start with the [provider-neutral OAuth workflow](docs/shared-http-authentication.md).
+The [Keycloak integration](docs/keycloak/README.md) is one provider-specific example. The examples below run a local STDIO server.
 
 ### Claude Desktop
 
@@ -321,7 +335,7 @@ Add to your `claude_desktop_config.json`:
         "--spring.profiles.active=stdio"
       ],
       "env": {
-        "ILM_API_URL": "https://my-instance.example.com/api",
+        "ILM_API_URL": "https://ilm.example.invalid/api",
         "ILM_AUTH_METHOD": "certificate"
       }
     }
@@ -344,7 +358,7 @@ Add to your `.mcp.json`:
         "--spring.profiles.active=stdio"
       ],
       "env": {
-        "ILM_API_URL": "https://my-instance.example.com/api",
+        "ILM_API_URL": "https://ilm.example.invalid/api",
         "ILM_AUTH_METHOD": "certificate"
       }
     }
@@ -387,14 +401,6 @@ mvn verify
 
 ```bash
 mvn spotless:apply
-```
-
-### Local SonarQube Analysis
-
-Runs the build, analyses it with the pull-request workflow's scope in an ephemeral SonarQube container, and fails on a failed quality gate or on open issues touching changed lines. Requires Docker.
-
-```bash
-./scripts/sonar-local.sh
 ```
 
 ### Tech Stack

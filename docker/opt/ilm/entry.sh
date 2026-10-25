@@ -14,4 +14,5 @@ exec java \
     -XX:MaxRAMPercentage=75.0 \
     -XX:+UseG1GC \
     -jar "${ilmHome}/app.jar" \
-    --spring.profiles.active="${SPRING_PROFILES_ACTIVE:-http}"
+    --spring.profiles.active="${SPRING_PROFILES_ACTIVE:-http}" \
+    "$@"

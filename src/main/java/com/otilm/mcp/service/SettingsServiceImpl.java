@@ -357,6 +357,12 @@ public class SettingsServiceImpl implements SettingsService {
     }
 
     private String oauthVersion(JsonNode patch) {
+        if (patch.has("allowedDelegates") || patch.has("delegateClaim")) {
+            String refusal = versions.unsupported(IlmFeature.SETTINGS_OAUTH_DELEGATION).orElse(null);
+            if (refusal != null) {
+                return refusal;
+            }
+        }
         return patch.has("usernameClaim")
                 ? versions.unsupported(IlmFeature.SETTINGS_OAUTH_USERNAME_CLAIM).orElse(null)
                 : null;

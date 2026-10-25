@@ -58,6 +58,7 @@ public class IlmApiProperties {
         NONE,
         CERTIFICATE,
         OAUTH_PASSTHROUGH,
+        OAUTH_DELEGATION,
         OAUTH_CLIENT_CREDENTIALS
     }
 

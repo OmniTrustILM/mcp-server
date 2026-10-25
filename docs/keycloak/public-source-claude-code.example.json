@@ -1,0 +1,20 @@
+{
+  "clientId": "ilm-mcp-claude-code",
+  "protocol": "openid-connect",
+  "enabled": true,
+  "publicClient": true,
+  "bearerOnly": false,
+  "standardFlowEnabled": true,
+  "implicitFlowEnabled": false,
+  "directAccessGrantsEnabled": false,
+  "serviceAccountsEnabled": false,
+  "fullScopeAllowed": false,
+  "consentRequired": true,
+  "redirectUris": [
+    "REQUIRED_COPY_THE_EXACT_CALLBACK_DISPLAYED_BY_THIS_CLIENT"
+  ],
+  "webOrigins": [],
+  "attributes": {
+    "pkce.code.challenge.method": "S256"
+  }
+}

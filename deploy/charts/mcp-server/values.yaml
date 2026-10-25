@@ -1,0 +1,117 @@
+# Installing this standalone chart always renders the MCP deployment.
+# Required public endpoints, existing Secret and network peers
+# must be supplied. An umbrella chart may control this dependency externally.
+nameOverride: ""
+fullnameOverride: ""
+global:
+  image:
+    registry: ""
+    repository: ""
+    pullSecrets: []
+  initContainers: []
+  additionalVolumes: []
+  additionalVolumeMounts: []
+  additionalEnv:
+    variables: []
+    configMaps: []
+    secrets: []
+image:
+  registry: hub.omnitrustregistry.com
+  repository: ilm
+  name: mcp-server
+  tag: ""  # Defaults to Chart.AppVersion; a digest takes precedence.
+  digest: ""
+  pullPolicy: IfNotPresent
+  pullSecrets: []
+  command: []
+  args: []
+  securityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop: [ALL]
+  probes:
+    startup:
+      enabled: true
+      custom: {}
+      initialDelaySeconds: 0
+      timeoutSeconds: 1
+      periodSeconds: 5
+      successThreshold: 1
+      failureThreshold: 60
+    liveness:
+      enabled: true
+      custom: {}
+      initialDelaySeconds: 0
+      timeoutSeconds: 3
+      periodSeconds: 10
+      successThreshold: 1
+      failureThreshold: 3
+    readiness:
+      enabled: true
+      custom: {}
+      initialDelaySeconds: 0
+      timeoutSeconds: 3
+      periodSeconds: 10
+      successThreshold: 1
+      failureThreshold: 3
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: "1"
+      memory: 768Mi
+replicaCount: 1
+service:
+  port: 8080
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+podLabels: {}
+podAnnotations: {}
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  runAsGroup: 10001
+  fsGroup: 10001
+  seccompProfile:
+    type: RuntimeDefault
+nodeSelector: {}
+tolerations: []
+affinity: {}
+terminationGracePeriodSeconds: 30
+initContainers: []
+additionalVolumes: []
+additionalVolumeMounts: []
+additionalEnv:
+  variables: []
+  configMaps: []
+  secrets: []
+volumes:
+  ephemeral:
+    sizeLimit: 128Mi
+    medium: ""
+apiUrl: ""
+access: read-only
+toolsets: all
+security:
+  issuer: ""
+  resource: ""
+  jwkSetUri: ""
+  tokenUri: ""
+  clientId: ""
+  clientSecretRef:
+    name: ""
+    key: client-secret
+  apiAudience: ilm
+  exchangeMode: standard
+  exchangeScope: ""
+  requiredScope: mcp:access
+  authorizationScopes: []
+  allowedOrigins: []
+  jwsAlgorithms: [RS256]
+networkPolicy:
+  ingress: []
+  egress: []

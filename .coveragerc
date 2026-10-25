@@ -1,0 +1,12 @@
+[run]
+source = deploy/scripts
+branch = True
+relative_files = True
+patch = subprocess
+
+[report]
+fail_under = 80
+show_missing = True
+
+[xml]
+output = target/python-coverage.xml

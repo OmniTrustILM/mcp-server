@@ -64,6 +64,11 @@
             <artifactId>spring-boot-starter-restclient</artifactId>
         </dependency>
 
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-oauth2-jose</artifactId>
+        </dependency>
+
         <!-- ILM Interfaces (DTOs) -->
         <dependency>
             <groupId>com.otilm</groupId>

@@ -15,12 +15,14 @@ import tools.jackson.databind.node.ObjectNode;
 
 /** The published settings fields and their wire types, independent of the interfaces' Jackson 2 serializers. */
 final class SettingsFields {
+    private static final String ALLOWED_DELEGATES = "allowedDelegates";
     private static final String CBOM_SYNC_PAGE_SIZE = "cbomSyncPageSize";
     private static final String CBOM_SYNC_SKIP_RETENTION_DAYS = "cbomSyncSkipRetentionDays";
     private static final String CERTIFICATES = "certificates";
     private static final String CLIENT_SECRET = "clientSecret";
     private static final String CONTENT = "content";
     private static final String CONTENT_TYPE = "contentType";
+    private static final String DELEGATE_CLAIM = "delegateClaim";
     private static final String DISABLE_LOCALHOST_USER = "disableLocalhostUser";
     private static final String EVENTS_MAPPING = "eventsMapping";
     private static final String EXTERNAL_CSR_VALIDATION_STRICT = "externalCsrValidationStrict";
@@ -40,7 +42,7 @@ final class SettingsFields {
     static final Set<String> OAUTH = Set
             .of("issuerUrl", "clientId", CLIENT_SECRET, "authorizationUrl", "tokenUrl", "jwkSetUrl", "jwkSet", "scope",
                     "logoutUrl", "postLogoutUrl", "userInfoUrl", "audiences", "skew", "sessionMaxInactiveInterval",
-                    "usernameClaim");
+                    "usernameClaim", ALLOWED_DELEGATES, DELEGATE_CLAIM);
     static final Set<String> LOG = Set
             .of("logAllModules", "logAllResources", "loggedModules", "ignoredModules", "loggedResources",
                     "ignoredResources");
@@ -258,6 +260,10 @@ final class SettingsFields {
             JsonNode value = entry.getValue();
             if (key.equals(CLIENT_SECRET)) {
                 fresh(value);
+            } else if (key.equals(ALLOWED_DELEGATES)) {
+                allowedDelegates(value);
+            } else if (key.equals(DELEGATE_CLAIM)) {
+                nonBlankString(value);
             } else if (key.endsWith("Url")) {
                 url(value);
             } else if (key.equals("scope") || key.equals("audiences")) {
@@ -265,6 +271,23 @@ final class SettingsFields {
             } else if (key.equals("skew") || key.equals("sessionMaxInactiveInterval")) {
                 range(value, 0, Integer.MAX_VALUE, false);
             } else if (!value.isString() && !value.isNull()) {
+                invalid();
+            }
+        }
+    }
+
+    private static void nonBlankString(JsonNode value) {
+        if (!value.isString() || value.asString().isBlank()) {
+            invalid();
+        }
+    }
+
+    private static void allowedDelegates(JsonNode value) {
+        stringArray(value);
+        Set<String> identifiers = new HashSet<>();
+        for (JsonNode item : value) {
+            String identifier = item.asString().trim();
+            if (identifier.isBlank() || identifier.length() > 255 || !identifiers.add(identifier)) {
                 invalid();
             }
         }

@@ -8,7 +8,7 @@
 # file, covers it, so a finding already present in a changed method counts too.
 # SonarQube Community has no shell analyzer, so shell scripts are checked on
 # SonarCloud only.
-# Prereqs: docker, mvn, curl, python3, git, openssl
+# Prereqs: docker, mvn, helm, curl, python3, git, openssl
 # Usage: ./scripts/sonar-local.sh   (BASE_BRANCH defaults to origin/main)
 set -euo pipefail
 
@@ -85,6 +85,17 @@ api -o /dev/null -X POST "${SONAR_URL}/api/qualitygates/set_as_default?name=${QG
 echo "Running mvn verify with JaCoCo..."
 mvn -B -U verify
 
+echo "Running chart scripts with Python coverage..."
+python3 -m venv target/sonar-python-venv
+VALIDATION_PYTHON="${PWD}/target/sonar-python-venv/bin/python"
+"${VALIDATION_PYTHON}" -m pip install --require-hashes --only-binary=:all: -r deploy/tests/requirements.txt
+helm dependency build deploy/charts/mcp-server
+"${VALIDATION_PYTHON}" -m coverage erase
+"${VALIDATION_PYTHON}" -m coverage run -m unittest discover -s deploy/tests -p 'test_*.py' -v
+"${VALIDATION_PYTHON}" -m coverage combine
+"${VALIDATION_PYTHON}" -m coverage report
+"${VALIDATION_PYTHON}" -m coverage xml
+
 echo "Running the Sonar scanner..."
 rm -f target/sonar/report-task.txt
 # Sources, exclusions and tests match .github/workflows/sonar.yml. The org's own
@@ -94,8 +105,9 @@ mvn -B "${SONAR_MAVEN_PLUGIN}:sonar" \
     -Dsonar.host.url="${SONAR_URL}" \
     -Dsonar.token="${TOKEN}" \
     -Dsonar.sources=. \
-    "-Dsonar.exclusions=src/test/**,target/**" \
-    -Dsonar.tests=src/test/java \
+    "-Dsonar.exclusions=src/test/**,deploy/tests/**,scripts/keycloak/verify-keycloak-offline.sh,target/**" \
+    -Dsonar.tests=src/test/java,deploy/tests,scripts/keycloak/verify-keycloak-offline.sh \
+    -Dsonar.python.coverage.reportPaths=target/python-coverage.xml \
     -Dsonar.issue.ignore.multicriteria=e1 \
     -Dsonar.issue.ignore.multicriteria.e1.ruleKey=githubactions:S7637 \
     "-Dsonar.issue.ignore.multicriteria.e1.resourceKey=.github/workflows/**"

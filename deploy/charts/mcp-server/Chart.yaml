@@ -1,0 +1,19 @@
+apiVersion: v2
+name: mcp-server
+description: Stateless shared MCP server for ILM with external OAuth token exchange.
+type: application
+version: 0.1.0-develop
+appVersion: 0.1.0
+home: https://github.com/OmniTrustILM/mcp-server
+icon: https://raw.githubusercontent.com/OmniTrustILM/ilm/main/icon/ot-icon-color.svg
+maintainers:
+  - name: OmniTrustILM
+    email: ilm@omnitrust.com
+    url: https://github.com/OmniTrustILM/mcp-server
+sources:
+  - https://github.com/OmniTrustILM/mcp-server
+keywords: [ilm, mcp, oauth]
+dependencies:
+  - name: ilm-lib
+    repository: oci://hub.omnitrustregistry.com/ilm-helm
+    version: 1.4.2-1

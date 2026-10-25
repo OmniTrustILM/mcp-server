@@ -2,6 +2,13 @@
 <configuration>
     <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
 
+    <!-- Broad DEBUG/TRACE settings must not expose bearer tokens, OAuth forms, or JWK failure bodies. -->
+    <logger name="org.springframework.security" level="INFO"/>
+    <logger name="org.springframework.ai.mcp" level="INFO"/>
+    <logger name="org.springframework.web" level="INFO"/>
+    <logger name="org.springframework.http" level="INFO"/>
+    <logger name="jdk.internal.net.http" level="OFF"/>
+
     <springProfile name="stdio">
         <appender name="STDERR" class="ch.qos.logback.core.ConsoleAppender">
             <target>System.err</target>

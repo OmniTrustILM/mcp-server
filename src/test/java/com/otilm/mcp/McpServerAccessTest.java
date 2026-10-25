@@ -47,11 +47,12 @@ class McpServerAccessTest {
     }
 
     @Test
-    void refusesWriteAccessOverHttpWithoutPassthrough() {
+    void refusesWriteAccessOverHttpWithoutCallerAuthentication() {
         assertThatThrownBy(() -> start("--ilm.mcp.access=read-write"))
                 .rootCause()
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessageStartingWith("Access level read-write over HTTP needs ILM_AUTH_METHOD=oauth-passthrough.");
+                .hasMessageStartingWith(
+                        "Access level read-write over HTTP needs oauth-delegation or oauth-passthrough.");
     }
 
     @Test

@@ -1,0 +1,30 @@
+# Synthetic CI fixture for rendering; these endpoints and digest are not deployment values.
+fullnameOverride: mcp-smoke
+image:
+  # Replaced with the digest of the image built from this checkout by kind-smoke.sh.
+  digest: sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  pullPolicy: Never
+apiUrl: https://ilm.example.invalid/api
+security:
+  issuer: https://identity.example.invalid/tenant
+  resource: https://ilm.example.invalid/mcp
+  jwkSetUri: https://identity.example.invalid/oauth/jwks
+  tokenUri: https://identity.example.invalid/oauth/token
+  clientId: ilm-mcp
+  clientSecretRef:
+    name: mcp-smoke-oauth
+    key: client-secret
+  exchangeMode: standard
+  authorizationScopes: []
+networkPolicy:
+  ingress:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: chart-testing
+  egress:
+    - to:
+        - ipBlock:
+            cidr: 192.0.2.20/32
+      ports:
+        - protocol: TCP
+          port: 443

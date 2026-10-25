@@ -1,0 +1,155 @@
+{{- include "mcp-server.validate" . -}}
+{{- $additionalInitContainers := include "mcp-server.customization.initContainers" . -}}
+{{- $additionalVolumes := include "mcp-server.customization.volumes" . -}}
+{{- $additionalVolumeMounts := include "mcp-server.customization.volumeMounts" . -}}
+{{- $additionalEnv := include "mcp-server.customization.env" . -}}
+{{- $additionalEnvFrom := include "mcp-server.customization.envFrom" . -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "mcp-server.fullname" . }}
+  labels: {{- include "mcp-server.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  strategy:
+    type: RollingUpdate
+  selector:
+    matchLabels: {{- include "mcp-server.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "mcp-server.selectorLabels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- include "ilm-lib.tplvalues.render" (dict "value" . "context" $) | nindent 8 }}
+        {{- end }}
+      {{- with .Values.podAnnotations }}
+      annotations: {{- include "ilm-lib.tplvalues.render" (dict "value" . "context" $) | nindent 8 }}
+      {{- end }}
+    spec:
+      serviceAccountName: {{ include "mcp-server.serviceAccountName" . }}
+      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
+      automountServiceAccountToken: false
+      {{- include "mcp-server.pullSecrets" . | nindent 6 }}
+      {{- with .Values.podSecurityContext }}
+      securityContext: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if $additionalInitContainers }}
+      initContainers: {{- $additionalInitContainers | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: mcp-server
+          image: {{ include "mcp-server.image" . | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- with .Values.image.command }}
+          command: {{- include "ilm-lib.tplvalues.render" (dict "value" . "context" $) | nindent 12 }}
+          {{- end }}
+          {{- with .Values.image.args }}
+          args: {{- include "ilm-lib.tplvalues.render" (dict "value" . "context" $) | nindent 12 }}
+          {{- end }}
+          {{- with .Values.image.securityContext }}
+          securityContext: {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- if $additionalEnvFrom }}
+          envFrom: {{- $additionalEnvFrom | nindent 12 }}
+          {{- end }}
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: http
+            - name: SPRING_AI_MCP_SERVER_TYPE
+              value: SYNC
+            - name: SPRING_AI_MCP_SERVER_PROTOCOL
+              value: STATELESS
+            - name: PORT
+              value: {{ .Values.service.port | quote }}
+            - name: MANAGEMENT_ENDPOINT_HEALTH_PROBES_ENABLED
+              value: "true"
+            - name: ILM_AUTH_METHOD
+              value: oauth-delegation
+            - name: ILM_API_URL
+              value: {{ .Values.apiUrl | quote }}
+            - name: ILM_MCP_ACCESS
+              value: {{ .Values.access | quote }}
+            - name: ILM_MCP_TOOLSETS
+              value: {{ .Values.toolsets | quote }}
+            - name: ILM_MCP_SECURITY_ENABLED
+              value: "true"
+            - name: ILM_MCP_SECURITY_ISSUER
+              value: {{ .Values.security.issuer | quote }}
+            - name: ILM_MCP_SECURITY_RESOURCE
+              value: {{ .Values.security.resource | quote }}
+            - name: ILM_MCP_SECURITY_JWK_SET_URI
+              value: {{ .Values.security.jwkSetUri | quote }}
+            - name: ILM_MCP_SECURITY_TOKEN_URI
+              value: {{ .Values.security.tokenUri | quote }}
+            - name: ILM_MCP_SECURITY_CLIENT_ID
+              value: {{ .Values.security.clientId | quote }}
+            - name: ILM_MCP_SECURITY_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.security.clientSecretRef.name | quote }}
+                  key: {{ .Values.security.clientSecretRef.key | quote }}
+            - name: ILM_MCP_SECURITY_API_AUDIENCE
+              value: {{ .Values.security.apiAudience | quote }}
+            - name: ILM_MCP_SECURITY_EXCHANGE_MODE
+              value: {{ .Values.security.exchangeMode | quote }}
+            - name: ILM_MCP_SECURITY_EXCHANGE_SCOPE
+              value: {{ .Values.security.exchangeScope | quote }}
+            - name: ILM_MCP_SECURITY_REQUIRED_SCOPE
+              value: {{ .Values.security.requiredScope | quote }}
+            - name: ILM_MCP_SECURITY_AUTHORIZATION_SCOPES
+              value: {{ join "," .Values.security.authorizationScopes | quote }}
+            - name: ILM_MCP_SECURITY_ALLOWED_ORIGINS
+              value: {{ join "," .Values.security.allowedOrigins | quote }}
+            - name: ILM_MCP_SECURITY_JWS_ALGORITHMS
+              value: {{ join "," .Values.security.jwsAlgorithms | quote }}
+            {{- if $additionalEnv }}
+            {{- $additionalEnv | nindent 12 }}
+            {{- end }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.port }}
+          {{- range $name, $probe := .Values.image.probes }}
+          {{- if $probe.enabled }}
+          {{ $name }}Probe:
+            {{- if $probe.custom }}
+            {{- toYaml $probe.custom | nindent 12 }}
+            {{- else }}
+            httpGet:
+              path: /actuator/health/{{ eq $name "readiness" | ternary "readiness" "liveness" }}
+              port: http
+            {{- end }}
+            initialDelaySeconds: {{ $probe.initialDelaySeconds }}
+            timeoutSeconds: {{ $probe.timeoutSeconds }}
+            periodSeconds: {{ $probe.periodSeconds }}
+            successThreshold: {{ $probe.successThreshold }}
+            failureThreshold: {{ $probe.failureThreshold }}
+          {{- end }}
+          {{- end }}
+          {{- with .Values.image.resources }}
+          resources: {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            {{- if $additionalVolumeMounts }}
+            {{- $additionalVolumeMounts | nindent 12 }}
+            {{- end }}
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: {{ .Values.volumes.ephemeral.sizeLimit | quote }}
+            {{- with .Values.volumes.ephemeral.medium }}
+            medium: {{ . | quote }}
+            {{- end }}
+        {{- if $additionalVolumes }}
+        {{- $additionalVolumes | nindent 8 }}
+        {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations: {{- toYaml . | nindent 8 }}
+      {{- end }}

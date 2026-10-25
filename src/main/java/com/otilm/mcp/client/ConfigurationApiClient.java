@@ -1,9 +1,12 @@
 package com.otilm.mcp.client;
 
+import java.nio.charset.IllegalCharsetNameException;
+import java.nio.charset.UnsupportedCharsetException;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.function.Supplier;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.InvalidMediaTypeException;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
@@ -96,7 +99,8 @@ public class ConfigurationApiClient {
                 message += " Deletion was refused; check dependencies in ILM.";
             }
             throw new ApiException(message);
-        } catch (RestClientException failure) {
+        } catch (RestClientException | InvalidMediaTypeException | IllegalCharsetNameException
+                | UnsupportedCharsetException failure) {
             throw new ApiException(
                     "ILM could not complete the request. Check the connection and server configuration.");
         }

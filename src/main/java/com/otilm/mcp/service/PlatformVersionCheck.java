@@ -32,8 +32,8 @@ public class PlatformVersionCheck {
         try {
             CoreInfoResponseDto info = ilmApiClient.getInfo();
             version = info == null || info.getApp() == null ? null : info.getApp().getVersion();
-        } catch (RuntimeException e) {
-            logger.debug("Could not read the ILM version: {}", e.getMessage());
+        } catch (RuntimeException ignored) {
+            logger.debug("Could not read the ILM version");
             return Optional.empty();
         }
         return PlatformVersion
