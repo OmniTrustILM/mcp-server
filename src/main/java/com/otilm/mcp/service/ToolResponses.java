@@ -1,10 +1,12 @@
 package com.otilm.mcp.service;
 
 import com.otilm.api.model.common.ErrorMessageDto;
+import com.otilm.mcp.security.RequestCredentials;
 import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
 
 /**
@@ -13,6 +15,7 @@ import org.springframework.web.client.RestClientResponseException;
  */
 public final class ToolResponses {
 
+    private static final String ERROR_PREFIX = "Error ";
     private static final Logger logger = LoggerFactory.getLogger(ToolResponses.class);
 
     private ToolResponses() {
@@ -27,15 +30,23 @@ public final class ToolResponses {
     }
 
     public static String errorText(String action, RuntimeException e) {
+        // RestClient reads/converts bodies after interceptors return. Discard those raw failures before logging.
+        if (RequestCredentials.isBound() && e instanceof RestClientException) {
+            String detail = e instanceof RestClientResponseException ilm
+                    ? "ILM answered HTTP " + ilm.getStatusCode().value()
+                    : "ILM response could not be read";
+            logger.warn("{} while {}", detail, action);
+            return ERROR_PREFIX + action + ": " + detail;
+        }
         if (e instanceof IllegalArgumentException) {
             return e.getMessage();
         }
         if (e instanceof RestClientResponseException ilm) {
             logger.warn("ILM answered {} while {}", ilm.getStatusCode().value(), action);
-            return "Error " + action + ": ILM answered " + status(ilm) + ilmMessage(ilm);
+            return ERROR_PREFIX + action + ": ILM answered " + status(ilm) + ilmMessage(ilm);
         }
         logger.error("Error {}", action, e);
-        return "Error " + action + ": " + e.getMessage();
+        return ERROR_PREFIX + action + ": " + e.getMessage();
     }
 
     private static String status(RestClientResponseException e) {

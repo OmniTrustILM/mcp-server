@@ -29,6 +29,9 @@ jobs:
           path: ~/.sonar/cache
           key: ${{ runner.os }}-sonar
           restore-keys: ${{ runner.os }}-sonar
+      - name: Verify Keycloak configuration fixtures
+        run: bash scripts/keycloak/verify-keycloak-offline.sh
+
       - name: Build and analyze
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -37,5 +40,5 @@ jobs:
         run: >-
           mvn -B -U verify org.sonarsource.scanner.maven:sonar-maven-plugin:5.8.0.7211:sonar
           -Dsonar.sources=.
-          "-Dsonar.exclusions=src/test/**,target/**"
-          -Dsonar.tests=src/test/java
+          "-Dsonar.exclusions=src/test/**,deploy/tests/**,target/**"
+          -Dsonar.tests=src/test/java,deploy/tests

@@ -3,6 +3,11 @@ package com.otilm.mcp;
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import io.modelcontextprotocol.client.McpSyncClient;
 import io.modelcontextprotocol.spec.McpSchema;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
@@ -34,6 +39,21 @@ class McpServerHttpStartupTest {
     @DynamicPropertySource
     static void ilmApiUrl(DynamicPropertyRegistry registry) {
         registry.add("ilm.api.url", ilm::baseUrl);
+    }
+
+    @Test
+    void actuatorInfoRemainsPublicInNonsharedHttpMode() throws Exception {
+        try (HttpClient client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build()) {
+            var request = HttpRequest
+                    .newBuilder(URI.create("http://localhost:" + port + "/actuator/info"))
+                    .timeout(Duration.ofSeconds(5))
+                    .GET()
+                    .build();
+            var response = client.send(request, HttpResponse.BodyHandlers.ofString());
+            assertThat(response.statusCode()).isEqualTo(200);
+            assertThat(response.headers().firstValue("Content-Type"))
+                    .hasValueSatisfying(value -> assertThat(value).contains("json"));
+        }
     }
 
     @Test

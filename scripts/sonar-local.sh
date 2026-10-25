@@ -94,8 +94,8 @@ mvn -B "${SONAR_MAVEN_PLUGIN}:sonar" \
     -Dsonar.host.url="${SONAR_URL}" \
     -Dsonar.token="${TOKEN}" \
     -Dsonar.sources=. \
-    "-Dsonar.exclusions=src/test/**,target/**" \
-    -Dsonar.tests=src/test/java \
+    "-Dsonar.exclusions=src/test/**,deploy/tests/**,target/**" \
+    -Dsonar.tests=src/test/java,deploy/tests \
     -Dsonar.issue.ignore.multicriteria=e1 \
     -Dsonar.issue.ignore.multicriteria.e1.ruleKey=githubactions:S7637 \
     "-Dsonar.issue.ignore.multicriteria.e1.resourceKey=.github/workflows/**"

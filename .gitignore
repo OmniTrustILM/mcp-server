@@ -23,3 +23,8 @@ Thumbs.db
 
 # Local planning documents
 docs/superpowers/
+.superpowers/
+
+# Local Python validation artifacts
+__pycache__/
+*.pyc

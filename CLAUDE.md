@@ -73,9 +73,17 @@ Runs `mvn verify`, analyses the project with the pull-request workflow's scope i
 Set via environment variables or application.yml:
 
 - `ILM_API_URL` - ILM API base URL (up to /api)
-- `ILM_AUTH_METHOD` - Authentication method: `certificate`, `oauth-passthrough`, or `oauth-client-credentials`
+- `ILM_AUTH_METHOD` - Authentication method: `certificate`, `oauth-passthrough`, `oauth-client-credentials`, or `oauth-delegation`
 
 ### Authentication
+
+**Shared OAuth (HTTP):**
+- `oauth-delegation` with `ILM_MCP_SECURITY_ENABLED=true`, SYNC and STATELESS HTTP
+- Validate the caller's MCP-audience token, then exchange for an ILM-audience token for the same subject
+- Explicit `standard` or `delegation` mode; no passthrough, service-identity or automatic mode fallback
+- Request-local credentials travel through the SDK transport context; no user sessions, grants or token cache
+- HTTPS, bounded timeouts and no redirects on ILM/JWK/token clients; sanitize response parsing failures as well as request failures
+- See [shared HTTP authentication](docs/shared-http-authentication.md) and [example Keycloak integration](docs/keycloak/README.md)
 
 **Client Certificate:**
 - `ILM_SSL_BUNDLE` - SSL bundle name (default: `ilm-client`)
@@ -92,7 +100,18 @@ Set via environment variables or application.yml:
 
 - `ILM_MCP_ACCESS` - `read-only` (default), `read-write` or `full`
 - `ILM_MCP_TOOLSETS` - `all` (default) or a comma-separated list of toolsets (see `Toolset`)
-- Above `read-only`, HTTP mode requires `oauth-passthrough`; the server refuses to start otherwise
+- Above `read-only`, HTTP mode requires `oauth-delegation` or legacy `oauth-passthrough`; the server refuses to start otherwise
+
+### Deployment
+
+- Keep the standalone Helm chart in `deploy/charts/mcp-server` in this repository
+- Reuse the pinned `ilm-lib` dependency and application-chart values conventions; keep the chart compatible with parent dependency conditions and shared globals
+- Chart checks and signed OCI publication use `.github/workflows/test_chart.yaml` and `publish_chart.yaml`
+- Build locked dependencies, run `helm lint deploy/charts/mcp-server --strict --values deploy/charts/mcp-server/ci/default-values.yaml` and the tests under `deploy/tests` after chart changes
+- Shared deployments require an existing credential Secret, explicit network peers and stateless transport; pin reviewed image digests before allowing traffic
+- Keep repository deployment examples generic: use reserved `https://ilm.example.invalid/mcp`, `https://ilm.example.invalid/api` and `https://identity.example.invalid/tenant`; keep real deployment endpoints, namespaces and operator paths in private deployment configuration
+- Main keeps the chart's development version; release tags carry release versions
+- Publish the `0.0.0` development alias only after successful mainline chart publication and signing; retain immutable versioned artifacts
 
 ## Architecture
 
@@ -132,5 +151,5 @@ Images are published to `hub.omnitrustregistry.com/ilm/mcp-server` by the shared
 
 ```bash
 docker build -t ilm-mcp-server .
-docker run -e ILM_API_URL=https://my-instance/api -e ILM_AUTH_METHOD=oauth-passthrough -p 8080:8080 ilm-mcp-server
+docker run -e ILM_API_URL=https://ilm.example.invalid/api -e ILM_AUTH_METHOD=oauth-passthrough -p 8080:8080 ilm-mcp-server
 ```

@@ -26,6 +26,9 @@ jobs:
           distribution: temurin
           cache: maven
 
+      - name: Verify Keycloak configuration fixtures
+        run: bash scripts/keycloak/verify-keycloak-offline.sh
+
       - name: Build
         run: mvn -B -U verify
 

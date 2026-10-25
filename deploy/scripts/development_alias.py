@@ -1,0 +1,151 @@
+"""Point Harbor's development chart tag at an already published, signed digest."""
+import argparse
+import base64
+from http.client import HTTPException
+import json
+import os
+import re
+import subprocess
+import sys
+from urllib.error import HTTPError
+from urllib.parse import quote
+from urllib.request import HTTPRedirectHandler, Request, build_opener
+
+
+ARTIFACTS_URL = ('https://hub.omnitrustregistry.com/api/v2.0/projects/ilm-helm/'
+                 'repositories/mcp-server/artifacts/')
+ALIAS = '0.0.0'
+DIGEST = re.compile(r'sha256:[a-f0-9]{64}')
+
+
+class PublicationError(RuntimeError):
+    """A sanitized publication failure, safe for the workflow log."""
+
+    def __init__(self, message, status=None):
+        super().__init__(message)
+        self.status = status
+
+
+class NoRedirect(HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
+class HarborClient:
+    def __init__(self, username, password, *, opener=None):
+        if not username or not password:
+            raise PublicationError('Harbor credentials are required')
+        credentials = base64.b64encode(f'{username}:{password}'.encode()).decode()
+        self.authorization = f'Basic {credentials}'
+        self.opener = opener if opener is not None else build_opener(NoRedirect())
+
+    def _request(self, method, reference, suffix='', payload=None):
+        if reference != ALIAS and not DIGEST.fullmatch(reference):
+            raise PublicationError('Invalid Harbor artifact reference')
+        request = Request(ARTIFACTS_URL + quote(reference, safe='') + suffix,
+                          data=json.dumps(payload).encode() if payload is not None else None,
+                          headers={'Authorization': self.authorization,
+                                   'Content-Type': 'application/json', 'Accept': 'application/json'},
+                          method=method)
+        expected_status = 201 if method == 'POST' else 200
+        try:
+            with self.opener.open(request, timeout=30) as response:
+                if response.status != expected_status:
+                    raise PublicationError(f'Harbor {method} returned HTTP {response.status}', response.status)
+                if method != 'GET':
+                    return None
+                # Artifact metadata is small; reject unbounded or malformed responses.
+                body = response.read(65537)
+                if len(body) > 65536:
+                    raise PublicationError('Harbor artifact metadata is too large')
+        except HTTPError as error:
+            error.close()
+            raise PublicationError(f'Harbor {method} failed with HTTP {error.code}', error.code) from None
+        except (OSError, HTTPException):
+            raise PublicationError(f'Harbor {method} request failed') from None
+        try:
+            artifact = json.loads(body)
+        except ValueError:
+            raise PublicationError('Harbor returned invalid artifact metadata') from None
+        digest = artifact.get('digest') if isinstance(artifact, dict) else None
+        if not isinstance(digest, str) or not DIGEST.fullmatch(digest):
+            raise PublicationError('Harbor returned an invalid artifact digest')
+        return digest
+
+    def artifact_digest(self, reference):
+        return self._request('GET', reference)
+
+    def delete_alias(self, digest):
+        self._request('DELETE', digest, f'/tags/{ALIAS}')
+
+    def create_alias(self, digest):
+        self._request('POST', digest, '/tags', {'name': ALIAS})
+
+
+def read_main_sha(*, run=subprocess.run):
+    try:
+        result = run(['git', 'ls-remote', '--exit-code', 'origin', 'refs/heads/main'],
+                     capture_output=True, text=True, timeout=30, check=False)
+    except (OSError, subprocess.SubprocessError):
+        raise PublicationError('The current main ref lookup failed') from None
+    match = re.fullmatch(r'([a-f0-9]{40})\trefs/heads/main\n?', result.stdout)
+    if result.returncode != 0 or match is None:
+        raise PublicationError('The current main ref lookup did not return one valid commit')
+    return match[1]
+
+
+def update_alias(*, event_name, ref_type, ref_name, version, digest, sha, client, current_main=read_main_sha):
+    if event_name not in ('push', 'workflow_dispatch') or (ref_type, ref_name) != ('branch', 'main'):
+        raise PublicationError('The development alias is restricted to main branch publication')
+    if not re.fullmatch(r'\d+\.\d+\.\d+-develop\.[a-f0-9]{40}', version):
+        raise PublicationError('The development alias requires an immutable development chart version')
+    if not re.fullmatch(r'[a-f0-9]{40}', sha) or not version.endswith('.' + sha):
+        raise PublicationError('The development chart version must match the publication commit')
+    if not DIGEST.fullmatch(digest):
+        raise PublicationError('The development alias requires a sha256 artifact digest')
+    if client.artifact_digest(digest) != digest:
+        raise PublicationError('Harbor target does not match the signed chart digest')
+    try:
+        previous = client.artifact_digest(ALIAS)
+    except PublicationError as error:
+        if error.status != 404:
+            raise
+        previous = None
+    # Main publications share a workflow concurrency group. A rerun of an older
+    # commit may still run later, so check freshness immediately before writing.
+    if current_main() != sha:
+        return False
+    if previous == digest:
+        return True
+    if previous is not None:
+        client.delete_alias(previous)
+    client.create_alias(digest)
+    if client.artifact_digest(ALIAS) != digest:
+        raise PublicationError('Harbor development alias does not match the signed chart digest')
+    return True
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--event-name', required=True)
+    parser.add_argument('--ref-type', required=True)
+    parser.add_argument('--ref-name', required=True)
+    parser.add_argument('--version', required=True)
+    parser.add_argument('--digest', required=True)
+    parser.add_argument('--sha', required=True)
+    args = parser.parse_args()
+    try:
+        client = HarborClient(os.environ.get('HELM_USERNAME'), os.environ.get('HELM_PASSWORD'))
+        updated = update_alias(**vars(args), client=client)
+    except PublicationError as error:
+        print(f'Development alias publication failed: {error}', file=sys.stderr)
+        return 1
+    if updated:
+        print('Verified Harbor development alias 0.0.0 at the signed chart digest')
+    else:
+        print('Skipped development alias 0.0.0: publication commit is no longer current main')
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

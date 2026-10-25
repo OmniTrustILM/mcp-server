@@ -1,0 +1,20 @@
+{
+  "keycloakBaseUrl": "REQUIRED_HTTPS_KEYCLOAK_BASE_WITH_OPTIONAL_AUTH_PREFIX",
+  "realm": "REQUIRED_EXISTING_REALM_NAME",
+  "issuer": "REQUIRED_EXACT_EXISTING_ISSUER",
+  "mode": "delegation",
+  "resource": "https://ilm.example.invalid/mcp",
+  "actorClientId": "ilm-mcp",
+  "apiClientId": "ilm",
+  "sourceClientIds": [],
+  "targetScopeNames": [],
+  "copyIlmDirectMapperNames": [],
+  "ilmClientRoleNames": [],
+  "realmRoleNames": [],
+  "usernameClaim": "REQUIRED_EXISTING_ILM_USERNAME_CLAIM",
+  "mappingSelectionReviewed": false,
+  "sourceAudienceConfigurationReviewed": false,
+  "selectedGroupMemberUserIds": [],
+  "ilmApiBaseUrl": "https://ilm.example.invalid/api",
+  "ilmProviderName": "REQUIRED_EXISTING_PROVIDER_NAME"
+}

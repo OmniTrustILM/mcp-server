@@ -3,6 +3,7 @@ package com.otilm.mcp.config;
 import com.otilm.mcp.client.IlmApiClient;
 import com.otilm.mcp.security.AuthTokenFilter;
 import com.otilm.mcp.security.AuthTokenHolder;
+import com.otilm.mcp.security.RequestCredentials;
 import java.util.Optional;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -13,6 +14,7 @@ import org.springframework.boot.ssl.SslBundles;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.client.ClientHttpRequestFactory;
 import org.springframework.http.client.ClientHttpRequestInterceptor;
 import org.springframework.web.client.RestClient;
 
@@ -30,13 +32,32 @@ public class IlmApiClientConfiguration {
     }
 
     @Bean
-    public RestClient ilmRestClient(IlmApiProperties properties, Optional<SslBundles> sslBundles) {
+    public RestClient ilmRestClient(IlmApiProperties properties, Optional<SslBundles> sslBundles,
+            Optional<ClientHttpRequestFactory> sharedFactory) {
         RestClient.Builder builder = IlmApiClient.restClientBuilder(properties.getUrl());
 
         switch (properties.getAuth().getMethod()) {
             case CERTIFICATE -> configureCertificateAuth(builder, properties, sslBundles);
             case OAUTH_PASSTHROUGH -> configureOAuthPassthrough(builder);
             case OAUTH_CLIENT_CREDENTIALS -> configureOAuthClientCredentials(builder, properties);
+            case OAUTH_DELEGATION -> {
+                builder
+                        .requestFactory(sharedFactory
+                                .orElseThrow(
+                                        () -> new IllegalStateException("Shared OAuth HTTP transport is required")));
+                builder.requestInterceptor((request, body, execution) -> {
+                    request.getHeaders().setBearerAuth(RequestCredentials.token());
+                    try {
+                        return execution.execute(request, body);
+                    } catch (Exception ignored) {
+                        throw new IllegalStateException("ILM API request failed");
+                    }
+                });
+                builder.defaultStatusHandler(status -> !status.is2xxSuccessful(), (request, response) -> {
+                    throw new IllegalStateException(
+                            "ILM API request rejected (HTTP " + response.getStatusCode().value() + ")");
+                });
+            }
             case NONE -> {
                 /* No auth - used for testing */ }
         }

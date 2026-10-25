@@ -1,0 +1,6 @@
+dependencies:
+- name: ilm-lib
+  repository: oci://hub.omnitrustregistry.com/ilm-helm
+  version: 1.4.2-1
+digest: sha256:c5ea4977a5c185a89ae797ecb61aa430ebea416eafb0e820d3841970f9844bf6
+generated: "2026-10-25T10:38:41.260387+01:00"

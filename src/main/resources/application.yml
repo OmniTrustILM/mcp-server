@@ -37,6 +37,24 @@ ilm:
   mcp:
     access: ${ILM_MCP_ACCESS:read-only}
     toolsets: ${ILM_MCP_TOOLSETS:all}
+    security:
+      enabled: ${ILM_MCP_SECURITY_ENABLED:false}
+      issuer: ${ILM_MCP_SECURITY_ISSUER:}
+      resource: ${ILM_MCP_SECURITY_RESOURCE:}
+      jwk-set-uri: ${ILM_MCP_SECURITY_JWK_SET_URI:}
+      token-uri: ${ILM_MCP_SECURITY_TOKEN_URI:}
+      client-id: ${ILM_MCP_SECURITY_CLIENT_ID:}
+      client-secret: ${ILM_MCP_SECURITY_CLIENT_SECRET:}
+      api-audience: ${ILM_MCP_SECURITY_API_AUDIENCE:ilm}
+      exchange-mode: ${ILM_MCP_SECURITY_EXCHANGE_MODE:standard}
+      exchange-scope: ${ILM_MCP_SECURITY_EXCHANGE_SCOPE:}
+      authorization-scopes: ${ILM_MCP_SECURITY_AUTHORIZATION_SCOPES:}
+      required-scope: ${ILM_MCP_SECURITY_REQUIRED_SCOPE:mcp:access}
+      allowed-origins: ${ILM_MCP_SECURITY_ALLOWED_ORIGINS:}
+      jws-algorithms: ${ILM_MCP_SECURITY_JWS_ALGORITHMS:RS256}
+      connect-timeout: ${ILM_MCP_SECURITY_CONNECT_TIMEOUT:5s}
+      read-timeout: ${ILM_MCP_SECURITY_READ_TIMEOUT:15s}
+      clock-skew: ${ILM_MCP_SECURITY_CLOCK_SKEW:30s}
   api:
     url: ${ILM_API_URL:https://localhost/api}
     auth:

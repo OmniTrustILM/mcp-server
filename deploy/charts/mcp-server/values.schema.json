@@ -1,0 +1,488 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "fullnameOverride": {
+      "type": "string"
+    },
+    "global": {
+      "type": "object",
+      "properties": {
+        "image": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "registry": {
+              "type": "string"
+            },
+            "repository": {
+              "type": "string"
+            },
+            "pullSecrets": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "additionalEnv": {
+          "$ref": "#/definitions/additionalEnv"
+        },
+        "initContainers": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "additionalVolumes": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "additionalVolumeMounts": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        }
+      }
+    },
+    "image": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "registry": {
+          "type": "string"
+        },
+        "repository": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "digest": {
+          "type": "string",
+          "pattern": "^(sha256:[a-f0-9]{64})?$"
+        },
+        "pullPolicy": {
+          "enum": [
+            "Always",
+            "IfNotPresent",
+            "Never"
+          ]
+        },
+        "pullSecrets": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "command": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "args": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "resources": {
+          "type": "object"
+        },
+        "securityContext": {
+          "type": "object"
+        },
+        "probes": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "startup": {
+              "$ref": "#/definitions/probe"
+            },
+            "liveness": {
+              "$ref": "#/definitions/probe"
+            },
+            "readiness": {
+              "$ref": "#/definitions/probe"
+            }
+          }
+        },
+        "tag": {
+          "type": "string"
+        }
+      }
+    },
+    "replicaCount": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "service": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        }
+      }
+    },
+    "apiUrl": {
+      "type": "string",
+      "pattern": "^https://[^/?#@\\s]+(/[^?#\\s]*)?$"
+    },
+    "access": {
+      "enum": [
+        "read-only",
+        "read-write",
+        "full"
+      ]
+    },
+    "toolsets": {
+      "type": "string",
+      "minLength": 1
+    },
+    "security": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "issuer": {
+          "type": "string",
+          "pattern": "^https://[^/?#@\\s]+(/[^?#\\s]*)?$"
+        },
+        "resource": {
+          "type": "string",
+          "pattern": "^https://[^/?#@\\s]+(/[^?#\\s]*)?$"
+        },
+        "jwkSetUri": {
+          "type": "string",
+          "pattern": "^https://[^/?#@\\s]+(/[^?#\\s]*)?$"
+        },
+        "tokenUri": {
+          "type": "string",
+          "pattern": "^https://[^/?#@\\s]+(/[^?#\\s]*)?$"
+        },
+        "clientId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "apiAudience": {
+          "type": "string",
+          "minLength": 1
+        },
+        "exchangeScope": {
+          "type": "string"
+        },
+        "requiredScope": {
+          "type": "string",
+          "minLength": 1
+        },
+        "exchangeMode": {
+          "enum": [
+            "standard",
+            "delegation"
+          ]
+        },
+        "allowedOrigins": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^https://[^/?#@\\s]+$"
+          }
+        },
+        "jwsAlgorithms": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "RS256",
+              "RS384",
+              "RS512",
+              "ES256",
+              "ES384",
+              "ES512",
+              "PS256",
+              "PS384",
+              "PS512"
+            ]
+          }
+        },
+        "clientSecretRef": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "name",
+            "key"
+          ],
+          "properties": {
+            "name": {
+              "type": "string",
+              "minLength": 1
+            },
+            "key": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9._-]+$"
+            }
+          }
+        },
+        "authorizationScopes": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9:_./-]+$"
+          }
+        }
+      },
+      "required": [
+        "issuer",
+        "resource",
+        "jwkSetUri",
+        "tokenUri",
+        "clientId",
+        "clientSecretRef",
+        "apiAudience",
+        "exchangeMode",
+        "requiredScope",
+        "jwsAlgorithms"
+      ]
+    },
+    "networkPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "ingress": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          },
+          "minItems": 1
+        },
+        "egress": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "ingress",
+        "egress"
+      ]
+    },
+    "nameOverride": {
+      "type": "string"
+    },
+    "podLabels": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "podAnnotations": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "nodeSelector": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "affinity": {
+      "type": "object"
+    },
+    "podSecurityContext": {
+      "type": "object"
+    },
+    "tolerations": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "terminationGracePeriodSeconds": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "serviceAccount": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "create": {
+          "type": "boolean"
+        },
+        "name": {
+          "type": "string"
+        },
+        "annotations": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "volumes": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "ephemeral": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "sizeLimit"
+          ],
+          "properties": {
+            "sizeLimit": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]*(\\.[0-9]+)?([EPTGMK]i?|m)?$"
+            },
+            "medium": {
+              "enum": [
+                "",
+                "Memory"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "additionalEnv": {
+      "$ref": "#/definitions/additionalEnv"
+    },
+    "initContainers": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "additionalVolumes": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "additionalVolumeMounts": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "ilm-lib": {
+      "type": "object"
+    }
+  },
+  "required": [
+    "image",
+    "apiUrl",
+    "security",
+    "networkPolicy"
+  ],
+  "definitions": {
+    "probe": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "custom": {
+          "type": "object"
+        },
+        "initialDelaySeconds": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "timeoutSeconds": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "periodSeconds": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "successThreshold": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "failureThreshold": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "additionalEnv": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "variables": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "name"
+            ],
+            "oneOf": [
+              {
+                "required": [
+                  "value"
+                ],
+                "not": {
+                  "required": [
+                    "valueFrom"
+                  ]
+                }
+              },
+              {
+                "required": [
+                  "valueFrom"
+                ],
+                "not": {
+                  "required": [
+                    "value"
+                  ]
+                }
+              }
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "value": {
+                "type": "string"
+              },
+              "valueFrom": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "configMaps": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "secrets": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    }
+  }
+}
