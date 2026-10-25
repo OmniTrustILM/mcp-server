@@ -94,6 +94,35 @@ def read_main_sha(*, run=subprocess.run):
     return match[1]
 
 
+def _publish_alias(client, previous, digest):
+    try:
+        client.create_alias(digest)
+    except PublicationError:
+        if previous is None:
+            raise
+    else:
+        if client.artifact_digest(ALIAS) != digest:
+            raise PublicationError('Harbor development alias does not match the signed chart digest')
+        return
+    try:
+        current = client.artifact_digest(ALIAS)
+    except PublicationError as error:
+        if error.status != 404:
+            raise PublicationError('Harbor development alias recovery lookup failed') from None
+    else:
+        if current == digest:
+            return
+        raise PublicationError('Harbor development alias changed during publication') from None
+    try:
+        client.create_alias(previous)
+        restored = client.artifact_digest(ALIAS)
+    except PublicationError:
+        raise PublicationError('Harbor development alias recovery failed') from None
+    if restored != previous:
+        raise PublicationError('Harbor previous development alias could not be verified') from None
+    raise PublicationError('Harbor development alias update failed; previous alias restored') from None
+
+
 def update_alias(*, event_name, ref_type, ref_name, version, digest, sha, client, current_main=read_main_sha):
     if event_name not in ('push', 'workflow_dispatch') or (ref_type, ref_name) != ('branch', 'main'):
         raise PublicationError('The development alias is restricted to main branch publication')
@@ -119,9 +148,7 @@ def update_alias(*, event_name, ref_type, ref_name, version, digest, sha, client
         return True
     if previous is not None:
         client.delete_alias(previous)
-    client.create_alias(digest)
-    if client.artifact_digest(ALIAS) != digest:
-        raise PublicationError('Harbor development alias does not match the signed chart digest')
+    _publish_alias(client, previous, digest)
     return True
 
 

@@ -11,6 +11,7 @@ import subprocess
 import sys
 import tempfile
 from threading import Thread
+import traceback
 import unittest
 from urllib.request import HTTPSHandler, build_opener
 
@@ -295,6 +296,92 @@ class DevelopmentAliasTests(unittest.TestCase):
                 with self.assertRaises(self.module.PublicationError):
                     self.update(client)
                 self.assertEqual([request[0] for request in observed], ['GET', 'GET', 'POST'])
+
+    def test_failed_replacement_restores_previous_alias_and_still_fails(self):
+        responses = [(200, {'digest': SIGNED_DIGEST}), (200, {'digest': OLD_DIGEST}),
+                     (200, {}), (500, {}), (404, {}), (201, {}), (200, {'digest': OLD_DIGEST})]
+        with harbor_fixture(self.module, responses) as (client, observed, pending), \
+                self.assertRaisesRegex(self.module.PublicationError,
+                                       'Harbor development alias update failed; previous alias restored'):
+            self.update(client)
+        self.assertEqual([(method, path) for method, path, *_ in observed], [
+            ('GET', TARGET_PATH), ('GET', ALIAS_PATH), ('DELETE', DELETE_PATH),
+            ('POST', TARGET_PATH + '/tags'), ('GET', ALIAS_PATH),
+            ('POST', ARTIFACTS + 'sha256%3A' + 'b' * 64 + '/tags'), ('GET', ALIAS_PATH)])
+        self.assertEqual([json.loads(request[2]) for request in observed if request[0] == 'POST'],
+                         [{'name': '0.0.0'}, {'name': '0.0.0'}])
+        self.assertEqual(pending, [])
+
+    def test_ambiguous_replacement_success_requires_verified_signed_digest(self):
+        for status in [500, None]:
+            responses = [(200, {'digest': SIGNED_DIGEST}), (200, {'digest': OLD_DIGEST}),
+                         (200, {}), (status, b'synthetic-sensitive-response\n'),
+                         (200, {'digest': SIGNED_DIGEST})]
+            with self.subTest(status=status), harbor_fixture(self.module, responses) as (client, observed, pending):
+                self.assertTrue(self.update(client))
+                self.assertEqual([(method, path) for method, path, *_ in observed], [
+                    ('GET', TARGET_PATH), ('GET', ALIAS_PATH), ('DELETE', DELETE_PATH),
+                    ('POST', TARGET_PATH + '/tags'), ('GET', ALIAS_PATH)])
+                self.assertEqual(pending, [])
+
+    def test_existing_alias_after_failed_replacement_is_never_overwritten(self):
+        for concurrent in [OLD_DIGEST, 'sha256:' + 'c' * 64]:
+            responses = [(200, {'digest': SIGNED_DIGEST}), (200, {'digest': OLD_DIGEST}),
+                         (200, {}), (500, {}), (200, {'digest': concurrent})]
+            with self.subTest(concurrent=concurrent), \
+                    harbor_fixture(self.module, responses) as (client, observed, pending), \
+                    self.assertRaises(self.module.PublicationError):
+                self.update(client)
+            self.assertEqual([(method, path) for method, path, *_ in observed], [
+                ('GET', TARGET_PATH), ('GET', ALIAS_PATH), ('DELETE', DELETE_PATH),
+                ('POST', TARGET_PATH + '/tags'), ('GET', ALIAS_PATH)])
+            self.assertEqual(pending, [])
+
+    def test_failed_replacement_inspection_does_not_restore_or_expose_response(self):
+        for status in [403, 500, None, 200]:
+            responses = [(200, {'digest': SIGNED_DIGEST}), (200, {'digest': OLD_DIGEST}),
+                         (200, {}), (500, {}), (status, b'synthetic-sensitive-response\n')]
+            with self.subTest(status=status), harbor_fixture(self.module, responses) as (client, observed, pending), \
+                    self.assertRaisesRegex(self.module.PublicationError,
+                                           'Harbor development alias recovery lookup failed') as failure:
+                self.update(client)
+            self.assertEqual([(method, path) for method, path, *_ in observed], [
+                ('GET', TARGET_PATH), ('GET', ALIAS_PATH), ('DELETE', DELETE_PATH),
+                ('POST', TARGET_PATH + '/tags'), ('GET', ALIAS_PATH)])
+            self.assertNotIn('synthetic-sensitive-response', ''.join(traceback.format_exception(failure.exception)))
+            self.assertEqual(pending, [])
+
+    def test_failed_restoration_is_never_retried(self):
+        for status in [409, 500, None]:
+            responses = [(200, {'digest': SIGNED_DIGEST}), (200, {'digest': OLD_DIGEST}),
+                         (200, {}), (500, {}), (404, {}), (status, b'synthetic-sensitive-response\n')]
+            with self.subTest(status=status), harbor_fixture(self.module, responses) as (client, observed, pending), \
+                    self.assertRaisesRegex(self.module.PublicationError,
+                                           'Harbor development alias recovery failed') as failure:
+                self.update(client)
+            self.assertEqual([(method, path) for method, path, *_ in observed], [
+                ('GET', TARGET_PATH), ('GET', ALIAS_PATH), ('DELETE', DELETE_PATH),
+                ('POST', TARGET_PATH + '/tags'), ('GET', ALIAS_PATH),
+                ('POST', ARTIFACTS + 'sha256%3A' + 'b' * 64 + '/tags')])
+            self.assertNotIn('synthetic-sensitive-response', ''.join(traceback.format_exception(failure.exception)))
+            self.assertEqual(pending, [])
+
+    def test_restoration_must_verify_previous_digest(self):
+        for final, diagnostic in [
+            ((404, {}), 'Harbor development alias recovery failed'),
+            ((500, {}), 'Harbor development alias recovery failed'),
+            ((200, {'digest': SIGNED_DIGEST}), 'Harbor previous development alias could not be verified'),
+        ]:
+            responses = [(200, {'digest': SIGNED_DIGEST}), (200, {'digest': OLD_DIGEST}),
+                         (200, {}), (500, {}), (404, {}), (201, {}), final]
+            with self.subTest(final=final), harbor_fixture(self.module, responses) as (client, observed, pending), \
+                    self.assertRaisesRegex(self.module.PublicationError, diagnostic):
+                self.update(client)
+            self.assertEqual([(method, path) for method, path, *_ in observed], [
+                ('GET', TARGET_PATH), ('GET', ALIAS_PATH), ('DELETE', DELETE_PATH),
+                ('POST', TARGET_PATH + '/tags'), ('GET', ALIAS_PATH),
+                ('POST', ARTIFACTS + 'sha256%3A' + 'b' * 64 + '/tags'), ('GET', ALIAS_PATH)])
+            self.assertEqual(pending, [])
 
     def test_failed_or_wrong_digest_verification_cannot_report_success(self):
         for final in [(404, {}), (500, {}), (200, {'digest': OLD_DIGEST})]:
