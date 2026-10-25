@@ -29,11 +29,15 @@ def claims(token):
 def audience(jwt):
     a=jwt.get('aud',[]); return {a} if isinstance(a,str) else set(a)
 a=claims(subject)
+source_subject=a.get('sub')
+if not isinstance(source_subject,str) or not source_subject.strip(): fail('A subject check failed.')
 if a.get('iss')!=c['issuer'] or a.get('exp',0)<=time.time(): fail('A issuer/expiry check failed.')
 if not {c['resource'],'ilm-mcp'}.issubset(audience(a)) or 'ilm' in audience(a): fail('A audience isolation check failed.')
 if 'mcp:access' not in a.get('scope','').split(): fail('A lacks mcp:access.')
 if mode=='delegation':
-    if not isinstance(a.get('may_act'),dict) or a['may_act'].get('client_id')!='ilm-mcp' or not a['may_act'].get('sub'):
+    may_act=a.get('may_act')
+    if (not isinstance(may_act,dict) or may_act.get('client_id')!='ilm-mcp' or
+        not isinstance(may_act.get('sub'),str) or not may_act['sub'].strip()):
         fail('A lacks permitted may_act actor. Check group membership, FGAP and consent; do not fall back to standard.')
 elif 'may_act' in a or 'act' in a:
     fail('Standard mode requires a fresh source token without delegation claims.')
@@ -67,12 +71,15 @@ if mode=='delegation':
 b=claims(token_request(fields,'exchanged.json'))
 if b.get('iss')!=c['issuer'] or b.get('exp',0)<=time.time(): fail('B issuer/expiry check failed.')
 if audience(b)!={'ilm'}: fail('B must have only the ILM API audience.')
-if b.get('sub')!=a.get('sub') or b.get('azp')!='ilm-mcp': fail('B subject/requester check failed.')
+exchanged_subject=b.get('sub')
+if (not isinstance(exchanged_subject,str) or not exchanged_subject.strip() or
+    exchanged_subject!=source_subject or b.get('azp')!='ilm-mcp'): fail('B subject/requester check failed.')
 username=c['usernameClaim']
 if not isinstance(b.get(username),str) or not b[username].strip(): fail('B existing ILM username claim missing.')
 if mode=='delegation':
     act=b.get('act')
-    if not isinstance(act,dict) or act.get('client_id')!='ilm-mcp' or act.get('sub')!=a['may_act']['sub']:
+    if (not isinstance(act,dict) or act.get('client_id')!='ilm-mcp' or
+        not isinstance(act.get('sub'),str) or not act['sub'].strip() or act['sub']!=a['may_act']['sub']):
         fail('B act attribution check failed.')
     if 'may_act' in b: fail('B unexpectedly carries may_act.')
 elif 'act' in b or 'may_act' in b: fail('Standard mode unexpectedly returned delegation claims.')

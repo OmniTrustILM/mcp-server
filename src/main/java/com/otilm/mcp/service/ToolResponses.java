@@ -6,6 +6,7 @@ import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.InvalidMediaTypeException;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
 
@@ -30,8 +31,9 @@ public final class ToolResponses {
     }
 
     public static String errorText(String action, RuntimeException e) {
-        // RestClient reads/converts bodies after interceptors return. Discard those raw failures before logging.
-        if (RequestCredentials.isBound() && e instanceof RestClientException) {
+        // RestClient reads headers and converts bodies after interceptors return. Discard raw failures before logging.
+        if (RequestCredentials.isBound()
+                && (e instanceof RestClientException || e instanceof InvalidMediaTypeException)) {
             String detail = e instanceof RestClientResponseException ilm
                     ? "ILM answered HTTP " + ilm.getStatusCode().value()
                     : "ILM response could not be read";

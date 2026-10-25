@@ -354,6 +354,100 @@ for key in ('oauth2.device.authorization.grant.enabled','oidc.ciba.grant.enabled
   assert existing==before and f.writes==writes,key+' grant was silently changed'
 print('PASS: existing public registrations allow unrelated/disabled attributes and reject enabled device, CIBA and JWT grants without mutation.')
 
+# Execute the token probe against intercepted token responses in both modes.
+probe_code=(root/'exchange-token-probe.sh').read_text().split("<<'PY'\n",1)[1].rsplit('\nPY',1)[0]
+MISSING_SUBJECT=object()
+ACTOR_SUBJECT='OFFLINE_ACTOR_SUBJECT_SENTINEL'
+def probe_subjects(mode,source_subject,exchanged_subject,source_actor=ACTOR_SUBJECT,exchanged_actor=ACTOR_SUBJECT):
+ c=config(mode)
+ a={'iss':c['issuer'],'exp':int(time.time())+300,'aud':[c['resource'],'ilm-mcp'],'scope':'mcp:access'}
+ b={'iss':c['issuer'],'exp':int(time.time())+300,'aud':['ilm'],'azp':'ilm-mcp',
+  'preferred_username':'OFFLINE_USERNAME_SENTINEL'}
+ if source_subject is not MISSING_SUBJECT:a['sub']=source_subject
+ if exchanged_subject is not MISSING_SUBJECT:b['sub']=exchanged_subject
+ if mode=='delegation':
+  a['may_act']={'client_id':'ilm-mcp'};b['act']={'client_id':'ilm-mcp'}
+  if source_actor is not MISSING_SUBJECT:a['may_act']['sub']=source_actor
+  if exchanged_actor is not MISSING_SUBJECT:b['act']['sub']=exchanged_actor
+ def jwt(claims):return 'fixture.'+base64.urlsafe_b64encode(json.dumps(claims).encode()).decode().rstrip('=')+'.fixture'
+ source=jwt(a);exchanged=jwt(b);actor=jwt({} if source_actor is MISSING_SUBJECT else {'sub':source_actor});requests=[]
+ class Tokens:
+  def open(self,request,timeout):
+   assert request.full_url==c['issuer']+'/protocol/openid-connect/token' and request.get_method()=='POST'
+   fields=urllib.parse.parse_qs(request.data.decode());grant=fields['grant_type'][0];requests.append(grant)
+   assert fields['client_id']==['ilm-mcp'] and fields['client_secret']==[SECRET]
+   if grant=='client_credentials':
+    assert mode=='delegation' and len(requests)==1
+    return Response({'access_token':actor,'token_type':'Bearer'})
+   assert grant=='urn:ietf:params:oauth:grant-type:token-exchange'
+   assert fields['subject_token']==[source] and fields['audience']==['ilm']
+   assert fields.get('actor_token')==([actor] if mode=='delegation' else None)
+   return Response({'access_token':exchanged,'token_type':'Bearer'})
+ with tempfile.TemporaryDirectory() as d:
+  d=pathlib.Path(d);cf=d/'config';cf.write_text(json.dumps(c))
+  secret=d/'secret';secret.write_text(SECRET);secret.chmod(0o600)
+  token=d/'source';token.write_text(source);token.chmod(0o600)
+  out=d/'responses';out.mkdir(mode=0o700)
+  env={'MCP_SECRET_FILE':str(secret),'SOURCE_TOKEN_FILE':str(token),'PROBE_OUTPUT_DIR':str(out)}
+  oldenv={k:os.environ.get(k) for k in env};old=urllib.request.build_opener;oldargv=sys.argv
+  os.environ.update(env);urllib.request.build_opener=lambda *args:Tokens();sys.argv=['-',str(cf)]
+  output=io.StringIO();errors=io.StringIO();failure=None
+  try:
+   with contextlib.redirect_stdout(output),contextlib.redirect_stderr(errors):
+    try:exec(compile(probe_code,'exchange-token-probe.sh','exec'),{})
+    except SystemExit as error:
+     if error.code not in (None,0):failure=str(error)
+  finally:
+   urllib.request.build_opener=old;sys.argv=oldargv
+   for key,value in oldenv.items():
+    if value is None:os.environ.pop(key,None)
+    else:os.environ[key]=value
+  files=sorted(path.name for path in out.iterdir())
+  assert all(path.stat().st_mode & 0o777==0o600 for path in out.iterdir())
+  text=output.getvalue()+errors.getvalue()+(failure or '')
+  assert not errors.getvalue()
+  assert not any(value in text for value in (SECRET,source,exchanged,actor,ACTOR_SUBJECT,'OFFLINE_OTHER_ACTOR_SENTINEL',
+   'OFFLINE_USERNAME_SENTINEL','OFFLINE_USER_SUBJECT_SENTINEL','OFFLINE_OTHER_SUBJECT_SENTINEL',json.dumps(b)))
+  return failure,requests,files,output.getvalue()
+
+invalid_subjects=(('missing',MISSING_SUBJECT),('null',None),('empty',''),('blank',' \t\n'),
+ ('number',42),('boolean',True),('array',[]),('object',{}))
+for selected_mode in ('standard','delegation'):
+ for name,invalid in invalid_subjects:
+  failure,requests,files,output=probe_subjects(selected_mode,invalid,invalid)
+  assert failure=='A subject check failed.',(selected_mode,name,'invalid source subject falsely reported PASS')
+  assert not requests and not files and not output,(selected_mode,name,'invalid source subject caused side effects')
+ expected_requests=(['client_credentials'] if selected_mode=='delegation' else [])+['urn:ietf:params:oauth:grant-type:token-exchange']
+ expected_files=(['actor.json'] if selected_mode=='delegation' else [])+['exchanged.json']
+ for name,invalid in (*invalid_subjects,('mismatch','OFFLINE_OTHER_SUBJECT_SENTINEL')):
+  failure,requests,files,output=probe_subjects(selected_mode,'OFFLINE_USER_SUBJECT_SENTINEL',invalid)
+  assert failure=='B subject/requester check failed.',(selected_mode,name,'invalid exchanged subject accepted')
+  assert requests==expected_requests and files==expected_files and not output
+ for subject in ('OFFLINE_USER_SUBJECT_SENTINEL','  OFFLINE_USER_SUBJECT_SENTINEL  '):
+  failure,requests,files,output=probe_subjects(selected_mode,subject,subject)
+  assert failure is None and output.startswith('PASS:') and requests==expected_requests and files==expected_files
+ failure,requests,files,output=probe_subjects(selected_mode,'  OFFLINE_USER_SUBJECT_SENTINEL  ','OFFLINE_USER_SUBJECT_SENTINEL')
+ assert failure=='B subject/requester check failed.' and not output
+ assert requests==expected_requests and files==expected_files
+print('PASS: token probes reject invalid source subjects before requests/files, require valid exact exchanged subjects, preserve opaque identifiers and suppress credentials/tokens in both modes.')
+
+user_subject='OFFLINE_USER_SUBJECT_SENTINEL'
+for name,invalid in invalid_subjects:
+ failure,requests,files,output=probe_subjects('delegation',user_subject,user_subject,source_actor=invalid,exchanged_actor=invalid)
+ assert failure and failure.startswith('A lacks permitted may_act actor.'),('delegation',name,'invalid permitted actor falsely reported PASS')
+ assert not requests and not files and not output
+actor_requests=['client_credentials','urn:ietf:params:oauth:grant-type:token-exchange'];actor_files=['actor.json','exchanged.json']
+for name,invalid in (*invalid_subjects,('mismatch','OFFLINE_OTHER_ACTOR_SENTINEL')):
+ failure,requests,files,output=probe_subjects('delegation',user_subject,user_subject,exchanged_actor=invalid)
+ assert failure=='B act attribution check failed.',('delegation',name,'invalid exchanged actor accepted')
+ assert requests==actor_requests and files==actor_files and not output
+for actor_subject in (ACTOR_SUBJECT,'  '+ACTOR_SUBJECT+'  '):
+ failure,requests,files,output=probe_subjects('delegation',user_subject,user_subject,source_actor=actor_subject,exchanged_actor=actor_subject)
+ assert failure is None and output.startswith('PASS:') and requests==actor_requests and files==actor_files
+failure,requests,files,output=probe_subjects('delegation',user_subject,user_subject,source_actor='  '+ACTOR_SUBJECT+'  ')
+assert failure=='B act attribution check failed.' and not output and requests==actor_requests and files==actor_files
+print('PASS: delegation probes require nonblank string actor identities before exchange and exact downstream attribution without normalization or sensitive output.')
+
 # Protocol failures can contain reflected credentials before an HTTP response
 # exists or while its body is read. Every helper must suppress both paths.
 class BrokenHttp:

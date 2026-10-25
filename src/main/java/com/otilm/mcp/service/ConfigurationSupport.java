@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.function.Supplier;
+import org.springframework.http.InvalidMediaTypeException;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 import tools.jackson.databind.node.ObjectNode;
@@ -112,6 +113,8 @@ public final class ConfigurationSupport {
     public static String run(String action, Supplier<String> body) {
         try {
             return body.get();
+        } catch (InvalidMediaTypeException failure) {
+            return "Error " + action + ": the response could not be read.";
         } catch (IllegalArgumentException | ApiException failure) {
             return failure.getMessage();
         } catch (RuntimeException failure) {
