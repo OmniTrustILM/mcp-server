@@ -10,6 +10,9 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class SharedSecurityConfigurationTest {
+    private static final String HTTPS_ONLY = "Shared OAuth endpoints must be absolute HTTPS URLs without userinfo or fragments";
+    private static final String HTTP_OR_HTTPS = "Shared OAuth endpoints must be absolute HTTP or HTTPS URLs without userinfo or fragments";
+
     @Test
     void allowsOnlyExplicitStatelessHttpDelegation() throws Exception {
         try (OAuthFixture f = new OAuthFixture()) {
@@ -74,6 +77,91 @@ class SharedSecurityConfigurationTest {
                     .isInstanceOf(IllegalStateException.class)
                     .hasMessageNotContaining(OAuthFixture.SENTINEL)
                     .hasNoCause();
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"api", "jwk", "token"})
+    void acceptsHttpBackchannelOnlyWhenAllowed(String endpoint) throws Exception {
+        try (OAuthFixture f = new OAuthFixture()) {
+            IlmApiProperties api = api();
+            switch (endpoint) {
+                case "api" -> api.setUrl("http://ilm.test/api");
+                case "jwk" -> f.properties.setJwkSetUri("http://auth.test/jwks");
+                case "token" -> f.properties.setTokenUri("http://auth.test/token");
+                default -> throw new IllegalArgumentException("Unknown endpoint: " + endpoint);
+            }
+            McpServerProperties server = server();
+            assertThatThrownBy(() -> SharedSecurityConfiguration.validate(f.properties, api, server))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessage(HTTPS_ONLY);
+            f.properties.setAllowHttpBackchannel(true);
+            assertThatCode(() -> SharedSecurityConfiguration.validate(f.properties, api, server))
+                    .doesNotThrowAnyException();
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"issuer", "resource", "origin"})
+    void keepsPublicEndpointsHttpsWhenBackchannelHttpIsAllowed(String endpoint) throws Exception {
+        try (OAuthFixture f = new OAuthFixture()) {
+            f.properties.setAllowHttpBackchannel(true);
+            switch (endpoint) {
+                case "issuer" -> f.properties.setIssuer("http://auth.test/realm");
+                case "resource" -> f.properties.setResource("http://mcp.test/mcp");
+                case "origin" -> f.properties.setAllowedOrigins(java.util.List.of("http://mcp.test"));
+                default -> throw new IllegalArgumentException("Unknown endpoint: " + endpoint);
+            }
+            IlmApiProperties api = api();
+            McpServerProperties server = server();
+            assertThatThrownBy(() -> SharedSecurityConfiguration.validate(f.properties, api, server))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessage(HTTPS_ONLY);
+        }
+    }
+
+    @Test
+    void refusesHttpBackchannelWithUserinfoOrFragment() throws Exception {
+        try (OAuthFixture f = new OAuthFixture()) {
+            f.properties.setAllowHttpBackchannel(true);
+            IlmApiProperties api = api();
+            McpServerProperties server = server();
+            f.properties.setTokenUri("http://user@auth.test/token");
+            assertThatThrownBy(() -> SharedSecurityConfiguration.validate(f.properties, api, server))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessage(HTTP_OR_HTTPS);
+            f.properties.setTokenUri("http://auth.test/token");
+            f.properties.setJwkSetUri("http://auth.test/jwks#x");
+            assertThatThrownBy(() -> SharedSecurityConfiguration.validate(f.properties, api, server))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessage(HTTP_OR_HTTPS);
+        }
+    }
+
+    @Test
+    void refusesOtherSchemesWhenBackchannelHttpIsAllowed() throws Exception {
+        try (OAuthFixture f = new OAuthFixture()) {
+            f.properties.setAllowHttpBackchannel(true);
+            f.properties.setJwkSetUri("ftp://auth.test/jwks");
+            IlmApiProperties api = api();
+            McpServerProperties server = server();
+            assertThatThrownBy(() -> SharedSecurityConfiguration.validate(f.properties, api, server))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessage(HTTP_OR_HTTPS);
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"http:///jwks", "http://auth_test/jwks", "http://auth.test/jw ks"})
+    void refusesHttpBackchannelWithoutAUsableHost(String jwkSetUri) throws Exception {
+        try (OAuthFixture f = new OAuthFixture()) {
+            f.properties.setAllowHttpBackchannel(true);
+            f.properties.setJwkSetUri(jwkSetUri);
+            IlmApiProperties api = api();
+            McpServerProperties server = server();
+            assertThatThrownBy(() -> SharedSecurityConfiguration.validate(f.properties, api, server))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessage(HTTP_OR_HTTPS);
         }
     }
 

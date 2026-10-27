@@ -47,7 +47,7 @@ COPY --from=build /build/target/*.jar /opt/ilm/app.jar
 ENV PATH="/opt/java/bin:${PATH}"
 ENV JAVA_OPTS=""
 
-USER ilm
+USER 10001
 WORKDIR /opt/ilm
 
 EXPOSE 8080

@@ -80,11 +80,12 @@ HTTP profile remains `STREAMABLE`, so set `STATELESS` explicitly.
 
 | Environment variable | Value or default |
 | --- | --- |
-| `ILM_API_URL` | Required HTTPS ILM API base, including `/api` |
+| `ILM_API_URL` | Required HTTPS ILM API base, including `/api`; HTTP only with `ILM_MCP_SECURITY_ALLOW_HTTP_BACKCHANNEL` |
 | `ILM_MCP_SECURITY_ISSUER` | Exact trusted issuer string |
 | `ILM_MCP_SECURITY_RESOURCE` | Public HTTPS MCP resource, for example `https://ilm.example.invalid/mcp` |
-| `ILM_MCP_SECURITY_JWK_SET_URI` | Trusted HTTPS signing-key endpoint |
-| `ILM_MCP_SECURITY_TOKEN_URI` | Trusted HTTPS exchange endpoint |
+| `ILM_MCP_SECURITY_JWK_SET_URI` | Trusted HTTPS signing-key endpoint; HTTP only with `ILM_MCP_SECURITY_ALLOW_HTTP_BACKCHANNEL` |
+| `ILM_MCP_SECURITY_TOKEN_URI` | Trusted HTTPS exchange endpoint; HTTP only with `ILM_MCP_SECURITY_ALLOW_HTTP_BACKCHANNEL` |
+| `ILM_MCP_SECURITY_ALLOW_HTTP_BACKCHANNEL` | `true` allows HTTP for `ILM_API_URL`, the signing-key and the exchange endpoint; default `false` |
 | `ILM_MCP_SECURITY_CLIENT_ID` | Confidential MCP requester client ID |
 | `ILM_MCP_SECURITY_CLIENT_SECRET` | Confidential credential supplied through a Secret reference or private configuration |
 | `ILM_MCP_SECURITY_API_AUDIENCE` | `ilm` |
@@ -100,11 +101,19 @@ HTTP profile remains `STREAMABLE`, so set `STATELESS` explicitly.
 | `ILM_MCP_ACCESS` / `ILM_MCP_TOOLSETS` | `read-only` / `all` |
 
 Supported algorithms are `RS256`, `RS384`, `RS512`, `ES256`, `ES384`, `ES512`, `PS256`, `PS384` and `PS512`.
-URLs must be absolute HTTPS without user information or fragments. Chart values require query-free URLs.
+URLs must be absolute HTTPS without user information or fragments. Only the ILM API, signing-key and exchange URLs
+may use HTTP, and only when in-cluster HTTP is allowed as described below. Chart values require query-free URLs.
 Configure the issuer/endpoints explicitly;
 request headers and token key URLs cannot select a different issuer or destination. All credential-bearing
-requests use TLS verification, bounded timeouts and no redirect following. Use the JVM trust store for private
-certificate authorities; shared mode has no TLS verification bypass.
+requests use bounded timeouts and no redirect following, and verify TLS for every HTTPS URL. Use the JVM
+trust store for private certificate authorities; shared mode has no TLS verification bypass.
+
+When MCP runs beside ILM, it may call Core and the identity provider's JWKS and token endpoints over in-cluster HTTP,
+as Core does. Set `ILM_MCP_SECURITY_ALLOW_HTTP_BACKCHANNEL=true` to allow `http://` for `ILM_API_URL`,
+`ILM_MCP_SECURITY_JWK_SET_URI` and `ILM_MCP_SECURITY_TOKEN_URI`; they still cannot carry user information or fragments.
+The issuer, the resource and the allowed origins stay HTTPS. HTTP exposes the client credential and tokens to anyone on
+the path, and lets that party substitute the signing keys so that forged tokens validate. Use it only on a network you
+trust.
 
 Login scopes and exchange scopes have separate purposes. Protected-resource metadata advertises the required
 scope plus `authorization-scopes`; only `required-scope` is the source scope check. For the Keycloak actor flow,
