@@ -17,6 +17,8 @@ public class SharedSecurityProperties {
     private String resource = null;
     private String jwkSetUri = null;
     private String tokenUri = null;
+    /** Lets the JWKS, token and ILM API URLs use HTTP; the issuer, resource and allowed origins stay HTTPS. */
+    private boolean allowHttpBackchannel = false;
     private String clientId = null;
     private String clientSecret = null;
     private String exchangeScope = "";
@@ -86,6 +88,14 @@ public class SharedSecurityProperties {
 
     public void setTokenUri(String value) {
         this.tokenUri = value;
+    }
+
+    public boolean isAllowHttpBackchannel() {
+        return allowHttpBackchannel;
+    }
+
+    public void setAllowHttpBackchannel(boolean value) {
+        this.allowHttpBackchannel = value;
     }
 
     public String getClientId() {

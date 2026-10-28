@@ -49,9 +49,11 @@ public class SharedSecurityConfiguration {
         }
         https(security.getIssuer());
         https(security.getResource());
-        https(security.getJwkSetUri());
-        https(security.getTokenUri());
-        https(api.getUrl());
+        // Only the endpoints this server calls may use in-cluster HTTP; the issuer, resource and origins stay HTTPS.
+        boolean allowHttp = security.isAllowHttpBackchannel();
+        backchannel(security.getJwkSetUri(), allowHttp);
+        backchannel(security.getTokenUri(), allowHttp);
+        backchannel(api.getUrl(), allowHttp);
         if (security.getResource().equals(security.getApiAudience())) {
             throw new IllegalStateException("Shared OAuth resource and downstream API audiences must differ");
         }
@@ -111,16 +113,21 @@ public class SharedSecurityConfiguration {
     }
 
     private static URI https(String value) {
+        return backchannel(value, false);
+    }
+
+    /** Parses an absolute HTTPS URL, or an HTTP one when allowed, without userinfo or fragments. */
+    private static URI backchannel(String value, boolean allowHttp) {
         try {
             URI uri = URI.create(value);
-            if (!"https".equals(uri.getScheme()) || uri.getHost() == null || uri.getUserInfo() != null
-                    || uri.getFragment() != null) {
+            boolean schemeAllowed = "https".equals(uri.getScheme()) || allowHttp && "http".equals(uri.getScheme());
+            if (!schemeAllowed || uri.getHost() == null || uri.getUserInfo() != null || uri.getFragment() != null) {
                 throw new IllegalArgumentException();
             }
             return uri;
         } catch (Exception ignored) {
-            throw new IllegalStateException(
-                    "Shared OAuth endpoints must be absolute HTTPS URLs without userinfo or fragments");
+            throw new IllegalStateException("Shared OAuth endpoints must be absolute "
+                    + (allowHttp ? "HTTP or HTTPS" : "HTTPS") + " URLs without userinfo or fragments");
         }
     }
 

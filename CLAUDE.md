@@ -93,6 +93,7 @@ Set via environment variables or application.yml:
 - Explicit `standard` or `delegation` mode; no passthrough, service-identity or automatic mode fallback
 - Request-local credentials travel through the SDK transport context; no user sessions, grants or token cache
 - HTTPS, bounded timeouts and no redirects on ILM/JWK/token clients; sanitize response parsing failures as well as request failures
+- Only the ILM API, JWK and token URLs may use in-cluster HTTP, and only with `ILM_MCP_SECURITY_ALLOW_HTTP_BACKCHANNEL=true`
 - See [shared HTTP authentication](docs/shared-http-authentication.md) and [example Keycloak integration](docs/keycloak/README.md)
 
 **Client Certificate:**

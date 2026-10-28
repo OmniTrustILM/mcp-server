@@ -43,6 +43,7 @@ ilm:
       resource: ${ILM_MCP_SECURITY_RESOURCE:}
       jwk-set-uri: ${ILM_MCP_SECURITY_JWK_SET_URI:}
       token-uri: ${ILM_MCP_SECURITY_TOKEN_URI:}
+      allow-http-backchannel: ${ILM_MCP_SECURITY_ALLOW_HTTP_BACKCHANNEL:false}
       client-id: ${ILM_MCP_SECURITY_CLIENT_ID:}
       client-secret: ${ILM_MCP_SECURITY_CLIENT_SECRET:}
       api-audience: ${ILM_MCP_SECURITY_API_AUDIENCE:ilm}
