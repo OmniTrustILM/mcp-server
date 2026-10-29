@@ -437,8 +437,7 @@ class SharedMcpChartTests(unittest.TestCase):
                            'ILM_MCP_SECURITY_API_AUDIENCE', 'ILM_MCP_SECURITY_EXCHANGE_MODE',
                            'ILM_MCP_SECURITY_EXCHANGE_SCOPE', 'ILM_MCP_SECURITY_REQUIRED_SCOPE',
                            'ILM_MCP_SECURITY_AUTHORIZATION_SCOPES', 'ILM_MCP_SECURITY_ALLOWED_ORIGINS',
-                           'ILM_MCP_SECURITY_JWS_ALGORITHMS', 'ILM_MCP_SECURITY_ENABLED',
-                           'TRUSTED_CERTIFICATES', 'HTTP_PROXY', 'HTTPS_PROXY', 'NO_PROXY']
+                           'ILM_MCP_SECURITY_JWS_ALGORITHMS', 'ILM_MCP_SECURITY_ENABLED']
         for scope in ('local', 'global'):
             for name in protected_names + ['{{ printf "ILM_AUTH_%s" "METHOD" }}']:
                 with self.subTest(scope=scope, name=name):
@@ -453,6 +452,23 @@ class SharedMcpChartTests(unittest.TestCase):
                 values['podLabels'] = {name: 'other'}
                 with self.assertRaises(AssertionError):
                     render('mcp-server', values)
+
+    def test_proxy_and_trust_names_are_reserved_only_while_the_chart_sets_them(self):
+        proxy = 'http://proxy.example.invalid:3128'
+        for name, setting in (('HTTP_PROXY', {'httpProxy': proxy}),
+                              ('HTTPS_PROXY', {'httpsProxy': proxy}),
+                              ('NO_PROXY', {'noProxy': 'core'}),
+                              ('TRUSTED_CERTIFICATES', {'trusted': {'certificates': SYNTHETIC_CA}})):
+            with self.subTest(name=name):
+                entry = {'name': name, 'valueFrom': {'secretKeyRef': {'name': 'outbound', 'key': name.lower()}}}
+                values = {**configured_values(), 'additionalEnv': {'variables': [entry]}}
+                self.assertIn(entry, mcp_container(render('mcp-server', values))['env'])
+                self.assert_render_fails({**values, **setting},
+                                         f'additionalEnv.variables cannot duplicate environment variable {name}')
+        # In umbrella mode a proxy alone makes the chart render NO_PROXY with MCP's own hosts.
+        values = umbrella_values(additionalEnv={'variables': [{'name': 'NO_PROXY', 'value': 'localhost'}]})
+        values['global']['httpProxy'] = proxy
+        self.assert_render_fails(values, 'additionalEnv.variables cannot duplicate environment variable NO_PROXY')
 
     def test_incomplete_or_unsafe_inputs_fail_rendering(self):
         self.assert_unsafe_inputs_fail(configured_values)
@@ -880,6 +896,9 @@ class SharedMcpChartTests(unittest.TestCase):
         self.assertEqual(no_proxy(external_values(jwkSetUri=in_cluster_keys), **proxy),
                          'localhost,core-service,kc.idp.svc')
         self.assertEqual(no_proxy(external_values(), **proxy), 'localhost,core-service')
+        # MCP matches NO_PROXY against Java's URI host, which keeps an IPv6 literal's brackets.
+        self.assertEqual(no_proxy(umbrella_values(apiUrl='http://[fd00::20]:8080/api'), **proxy),
+                         'localhost,[fd00::20],keycloak-internal-service')
         self.assertIsNone(no_proxy(umbrella_values()))
         self.assertEqual(no_proxy(umbrella_values(), **{**proxy, 'noProxy': 'keycloak-internal-service,core-service'}),
                          'keycloak-internal-service,core-service')

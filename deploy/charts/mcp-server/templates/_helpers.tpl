@@ -130,12 +130,15 @@ values as set. These helpers read .Values only, so the ILM chart can call them w
 {{- end -}}
 {{- end -}}
 
-{{- /* The hosts of the http:// URLs among the effective apiUrl, jwkSetUri and tokenUri, as a JSON list. */ -}}
+{{- /*
+The hosts of the http:// URLs among the effective apiUrl, jwkSetUri and tokenUri, as a JSON list. Each is the URL's
+host without its port, so an IPv6 literal keeps its brackets, as MCP compares NO_PROXY with Java's URI host.
+*/ -}}
 {{- define "mcp-server.ownHosts" -}}
 {{- $hosts := list -}}
 {{- range $url := list (include "mcp-server.apiUrl" .) (include "mcp-server.jwkSetUri" .) (include "mcp-server.tokenUri" .) -}}
 {{- if hasPrefix "http://" $url -}}
-{{- $hosts = append $hosts (urlParse $url).hostname -}}
+{{- $hosts = append $hosts (regexReplaceAll ":[0-9]+$" (urlParse $url).host "") -}}
 {{- end -}}
 {{- end -}}
 {{- $hosts | uniq | toJson -}}
@@ -249,8 +252,11 @@ values as set. These helpers read .Values only, so the ILM chart can call them w
 {{- define "mcp-server.customization.env" -}}
 {{- $env := include "ilm-lib.customizations.render.yaml" (dict "parts" (list (concat .Values.global.additionalEnv.variables .Values.additionalEnv.variables)) "context" $) -}}
 {{- $seen := dict -}}
-{{- range $name := list "SPRING_PROFILES_ACTIVE" "SPRING_AI_MCP_SERVER_TYPE" "SPRING_AI_MCP_SERVER_PROTOCOL" "PORT" "MANAGEMENT_ENDPOINT_HEALTH_PROBES_ENABLED" "ILM_AUTH_METHOD" "ILM_API_URL" "ILM_MCP_ACCESS" "ILM_MCP_TOOLSETS" "ILM_MCP_SECURITY_ENABLED" "ILM_MCP_SECURITY_ISSUER" "ILM_MCP_SECURITY_RESOURCE" "ILM_MCP_SECURITY_JWK_SET_URI" "ILM_MCP_SECURITY_TOKEN_URI" "ILM_MCP_SECURITY_ALLOW_HTTP_BACKCHANNEL" "ILM_MCP_SECURITY_CLIENT_ID" "ILM_MCP_SECURITY_CLIENT_SECRET" "ILM_MCP_SECURITY_API_AUDIENCE" "ILM_MCP_SECURITY_EXCHANGE_MODE" "ILM_MCP_SECURITY_EXCHANGE_SCOPE" "ILM_MCP_SECURITY_REQUIRED_SCOPE" "ILM_MCP_SECURITY_AUTHORIZATION_SCOPES" "ILM_MCP_SECURITY_ALLOWED_ORIGINS" "ILM_MCP_SECURITY_JWS_ALGORITHMS" "TRUSTED_CERTIFICATES" "HTTP_PROXY" "HTTPS_PROXY" "NO_PROXY" -}}
+{{- range $name := list "SPRING_PROFILES_ACTIVE" "SPRING_AI_MCP_SERVER_TYPE" "SPRING_AI_MCP_SERVER_PROTOCOL" "PORT" "MANAGEMENT_ENDPOINT_HEALTH_PROBES_ENABLED" "ILM_AUTH_METHOD" "ILM_API_URL" "ILM_MCP_ACCESS" "ILM_MCP_TOOLSETS" "ILM_MCP_SECURITY_ENABLED" "ILM_MCP_SECURITY_ISSUER" "ILM_MCP_SECURITY_RESOURCE" "ILM_MCP_SECURITY_JWK_SET_URI" "ILM_MCP_SECURITY_TOKEN_URI" "ILM_MCP_SECURITY_ALLOW_HTTP_BACKCHANNEL" "ILM_MCP_SECURITY_CLIENT_ID" "ILM_MCP_SECURITY_CLIENT_SECRET" "ILM_MCP_SECURITY_API_AUDIENCE" "ILM_MCP_SECURITY_EXCHANGE_MODE" "ILM_MCP_SECURITY_EXCHANGE_SCOPE" "ILM_MCP_SECURITY_REQUIRED_SCOPE" "ILM_MCP_SECURITY_AUTHORIZATION_SCOPES" "ILM_MCP_SECURITY_ALLOWED_ORIGINS" "ILM_MCP_SECURITY_JWS_ALGORITHMS" -}}
 {{- $_ := set $seen $name true -}}
+{{- end -}}
+{{- range (include "mcp-server.optionalEnv" . | fromYamlArray) -}}
+{{- $_ := set $seen .name true -}}
 {{- end -}}
 {{- range ($env | fromYamlArray) -}}
 {{- $name := .name | default "" -}}
@@ -263,6 +269,29 @@ values as set. These helpers read .Values only, so the ILM chart can call them w
 {{- $_ := set $seen $name true -}}
 {{- end -}}
 {{- $env -}}
+{{- end -}}
+
+{{- /*
+The env entries the chart renders only while their values are set: the proxy variables and TRUSTED_CERTIFICATES.
+additionalEnv.variables may set any of these names that the chart leaves out.
+*/ -}}
+{{- define "mcp-server.optionalEnv" -}}
+{{- $noProxyHosts := list -}}
+{{- if .Values.global.mcp.enabled -}}
+{{- $noProxyHosts = include "mcp-server.ownHosts" . | fromJsonArray -}}
+{{- end -}}
+{{- include "mcp-server.proxyEnv" (dict "context" . "noProxyHosts" $noProxyHosts) -}}
+{{- if or .Values.global.trusted.certificates .Values.trusted.certificates }}
+- name: TRUSTED_CERTIFICATES
+  valueFrom:
+    secretKeyRef:
+      {{- if .Values.global.trusted.certificates }}
+      name: trusted-certificates
+      {{- else }}
+      name: trusted-certificates-{{ .Chart.Name | lower }}
+      {{- end }}
+      key: ca.crt
+{{- end }}
 {{- end -}}
 
 {{- define "mcp-server.customization.envFrom" -}}

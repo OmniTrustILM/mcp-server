@@ -98,8 +98,8 @@ the render; use `managed` for it.
 
 While a proxy is set, umbrella mode appends the hosts of MCP's `http://` URLs, such as `core-service` and
 `keycloak-internal-service`, to `NO_PROXY`, except for those it lists already. A proxy supplied through
-`additionalEnv.secrets` instead of the proxy values is invisible to the chart, so its `NO_PROXY` must list MCP's
-in-cluster hosts itself.
+`additionalEnv` instead of the proxy values is invisible to the chart, so its `NO_PROXY` must list MCP's in-cluster
+hosts itself.
 
 ## Deployment customization
 
@@ -146,17 +146,18 @@ MCP reads the trust and proxy values that the other ILM charts read, under the s
 | `global.noProxy` / `noProxy` | Hosts that bypass the proxy |
 
 An empty value counts as unset. `TRUSTED_CERTIFICATES`, `HTTP_PROXY`, `HTTPS_PROXY` and `NO_PROXY` are rendered only
-when their value is set, and `additionalEnv.variables` cannot set them. `TRUSTED_CERTIFICATES` takes the value ILM Core
-takes: MCP reads its certificate blocks and ignores anything else. The pod carries the annotations
-`checksum/trusted-certificates-global` and `checksum/trusted-certificates-local` for the values that are set, so it
-rolls when the certificates change.
+when their value is set, and `additionalEnv.variables` cannot set one that the chart renders. `TRUSTED_CERTIFICATES`
+takes the value ILM Core takes: MCP reads its certificate blocks and ignores anything else. The pod carries the
+annotations `checksum/trusted-certificates-global` and `checksum/trusted-certificates-local` for the values that are
+set, so it rolls when the certificates change.
 
 A proxy URL must be one that MCP accepts at startup, as described under
 [outbound connections](../../../docs/shared-http-authentication.md#outbound-connections). Any other URL fails the
 render with `httpProxy must be an http://host:port URL for the MCP server` (`httpsProxy` for that value), without
 printing the URL. The proxy values are rendered into the Deployment as given, so a URL with credentials is visible to
-whoever can read the Deployment. To keep one in a Secret instead, leave the proxy values empty and import a Secret that
-holds `HTTP_PROXY` or `HTTPS_PROXY` through `additionalEnv.secrets`; the chart does not check such a URL.
+whoever can read the Deployment. To keep one in a Secret instead, leave the proxy values empty and set `HTTP_PROXY` or
+`HTTPS_PROXY` through `additionalEnv.variables` with `valueFrom.secretKeyRef`, which reads the URL from one key of the
+Secret; the chart does not check such a URL.
 
 For the `NO_PROXY` format, the in-cluster hosts to list and the clear-text risk of an incomplete list, see
 [outbound connections](../../../docs/shared-http-authentication.md#outbound-connections). While `networkPolicy.enabled`

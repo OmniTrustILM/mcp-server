@@ -8,10 +8,6 @@
 {{- /* The ILM chart renders the Secret for this value, so only a checksum here can roll the pod when it changes. */ -}}
 {{- $managedClientSecret := and $managed .Values.global.mcp.clientSecret -}}
 {{- $clientSecretRef := include "mcp-server.clientSecretRef" . | fromJson -}}
-{{- $noProxyHosts := list -}}
-{{- if .Values.global.mcp.enabled -}}
-{{- $noProxyHosts = include "mcp-server.ownHosts" . | fromJsonArray -}}
-{{- end -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -124,19 +120,8 @@ spec:
               value: {{ join "," .Values.security.allowedOrigins | quote }}
             - name: ILM_MCP_SECURITY_JWS_ALGORITHMS
               value: {{ join "," .Values.security.jwsAlgorithms | quote }}
-            {{- with (include "mcp-server.proxyEnv" (dict "context" . "noProxyHosts" $noProxyHosts) | trim) }}
+            {{- with (include "mcp-server.optionalEnv" . | trim) }}
             {{- . | nindent 12 }}
-            {{- end }}
-            {{- if or .Values.global.trusted.certificates .Values.trusted.certificates }}
-            - name: TRUSTED_CERTIFICATES
-              valueFrom:
-                secretKeyRef:
-                  {{- if .Values.global.trusted.certificates }}
-                  name: trusted-certificates
-                  {{- else }}
-                  name: trusted-certificates-{{ .Chart.Name | lower }}
-                  {{- end }}
-                  key: ca.crt
             {{- end }}
             {{- if $additionalEnv }}
             {{- $additionalEnv | nindent 12 }}
