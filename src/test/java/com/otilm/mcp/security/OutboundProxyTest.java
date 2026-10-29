@@ -4,14 +4,17 @@ import java.io.IOException;
 import java.net.Authenticator;
 import java.net.Authenticator.RequestorType;
 import java.net.InetSocketAddress;
+import java.net.MalformedURLException;
 import java.net.PasswordAuthentication;
 import java.net.Proxy;
 import java.net.ProxySelector;
 import java.net.URI;
+import java.net.URL;
 import java.util.Arrays;
 import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -20,6 +23,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class OutboundProxyTest {
     private static final String HTTP_PROXY = "http://proxy.example.invalid:3128";
     private static final String HTTPS_PROXY = "http://user:p%40ss@secure.example.invalid:3129";
+    private static final String HTTP_ORIGIN = "http://origin.example.invalid/x";
+    private static final String HTTPS_ORIGIN = "https://origin.example.invalid/x";
     private static final String UNSUPPORTED = "HTTP_PROXY and HTTPS_PROXY must be http://host:port URLs";
     private static final String SENTINEL = "must-not-leak";
 
@@ -197,6 +202,29 @@ class OutboundProxyTest {
         assertThat(ask(authenticator, "secure.example.invalid", 3130, RequestorType.PROXY)).isNull();
         assertThat(ask(authenticator, "other.example.invalid", 3129, RequestorType.PROXY)).isNull();
         // The HTTP proxy carries no credentials, so nothing is given to it.
+        assertThat(ask(authenticator, "proxy.example.invalid", 3128, HTTP_ORIGIN, RequestorType.PROXY)).isNull();
+    }
+
+    // Both proxies share one address, so only the scheme of the request tells whose credentials it needs. The JDK names
+    // the origin URL of a proxied request, and none for the CONNECT that opens an https tunnel.
+    @ParameterizedTest
+    @CsvSource(value = {HTTP_ORIGIN + ",u1,p1", HTTPS_ORIGIN + ",u2,p2", "CONNECT,u2,p2"}, nullValues = "CONNECT")
+    void givesEachSchemeItsOwnCredentialsAtOneAddress(String origin, String user, String password) {
+        Authenticator authenticator = proxy("http://u1:p1@proxy.example.invalid:3128",
+                "http://u2:p2@proxy.example.invalid:3128", "").authenticator();
+
+        PasswordAuthentication granted = ask(authenticator, "proxy.example.invalid", 3128, origin, RequestorType.PROXY);
+
+        assertThat(granted.getUserName()).isEqualTo(user);
+        assertThat(granted.getPassword()).containsExactly(password.toCharArray());
+    }
+
+    // There is no fallback from one proxy to the other, so a scheme without a proxy gets no credentials.
+    @Test
+    void givesNothingToASchemeWithoutAProxy() {
+        Authenticator authenticator = proxy("http://u1:p1@proxy.example.invalid:3128", "", "").authenticator();
+
+        assertThat(ask(authenticator, "proxy.example.invalid", 3128, HTTPS_ORIGIN, RequestorType.PROXY)).isNull();
         assertThat(ask(authenticator, "proxy.example.invalid", 3128, RequestorType.PROXY)).isNull();
     }
 
@@ -216,7 +244,8 @@ class OutboundProxyTest {
     void acceptsAUserWithoutAPassword() {
         Authenticator authenticator = proxy("http://only-user@proxy.example.invalid:3128", "", "").authenticator();
 
-        PasswordAuthentication granted = ask(authenticator, "proxy.example.invalid", 3128, RequestorType.PROXY);
+        PasswordAuthentication granted = ask(authenticator, "proxy.example.invalid", 3128, HTTP_ORIGIN,
+                RequestorType.PROXY);
         assertThat(granted.getUserName()).isEqualTo("only-user");
         assertThat(granted.getPassword()).isEmpty();
     }
@@ -229,7 +258,8 @@ class OutboundProxyTest {
 
         assertRoutedThrough(proxy, "http://a.example.invalid/x", "proxy.example.invalid", 3128);
         assertRoutedThrough(proxy, "http://null/x", "proxy.example.invalid", 3128);
-        assertThat(ask(proxy.authenticator(), "proxy.example.invalid", 3128, RequestorType.PROXY)).isNull();
+        assertThat(ask(proxy.authenticator(), "proxy.example.invalid", 3128, HTTP_ORIGIN, RequestorType.PROXY))
+                .isNull();
     }
 
     @Test
@@ -280,9 +310,20 @@ class OutboundProxyTest {
         return OutboundProxy.from(new OutboundProperties("", http, https, noProxy)).orElseThrow();
     }
 
+    // Asks as the JDK does for the CONNECT that opens an https tunnel, which carries no URL.
     private static PasswordAuthentication ask(Authenticator authenticator, String host, int port, RequestorType type) {
-        return authenticator
-                .requestPasswordAuthenticationInstance(host, null, port, "http", "realm", "Basic", null, type);
+        return ask(authenticator, host, port, null, type);
+    }
+
+    private static PasswordAuthentication ask(Authenticator authenticator, String host, int port, String origin,
+            RequestorType type) {
+        try {
+            URL url = origin == null ? null : URI.create(origin).toURL();
+            return authenticator
+                    .requestPasswordAuthenticationInstance(host, null, port, "http", "realm", "Basic", url, type);
+        } catch (MalformedURLException e) {
+            throw new IllegalArgumentException(e);
+        }
     }
 
     private static void assertRoutedThrough(OutboundProxy proxy, String uri, String host, int port) {

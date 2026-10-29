@@ -9,6 +9,7 @@ import java.net.ProxySelector;
 import java.net.SocketAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.URL;
 import java.net.http.HttpClient;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -81,8 +82,9 @@ final class OutboundProxy {
     }
 
     /**
-     * Answers a credential request from one of the proxies. The JDK client also asks about origin servers that answer
-     * 401, and those must never receive the proxy's credentials.
+     * Answers a credential request from the proxy of the request's scheme, so two proxies at one address keep their own
+     * credentials. The JDK client also asks about origin servers that answer 401, and those must never receive the
+     * proxy's credentials.
      */
     Authenticator authenticator() {
         return new Authenticator() {
@@ -91,14 +93,14 @@ final class OutboundProxy {
                 if (getRequestorType() != RequestorType.PROXY) {
                     return null;
                 }
-                return endpoints
-                        .values()
-                        .stream()
-                        .filter(endpoint -> endpoint.hasCredentials()
-                                && endpoint.serves(getRequestingHost(), getRequestingPort()))
-                        .findFirst()
-                        .map(Endpoint::credentials)
-                        .orElse(null);
+                // The JDK gives no URL for the CONNECT that opens a tunnel, and it tunnels only https.
+                URL url = getRequestingURL();
+                Endpoint endpoint = endpoints.get(url == null ? "https" : url.getProtocol());
+                if (endpoint == null || !endpoint.hasCredentials()
+                        || !endpoint.serves(getRequestingHost(), getRequestingPort())) {
+                    return null;
+                }
+                return endpoint.credentials();
             }
         };
     }
