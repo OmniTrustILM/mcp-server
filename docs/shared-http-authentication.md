@@ -147,7 +147,8 @@ changes nothing. The content of the value never stops startup. While a certifica
 client certificate, even when `javax.net.ssl.keyStore` is set.
 
 `HTTP_PROXY` serves `http` requests and `HTTPS_PROXY` serves `https` requests, with no fallback from one to the other.
-Both take `http://[user[:password]@]host:port`; any other scheme or shape stops startup with
+Both take `http://[user[:password]@]host:port`. As in ILM Core, anything after the port, such as a path, is ignored. A
+URL that does not parse, uses another scheme, or lacks a host or a port stops startup with
 `HTTP_PROXY and HTTPS_PROXY must be http://host:port URLs`. Percent-encode characters that a URL does not allow in
 credentials, such as `@` as `%40`. The credentials go to that proxy only, through Basic authentication, and the proxy's
 host name is resolved on each connection. While a proxy URL carries credentials, the JDK client throws on a 401 that
