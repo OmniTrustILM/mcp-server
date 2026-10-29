@@ -173,8 +173,9 @@ class SharedMcpChartTests(unittest.TestCase):
         """Patches each of UNSAFE_INPUTS into a fresh values() and expects the render to fail."""
         for key, patch in UNSAFE_INPUTS:
             with self.subTest(key=key, patch=patch):
+                unsafe = patched(values(), key, patch)
                 with self.assertRaises(AssertionError):
-                    render('mcp-server', patched(values(), key, patch))
+                    render('mcp-server', unsafe)
 
     def test_missing_required_configuration_fails_without_an_activation_switch(self):
         with self.assertRaises(AssertionError):
@@ -701,8 +702,9 @@ class SharedMcpChartTests(unittest.TestCase):
     def test_null_trust_values_fail_the_schema(self):
         for patch in ({'trusted': None}, {'global': {'trusted': None}}):
             with self.subTest(patch=patch):
+                nulled = {**configured_values(), **patch}
                 with self.assertRaises(AssertionError) as raised:
-                    render('mcp-server', {**configured_values(), **patch})
+                    render('mcp-server', nulled)
                 self.assertIn("values don't meet the specifications of the schema", str(raised.exception))
                 self.assertIn('trusted', str(raised.exception))
 
