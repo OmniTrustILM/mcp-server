@@ -8,6 +8,23 @@ global:
     registry: ""
     repository: ""
     pullSecrets: []
+  # Shared with the other ILM charts, which use the same names. A global value takes precedence over the chart's own.
+  trusted:
+    certificates: ""
+  httpProxy: ""
+  httpsProxy: ""
+  noProxy: ""
+  # Umbrella mode: the ILM chart sets global.mcp.enabled, and the chart derives its settings from these values as
+  # README "Umbrella mode" describes. They have no effect while global.mcp.enabled is false.
+  hostName: ""  # Empty falls back to the chart's own hostName.
+  keycloak:
+    enabled: false
+  mcp:
+    enabled: false
+    identity:
+      mode: managed  # managed (the bundled Keycloak) or external (another provider)
+    clientSecret: ""
+    clientSecretRef: {}
   initContainers: []
   additionalVolumes: []
   additionalVolumeMounts: []
@@ -64,6 +81,7 @@ image:
       memory: 768Mi
 replicaCount: 1
 service:
+  name: ""  # Defaults to the chart's full name.
   port: 8080
 serviceAccount:
   create: true
@@ -101,17 +119,30 @@ security:
   resource: ""
   jwkSetUri: ""
   tokenUri: ""
+  # Allows http:// for apiUrl, jwkSetUri and tokenUri; the issuer and resource stay https://.
+  allowHttpBackchannel: false
   clientId: ""
   clientSecretRef:
     name: ""
     key: client-secret
   apiAudience: ilm
-  exchangeMode: standard
+  # standard or delegation. Empty renders standard outside umbrella mode, and lets managed mode tell a set value apart.
+  exchangeMode: ""
   exchangeScope: ""
   requiredScope: mcp:access
   authorizationScopes: []
   allowedOrigins: []
   jwsAlgorithms: [RS256]
+# PEM certificates trusted in addition to the JVM's own. The umbrella's shared Secret (global.trusted.certificates)
+# is used when that is set; this value serves installs without the umbrella and renders its own Secret.
+trusted:
+  certificates: ""
+# Outbound proxy for MCP's requests to ILM and the identity provider: http://[user[:password]@]host:port.
+httpProxy: ""
+httpsProxy: ""
+# Hosts that bypass the proxy, in ILM Core's format, for example core,*.svc,*.cluster.local.
+noProxy: ""
 networkPolicy:
+  enabled: true  # Ingress and egress peers are required while enabled.
   ingress: []
   egress: []

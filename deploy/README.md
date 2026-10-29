@@ -19,11 +19,12 @@ helm upgrade --install ilm-mcp \
 ```
 
 The values must supply the public HTTPS MCP resource, ILM API and trusted OAuth
-endpoints, an existing confidential-client Secret reference, and explicit network
-peers for ingress and egress. The chart creates the workload; it creates no
-credentials, identity-provider registrations, persistent volumes or public Ingress.
-Keep credentials in the deployment's secret manager. Set `image.pullSecrets` when
-application-image pulls require registry credentials; Helm registry authentication
+endpoints (HTTP backchannel URLs need `security.allowHttpBackchannel`), an existing
+confidential-client Secret reference, and explicit network peers for ingress and
+egress (unless `networkPolicy.enabled: false`). The chart creates the workload; it
+creates no credentials, identity-provider registrations, persistent volumes or public
+Ingress. Keep credentials in the deployment's secret manager. Set `image.pullSecrets`
+when application-image pulls require registry credentials; Helm registry authentication
 is separate from Kubernetes image-pull Secrets.
 
 For a local source checkout, build the chart's locked dependencies and use the
@@ -78,5 +79,7 @@ dependencies:
 Pass MCP values under `mcpServer` and shared image registry/pull-secret settings
 under `global`. The parent's dependency condition controls inclusion; the MCP
 chart has no activation switch. Its API, OAuth, network and existing Secret
-references remain explicit. The standalone chart does not require an ILM umbrella,
+references remain explicit, except inside the ILM umbrella, where the chart derives
+most of its settings; see [Umbrella mode](charts/mcp-server/README.md#umbrella-mode).
+The standalone chart does not require an ILM umbrella,
 database, messaging service or session store.

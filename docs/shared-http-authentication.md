@@ -106,7 +106,8 @@ HTTP profile remains `STREAMABLE`, so set `STATELESS` explicitly.
 
 Supported algorithms are `RS256`, `RS384`, `RS512`, `ES256`, `ES384`, `ES512`, `PS256`, `PS384` and `PS512`.
 URLs must be absolute HTTPS without user information or fragments. Only the ILM API, signing-key and exchange URLs
-may use HTTP, and only when in-cluster HTTP is allowed as described below. Chart values require query-free URLs.
+may use HTTP, and only when in-cluster HTTP is allowed as described below. Chart values require query-free URLs,
+except for the signing-key and exchange URLs.
 Configure the issuer/endpoints explicitly;
 request headers and token key URLs cannot select a different issuer or destination. All credential-bearing
 requests use bounded timeouts and no redirect following, and verify TLS for every HTTPS URL. Trust private

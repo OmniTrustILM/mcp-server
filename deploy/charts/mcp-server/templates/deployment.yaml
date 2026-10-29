@@ -4,6 +4,14 @@
 {{- $additionalVolumeMounts := include "mcp-server.customization.volumeMounts" . -}}
 {{- $additionalEnv := include "mcp-server.customization.env" . -}}
 {{- $additionalEnvFrom := include "mcp-server.customization.envFrom" . -}}
+{{- $managed := eq (include "mcp-server.identityMode" .) "managed" -}}
+{{- /* The ILM chart renders the Secret for this value, so only a checksum here can roll the pod when it changes. */ -}}
+{{- $managedClientSecret := and $managed .Values.global.mcp.clientSecret -}}
+{{- $clientSecretRef := include "mcp-server.clientSecretRef" . | fromJson -}}
+{{- $noProxyHosts := list -}}
+{{- if .Values.global.mcp.enabled -}}
+{{- $noProxyHosts = include "mcp-server.ownHosts" . | fromJsonArray -}}
+{{- end -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -22,8 +30,20 @@ spec:
         {{- with .Values.podLabels }}
         {{- include "ilm-lib.tplvalues.render" (dict "value" . "context" $) | nindent 8 }}
         {{- end }}
-      {{- with .Values.podAnnotations }}
-      annotations: {{- include "ilm-lib.tplvalues.render" (dict "value" . "context" $) | nindent 8 }}
+      {{- if or .Values.podAnnotations .Values.trusted.certificates .Values.global.trusted.certificates $managedClientSecret }}
+      annotations:
+        {{- if .Values.trusted.certificates }}
+        checksum/trusted-certificates-local: {{ include (print $.Template.BasePath "/trusted-certificates-secret.yaml") . | sha256sum }}
+        {{- end }}
+        {{- if .Values.global.trusted.certificates }}
+        checksum/trusted-certificates-global: {{ include "ilm-lib.trusted.certificates.secret.global" . | sha256sum }}
+        {{- end }}
+        {{- if $managedClientSecret }}
+        checksum/client-secret: {{ $managedClientSecret | sha256sum }}
+        {{- end }}
+        {{- with .Values.podAnnotations }}
+        {{- include "ilm-lib.tplvalues.render" (dict "value" . "context" $) | nindent 8 }}
+        {{- end }}
       {{- end }}
     spec:
       serviceAccountName: {{ include "mcp-server.serviceAccountName" . }}
@@ -66,7 +86,7 @@ spec:
             - name: ILM_AUTH_METHOD
               value: oauth-delegation
             - name: ILM_API_URL
-              value: {{ .Values.apiUrl | quote }}
+              value: {{ include "mcp-server.apiUrl" . | quote }}
             - name: ILM_MCP_ACCESS
               value: {{ .Values.access | quote }}
             - name: ILM_MCP_TOOLSETS
@@ -74,34 +94,50 @@ spec:
             - name: ILM_MCP_SECURITY_ENABLED
               value: "true"
             - name: ILM_MCP_SECURITY_ISSUER
-              value: {{ .Values.security.issuer | quote }}
+              value: {{ include "mcp-server.issuer" . | quote }}
             - name: ILM_MCP_SECURITY_RESOURCE
-              value: {{ .Values.security.resource | quote }}
+              value: {{ include "mcp-server.resource" . | quote }}
             - name: ILM_MCP_SECURITY_JWK_SET_URI
-              value: {{ .Values.security.jwkSetUri | quote }}
+              value: {{ include "mcp-server.jwkSetUri" . | quote }}
             - name: ILM_MCP_SECURITY_TOKEN_URI
-              value: {{ .Values.security.tokenUri | quote }}
+              value: {{ include "mcp-server.tokenUri" . | quote }}
+            - name: ILM_MCP_SECURITY_ALLOW_HTTP_BACKCHANNEL
+              value: {{ or .Values.global.mcp.enabled .Values.security.allowHttpBackchannel | quote }}
             - name: ILM_MCP_SECURITY_CLIENT_ID
-              value: {{ .Values.security.clientId | quote }}
+              value: {{ ternary "ilm-mcp" .Values.security.clientId $managed | quote }}
             - name: ILM_MCP_SECURITY_CLIENT_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.security.clientSecretRef.name | quote }}
-                  key: {{ .Values.security.clientSecretRef.key | quote }}
+                  name: {{ $clientSecretRef.name | quote }}
+                  key: {{ $clientSecretRef.key | quote }}
             - name: ILM_MCP_SECURITY_API_AUDIENCE
               value: {{ .Values.security.apiAudience | quote }}
             - name: ILM_MCP_SECURITY_EXCHANGE_MODE
-              value: {{ .Values.security.exchangeMode | quote }}
+              value: {{ ternary "delegation" (default "standard" .Values.security.exchangeMode) $managed | quote }}
             - name: ILM_MCP_SECURITY_EXCHANGE_SCOPE
-              value: {{ .Values.security.exchangeScope | quote }}
+              value: {{ ternary "openid ilm-mcp-upstream" .Values.security.exchangeScope $managed | quote }}
             - name: ILM_MCP_SECURITY_REQUIRED_SCOPE
               value: {{ .Values.security.requiredScope | quote }}
             - name: ILM_MCP_SECURITY_AUTHORIZATION_SCOPES
-              value: {{ join "," .Values.security.authorizationScopes | quote }}
+              value: {{ ternary "openid,delegation:client:ilm-mcp" (join "," .Values.security.authorizationScopes) $managed | quote }}
             - name: ILM_MCP_SECURITY_ALLOWED_ORIGINS
               value: {{ join "," .Values.security.allowedOrigins | quote }}
             - name: ILM_MCP_SECURITY_JWS_ALGORITHMS
               value: {{ join "," .Values.security.jwsAlgorithms | quote }}
+            {{- with (include "mcp-server.proxyEnv" (dict "context" . "noProxyHosts" $noProxyHosts) | trim) }}
+            {{- . | nindent 12 }}
+            {{- end }}
+            {{- if or .Values.global.trusted.certificates .Values.trusted.certificates }}
+            - name: TRUSTED_CERTIFICATES
+              valueFrom:
+                secretKeyRef:
+                  {{- if .Values.global.trusted.certificates }}
+                  name: trusted-certificates
+                  {{- else }}
+                  name: trusted-certificates-{{ .Chart.Name | lower }}
+                  {{- end }}
+                  key: ca.crt
+            {{- end }}
             {{- if $additionalEnv }}
             {{- $additionalEnv | nindent 12 }}
             {{- end }}
