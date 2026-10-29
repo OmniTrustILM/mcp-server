@@ -26,8 +26,22 @@ def script(name):
     return module
 
 
+def install_stubs(directory, bodies):
+    """Writes executables that run their own behavior and can record calls in $TEST_PUBLICATION_LOG."""
+    directory.mkdir()
+    for name, body in bodies.items():
+        stub = directory / name
+        stub.write_text(f'#!{sys.executable}\n' + """
+import json, os, subprocess, sys
+def record(action, arguments=None):
+    with open(os.environ['TEST_PUBLICATION_LOG'], 'a') as log:
+        log.write(json.dumps({'action': action, 'arguments': arguments}) + '\\n')
+""" + body)
+        stub.chmod(0o700)
+
+
 class ChartPublicationTests(unittest.TestCase):
-    def test_immutable_version_package_keeps_kubernetes_labels_valid(self):
+    def test_long_chart_version_keeps_kubernetes_labels_valid(self):
         root = Path(__file__).resolve().parents[2]
         helm = os.environ.get('HELM_BIN', 'helm')
         with tempfile.TemporaryDirectory(prefix='ilm-mcp-chart-package-') as temp:
@@ -42,20 +56,19 @@ class ChartPublicationTests(unittest.TestCase):
         for obj in yaml.safe_load_all(rendered.stdout):
             self.assertLessEqual(len(obj['metadata']['labels']['helm.sh/chart']), 63)
 
-    def test_development_version_uses_entire_commit(self):
+    def test_development_version_is_the_chart_version(self):
         resolve = script('chart_version').resolve
-        self.assertEqual(resolve('0.1.0-develop', 'branch', 'main', 'a' * 40),
-                         '0.1.0-develop.' + 'a' * 40)
-        for source, ref_type, ref_name, sha in [('0.1.0-develop', 'branch', 'feature', 'a' * 40),
-                                               ('0.1.0-develop', 'branch', 'main', 'a' * 7),
-                                               ('0.1.0', 'branch', 'main', 'a' * 40)]:
+        self.assertEqual(resolve('0.1.0-develop', 'branch', 'main'), '0.1.0-develop')
+        for source, ref_type, ref_name in [('0.1.0-develop', 'branch', 'feature'),
+                                          ('0.1.0-develop', 'branch', 'release/0.1'),
+                                          ('0.1.0', 'branch', 'main')]:
             with self.assertRaises(ValueError):
-                resolve(source, ref_type, ref_name, sha)
+                resolve(source, ref_type, ref_name)
 
     def test_version_cli_resolves_script_relative_chart_for_development_and_release(self):
         root = Path(__file__).resolve().parents[2]
         cases = [
-            ('0.1.0-develop', 'branch', 'main', '0.1.0-develop.' + 'a' * 40),
+            ('0.1.0-develop', 'branch', 'main', '0.1.0-develop'),
             ('0.1.0', 'tag', 'v0.1.0', '0.1.0'),
             ('0.1.0', 'tag', '0.1.0', '0.1.0'),
         ]
@@ -73,19 +86,19 @@ class ChartPublicationTests(unittest.TestCase):
                     chart.write_text(f'apiVersion: v2\nname: mcp-server\nversion: {source}\n',
                                      encoding='utf-8')
                     result = subprocess.run([
-                        sys.executable, str(cli), '--ref-type', ref_type,
-                        '--ref-name', ref_name, '--sha', 'a' * 40,
+                        sys.executable, str(cli), '--ref-type', ref_type, '--ref-name', ref_name,
                     ], cwd=cwd, capture_output=True, text=True)
                     self.assertEqual(result.returncode, 0, result.stderr)
                     self.assertEqual(result.stdout.strip(), expected)
 
     def test_version_cli_rejects_invalid_publication_context(self):
         root = Path(__file__).resolve().parents[2]
-        for ref_name, sha in [('feature', 'a' * 40), ('main', 'a' * 7)]:
-            with self.subTest(ref_name=ref_name, sha=sha):
+        # The version does not carry the commit, so the script takes no --sha.
+        for ref_name, extra in [('feature', []), ('main', ['--sha', 'a' * 40])]:
+            with self.subTest(ref_name=ref_name, extra=extra):
                 result = subprocess.run([
                     sys.executable, str(root / 'deploy/scripts/chart_version.py'),
-                    '--ref-type', 'branch', '--ref-name', ref_name, '--sha', sha,
+                    '--ref-type', 'branch', '--ref-name', ref_name, *extra,
                 ], capture_output=True, text=True)
                 self.assertNotEqual(result.returncode, 0)
                 self.assertEqual(result.stdout, '')
@@ -101,12 +114,12 @@ class ChartPublicationTests(unittest.TestCase):
 
     def test_release_version_must_match_stable_tag(self):
         resolve = script('chart_version').resolve
-        self.assertEqual(resolve('0.1.0', 'tag', 'v0.1.0', 'a' * 40), '0.1.0')
-        self.assertEqual(resolve('0.1.0', 'tag', '0.1.0', 'a' * 40), '0.1.0')
+        self.assertEqual(resolve('0.1.0', 'tag', 'v0.1.0'), '0.1.0')
+        self.assertEqual(resolve('0.1.0', 'tag', '0.1.0'), '0.1.0')
         for source, ref in [('0.1.0-develop', 'v0.1.0'), ('0.1.0', 'v0.2.0'),
                             ('0.1.0', 'release-0.1.0')]:
             with self.assertRaises(ValueError):
-                resolve(source, 'tag', ref, 'a' * 40)
+                resolve(source, 'tag', ref)
 
     def test_helm_digest_does_not_depend_on_line_number(self):
         parse = script('push_digest').parse
@@ -124,7 +137,7 @@ ARTIFACTS = '/api/v2.0/projects/ilm-helm/repositories/mcp-server/artifacts/'
 TARGET_PATH = ARTIFACTS + 'sha256%3A' + 'a' * 64
 ALIAS_PATH = ARTIFACTS + '0.0.0'
 DELETE_PATH = ARTIFACTS + 'sha256%3A' + 'b' * 64 + '/tags/0.0.0'
-DEVELOP_VERSION = '0.1.0-develop.' + 'c' * 40
+DEVELOP_VERSION = '0.1.0-develop'
 
 
 @contextmanager
@@ -192,10 +205,9 @@ class DevelopmentAliasTests(unittest.TestCase):
 
     def update(self, client, **overrides):
         arguments = {'event_name': 'push', 'ref_type': 'branch', 'ref_name': 'main',
-                     'version': DEVELOP_VERSION, 'digest': SIGNED_DIGEST, 'client': client,
-                     'sha': 'c' * 40, 'current_main': lambda: 'c' * 40}
+                     'version': DEVELOP_VERSION, 'digest': SIGNED_DIGEST, 'client': client}
         arguments.update(overrides)
-        return self.module.update_alias(**arguments)
+        self.module.update_alias(**arguments)
 
     def test_first_publication_creates_alias_for_the_signed_digest(self):
         responses = [(200, {'digest': SIGNED_DIGEST}), (404, {}), (201, {}),
@@ -235,36 +247,6 @@ class DevelopmentAliasTests(unittest.TestCase):
             self.update(client, event_name='workflow_dispatch')
         self.assertEqual([request[0] for request in observed], ['GET', 'GET', 'POST', 'GET'])
         self.assertEqual(pending, [])
-
-    def test_stale_main_publication_skips_alias_without_writes(self):
-        responses = [(200, {'digest': SIGNED_DIGEST}), (200, {'digest': OLD_DIGEST})]
-        with harbor_fixture(self.module, responses) as (client, observed, _):
-            updated = self.update(client, current_main=lambda: 'd' * 40)
-        self.assertFalse(updated)
-        self.assertEqual([request[0] for request in observed], ['GET', 'GET'])
-
-    def test_failed_main_lookup_cannot_change_alias(self):
-        def failed_lookup():
-            raise self.module.PublicationError('Main ref lookup failed')
-
-        responses = [(200, {'digest': SIGNED_DIGEST}), (200, {'digest': OLD_DIGEST})]
-        with harbor_fixture(self.module, responses) as (client, observed, _), \
-                self.assertRaises(self.module.PublicationError):
-            self.update(client, current_main=failed_lookup)
-        self.assertEqual([request[0] for request in observed], ['GET', 'GET'])
-
-    def test_current_main_lookup_requires_one_exact_sha_and_ref(self):
-        self.assertTrue(hasattr(self.module, 'read_main_sha'), 'Fresh main lookup is not implemented')
-        good = subprocess.CompletedProcess([], 0, 'c' * 40 + '\trefs/heads/main\n', '')
-        self.assertEqual(self.module.read_main_sha(run=lambda *_args, **_kwargs: good), 'c' * 40)
-        invalid = [subprocess.CompletedProcess([], 1, '', 'synthetic-sensitive-error'),
-                   subprocess.CompletedProcess([], 0, 'c' * 7 + '\trefs/heads/main\n', ''),
-                   subprocess.CompletedProcess([], 0, 'c' * 40 + '\trefs/heads/feature\n', ''),
-                   subprocess.CompletedProcess([], 0, good.stdout + good.stdout, '')]
-        for response in invalid:
-            with self.subTest(response=response), self.assertRaises(self.module.PublicationError) as failure:
-                self.module.read_main_sha(run=lambda *_args, response=response, **_kwargs: response)
-            self.assertNotIn('synthetic-sensitive-error', str(failure.exception))
 
     def test_missing_or_failed_target_lookup_cannot_change_alias(self):
         for status in [401, 403, 404, 500]:
@@ -318,7 +300,7 @@ class DevelopmentAliasTests(unittest.TestCase):
                          (200, {}), (status, b'synthetic-sensitive-response\n'),
                          (200, {'digest': SIGNED_DIGEST})]
             with self.subTest(status=status), harbor_fixture(self.module, responses) as (client, observed, pending):
-                self.assertTrue(self.update(client))
+                self.update(client)
                 self.assertEqual([(method, path) for method, path, *_ in observed], [
                     ('GET', TARGET_PATH), ('GET', ALIAS_PATH), ('DELETE', DELETE_PATH),
                     ('POST', TARGET_PATH + '/tags'), ('GET', ALIAS_PATH)])
@@ -421,9 +403,9 @@ class DevelopmentAliasTests(unittest.TestCase):
     def test_forbidden_refs_versions_and_digests_make_no_requests(self):
         invalid = [{'event_name': 'pull_request'}, {'ref_type': 'tag'},
                    {'ref_name': 'feature'}, {'version': '0.1.0'}, {'version': '0.0.0'},
-                   {'version': '0.1.0-develop.abcdef0'}, {'digest': 'sha256:broken'},
-                   {'digest': 'https://registry.invalid'}, {'digest': SIGNED_DIGEST + '/tags'},
-                   {'sha': 'd' * 40}]
+                   {'version': '0.1.0-develop.abcdef0'}, {'version': '0.1.0-develop.' + 'c' * 40},
+                   {'digest': 'sha256:broken'}, {'digest': 'https://registry.invalid'},
+                   {'digest': SIGNED_DIGEST + '/tags'}]
         for overrides in invalid:
             with self.subTest(overrides=overrides), harbor_fixture(self.module, []) as (client, observed, _):
                 with self.assertRaises(self.module.PublicationError):
@@ -435,7 +417,7 @@ class DevelopmentAliasTests(unittest.TestCase):
         result = subprocess.run([
             sys.executable, str(root / 'deploy/scripts/development_alias.py'), '--event-name', 'push',
             '--ref-type', 'branch', '--ref-name', 'feature', '--version', DEVELOP_VERSION,
-            '--digest', SIGNED_DIGEST, '--sha', 'c' * 40,
+            '--digest', SIGNED_DIGEST,
         ], env={**os.environ, 'HELM_USERNAME': 'secret-user', 'HELM_PASSWORD': 'secret-password'},
             capture_output=True, text=True)
         self.assertNotEqual(result.returncode, 0)
@@ -449,10 +431,48 @@ class PublicationWorkflowTests(unittest.TestCase):
         workflow = yaml.load((root / '.github/workflows/publish_chart.yaml').read_text(), Loader=yaml.BaseLoader)
         push = workflow['on']['push']
         self.assertIn('main', push['branches'])
-        self.assertNotIn('paths', push, 'A later excluded main commit could strand the alias freshness guard')
+        self.assertNotIn('paths', push, 'A later excluded main commit would make the build before it stale')
         self.assertNotIn('paths-ignore', push)
 
-    def publish(self, *, event_name='push', ref_type='branch', ref_name='main', failure=''):
+    def test_main_packages_the_chart_version_itself(self):
+        root = Path(__file__).resolve().parents[2]
+        workflow = yaml.safe_load((root / '.github/workflows/publish_chart.yaml').read_text())
+        step = next(step for step in workflow['jobs']['publish']['steps'] if step.get('id') == 'package')
+        with tempfile.TemporaryDirectory(prefix='ilm-mcp-package-workflow-') as temp:
+            temp = Path(temp)
+            checkout = temp / 'checkout'
+            (checkout / 'deploy/scripts').mkdir(parents=True)
+            (checkout / 'deploy/scripts/chart_version.py').write_bytes(
+                (root / 'deploy/scripts/chart_version.py').read_bytes())
+            chart = checkout / 'deploy/charts/mcp-server/Chart.yaml'
+            chart.parent.mkdir(parents=True)
+            chart.write_text('apiVersion: v2\nname: mcp-server\nversion: 0.1.0-develop\n', encoding='utf-8')
+            # Only the version script runs for real; the dependency build, tests and lint are left out.
+            install_stubs(temp / 'bin', {
+                'helm': """
+if sys.argv[1] == 'package':
+    record('package', sys.argv[2:])
+""",
+                'python': """
+if sys.argv[1] == 'deploy/scripts/chart_version.py':
+    sys.exit(subprocess.run([sys.executable, *sys.argv[1:]]).returncode)
+""",
+            })
+            log, output = temp / 'publication.jsonl', temp / 'output'
+            result = subprocess.run(['bash', '-e', '-o', 'pipefail', '-c', step['run']], cwd=checkout,
+                env={**os.environ, 'PATH': str(temp / 'bin') + os.pathsep + os.environ['PATH'],
+                     'REF_TYPE': 'branch', 'REF_NAME': 'main', 'GITHUB_SHA': 'c' * 40,
+                     'GITHUB_OUTPUT': str(output), 'TEST_PUBLICATION_LOG': str(log)},
+                capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            outputs = dict(line.split('=', 1) for line in output.read_text().splitlines())
+            events = [json.loads(line) for line in log.read_text().splitlines()]
+        self.assertEqual(outputs, {'archive': 'dist/mcp-server-0.1.0-develop.tgz', 'version': '0.1.0-develop'})
+        self.assertEqual([event['action'] for event in events], ['package'])
+        args = events[0]['arguments']
+        self.assertEqual(args[args.index('--version') + 1], '0.1.0-develop')
+
+    def publish(self, *, event_name='push', ref_type='branch', ref_name='main', failure='', main_head='c' * 40):
         root = Path(__file__).resolve().parents[2]
         workflow = yaml.safe_load((root / '.github/workflows/publish_chart.yaml').read_text())
         step = next(step for step in workflow['jobs']['publish']['steps']
@@ -460,11 +480,18 @@ class PublicationWorkflowTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix='ilm-mcp-publish-workflow-') as temp:
             temp = Path(temp)
             stubs = temp / 'bin'
-            stubs.mkdir()
-            for name, body in {
+            install_stubs(stubs, {
+                'git': """
+if sys.argv[1:] != ['ls-remote', '--exit-code', 'origin', 'refs/heads/main']:
+    sys.exit(9)
+record('lookup')
+if not os.environ['TEST_MAIN_HEAD']:
+    sys.exit(2)
+print(os.environ['TEST_MAIN_HEAD'] + '\\trefs/heads/main')
+""",
                 'helm': """
 if sys.argv[1] == 'push':
-    record('push')
+    record('push', sys.argv[2:])
     if os.environ['TEST_FAILURE_STAGE'] == 'push':
         sys.exit(9)
     print('Digest: sha256:' + 'a' * 64)
@@ -482,22 +509,16 @@ if sys.argv[1] == 'deploy/scripts/development_alias.py':
 else:
     sys.exit(subprocess.run([sys.executable, *sys.argv[1:]]).returncode)
 """,
-            }.items():
-                stub = stubs / name
-                stub.write_text(f'#!{sys.executable}\n' + """
-import json, os, subprocess, sys
-def record(action, arguments=None):
-    with open(os.environ['TEST_PUBLICATION_LOG'], 'a') as log:
-        log.write(json.dumps({'action': action, 'arguments': arguments}) + '\\n')
-""" + body)
-                stub.chmod(0o700)
+            })
             log = temp / 'publication.jsonl'
             result = subprocess.run(['bash', '-e', '-o', 'pipefail', '-c', step['run']], cwd=root,
                 env={**os.environ, 'PATH': str(stubs) + os.pathsep + os.environ['PATH'],
                      'RUNNER_TEMP': str(temp), 'GITHUB_STEP_SUMMARY': str(temp / 'summary'),
                      'TEST_PUBLICATION_LOG': str(log), 'TEST_FAILURE_STAGE': failure,
+                     'TEST_MAIN_HEAD': main_head or '',
                      'EVENT_NAME': event_name, 'REF_TYPE': ref_type, 'REF_NAME': ref_name,
-                     'GITHUB_SHA': 'c' * 40, 'VERSION': DEVELOP_VERSION, 'ARCHIVE': 'synthetic.tgz',
+                     'GITHUB_SHA': 'c' * 40, 'VERSION': DEVELOP_VERSION,
+                     'ARCHIVE': f'dist/mcp-server-{DEVELOP_VERSION}.tgz',
                      'HELM_USERNAME': 'synthetic-user', 'HELM_PASSWORD': 'synthetic-password',
                      'COSIGN_PRIVATE_KEY': 'synthetic-key', 'COSIGN_PASSWORD': 'synthetic-password',
                      'HELM_REGISTRY_CONFIG': str(temp / 'registry/config.json'),
@@ -505,24 +526,40 @@ def record(action, arguments=None):
             events = [json.loads(line) for line in log.read_text().splitlines()] if log.exists() else []
         return result, events
 
-    def test_main_push_and_manual_publish_sign_before_alias(self):
+    def test_current_main_build_publishes_the_development_chart_and_moves_the_alias(self):
         for event_name in ['push', 'workflow_dispatch']:
             with self.subTest(event_name=event_name):
                 result, events = self.publish(event_name=event_name)
                 self.assertEqual(result.returncode, 0, result.stderr)
-                self.assertEqual([event['action'] for event in events], ['push', 'sign', 'alias'])
+                # The head lookup comes before any write, and the alias moves only after the signature.
+                self.assertEqual([event['action'] for event in events], ['lookup', 'push', 'sign', 'alias'])
+                self.assertEqual(events[1]['arguments'][0], f'dist/mcp-server-{DEVELOP_VERSION}.tgz')
                 args = events[-1]['arguments']
                 self.assertEqual(args[args.index('--digest') + 1], SIGNED_DIGEST)
                 self.assertEqual(args[args.index('--version') + 1], DEVELOP_VERSION)
-                self.assertEqual(args[args.index('--sha') + 1], 'c' * 40)
+                self.assertNotIn('--sha', args)
+
+    def test_stale_main_build_publishes_nothing(self):
+        for event_name in ['push', 'workflow_dispatch']:
+            with self.subTest(event_name=event_name):
+                result, events = self.publish(event_name=event_name, main_head='d' * 40)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual([event['action'] for event in events], ['lookup'])
+                self.assertIn('is no longer the head of main', result.stdout)
+
+    def test_failed_main_lookup_publishes_nothing(self):
+        result, events = self.publish(main_head=None)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual([event['action'] for event in events], ['lookup'])
 
     def test_release_publication_does_not_move_the_development_alias(self):
-        result, events = self.publish(ref_type='tag', ref_name='v0.1.0')
+        # A release is published whatever main's head is, and never looks it up.
+        result, events = self.publish(ref_type='tag', ref_name='v0.1.0', main_head='d' * 40)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual([event['action'] for event in events], ['push', 'sign'])
 
     def test_push_or_signature_failure_never_reaches_the_alias(self):
-        for failure, expected in [('push', ['push']), ('sign', ['push', 'sign'])]:
+        for failure, expected in [('push', ['lookup', 'push']), ('sign', ['lookup', 'push', 'sign'])]:
             with self.subTest(failure=failure):
                 result, events = self.publish(failure=failure)
                 self.assertNotEqual(result.returncode, 0)

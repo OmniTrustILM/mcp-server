@@ -65,7 +65,7 @@ Keycloak determine. Without `global.mcp.enabled` these globals have no effect, a
 | `global.mcp.identity.mode` | `managed` (default): MCP's users sign in through the bundled Keycloak, which the ILM chart prepares for MCP. `external`: through a provider the platform does not manage |
 | `global.hostName` | ILM's public host, required in umbrella mode; empty falls back to the chart's own `hostName`, as in the ILM chart |
 | `global.keycloak.enabled` | Whether the ILM chart runs the bundled Keycloak; `managed` requires it |
-| `global.mcp.clientSecret` | `managed`: MCP's client secret, which the ILM chart renders into the Secret `mcp-server-secret`, key `client-secret`. The pod carries its hash as `checksum/client-secret`, so it rolls when the secret changes |
+| `global.mcp.clientSecret` | MCP's client secret, which the ILM chart renders into the Secret `mcp-server-secret`, key `client-secret`. The pod carries its hash as `checksum/client-secret`, so it rolls when the secret changes. In `external` mode it replaces `security.clientSecretRef.name`, and setting both, or neither, fails the render |
 | `global.mcp.clientSecretRef.name` / `key` | `managed`: an existing Secret that holds MCP's client secret instead; `key` defaults to `client-secret` |
 
 In umbrella mode, with `<host>` the host above:
@@ -78,7 +78,7 @@ In umbrella mode, with `<host>` the host above:
 | `security.jwkSetUri` | `http://keycloak-internal-service:8080/kc/realms/ILM/protocol/openid-connect/certs` unless set | required |
 | `security.tokenUri` | `http://keycloak-internal-service:8080/kc/realms/ILM/protocol/openid-connect/token` unless set | required |
 | `security.clientId` | `ilm-mcp`; setting it fails | required |
-| `security.clientSecretRef` | `global.mcp.clientSecretRef`, else `{name: mcp-server-secret, key: client-secret}`; setting `name` fails | `name` required, `key` defaults to `client-secret` |
+| `security.clientSecretRef` | `global.mcp.clientSecretRef`, else `{name: mcp-server-secret, key: client-secret}`; setting `name` fails | exactly one of `name` (`key` defaults to `client-secret`) and `global.mcp.clientSecret`, which gives `{name: mcp-server-secret, key: client-secret}` |
 | `security.exchangeMode` | `delegation`; setting it fails | required |
 | `security.exchangeScope` | `openid ilm-mcp-upstream`; setting it fails | as set |
 | `security.authorizationScopes` | `[openid, delegation:client:ilm-mcp]`; setting them fails | as set |

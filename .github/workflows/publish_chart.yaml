@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 concurrency:
-  # Main publications share one concurrency group for the floating tag update.
+  # Main publications share one concurrency group: each overwrites the development version and moves the 0.0.0 tag.
   group: chart-publish-${{ github.ref }}
   cancel-in-progress: false
 
@@ -44,7 +44,7 @@ jobs:
           helm dependency build deploy/charts/mcp-server
           python -m unittest discover -s deploy/tests -p 'test_*.py' -v
           helm lint deploy/charts/mcp-server --strict --values deploy/charts/mcp-server/ci/default-values.yaml
-          version=$(python deploy/scripts/chart_version.py --ref-type "$REF_TYPE" --ref-name "$REF_NAME" --sha "$GITHUB_SHA")
+          version=$(python deploy/scripts/chart_version.py --ref-type "$REF_TYPE" --ref-name "$REF_NAME")
           mkdir -p dist
           helm package deploy/charts/mcp-server --version "$version" --destination dist
           echo "archive=dist/mcp-server-$version.tgz" >> "$GITHUB_OUTPUT"
@@ -68,6 +68,15 @@ jobs:
           DOCKER_CONFIG: ${{ runner.temp }}/chart-registry
         run: |
           set -euo pipefail
+          # A build that main has moved past would put older content back under the development version and the
+          # 0.0.0 tag, so a main build publishes only while its commit is main's head. A failed lookup fails the step.
+          if [[ "$REF_TYPE" == branch && "$REF_NAME" == main ]]; then
+            main_head=$(git ls-remote --exit-code origin refs/heads/main | cut -f1)
+            if [[ "$main_head" != "$GITHUB_SHA" ]]; then
+              echo "Skipped publication: $GITHUB_SHA is no longer the head of main ($main_head)" | tee -a "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+          fi
           registry=hub.omnitrustregistry.com
           trap 'helm registry logout "$registry"' EXIT
           printf '%s' "$HELM_PASSWORD" | helm registry login "$registry" --username "$HELM_USERNAME" --password-stdin
@@ -80,6 +89,6 @@ jobs:
           if [[ "$REF_TYPE" == branch && "$REF_NAME" == main ]] && [[ "$EVENT_NAME" == push || "$EVENT_NAME" == workflow_dispatch ]]; then
             python deploy/scripts/development_alias.py \
               --event-name "$EVENT_NAME" --ref-type "$REF_TYPE" --ref-name "$REF_NAME" \
-              --version "$VERSION" --digest "$digest" --sha "$GITHUB_SHA" | tee -a "$GITHUB_STEP_SUMMARY"
+              --version "$VERSION" --digest "$digest" | tee -a "$GITHUB_STEP_SUMMARY"
           fi
           echo "Published and signed $registry/ilm-helm/mcp-server@$digest" >> "$GITHUB_STEP_SUMMARY"

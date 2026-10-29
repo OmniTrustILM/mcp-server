@@ -120,11 +120,17 @@ values as set. These helpers read .Values only, so the ILM chart can call them w
 {{- end -}}
 {{- end -}}
 
-{{- /* The Secret that holds the client secret, as JSON: {"name": ..., "key": ...}. */ -}}
+{{- /*
+The Secret that holds the client secret, as JSON: {"name": ..., "key": ...}. In umbrella mode the ILM chart renders
+mcp-server-secret from global.mcp.clientSecret.
+*/ -}}
 {{- define "mcp-server.clientSecretRef" -}}
-{{- if eq (include "mcp-server.identityMode" .) "managed" -}}
+{{- $mode := include "mcp-server.identityMode" . -}}
+{{- if eq $mode "managed" -}}
 {{- $ref := .Values.global.mcp.clientSecretRef -}}
 {{- dict "name" (default "mcp-server-secret" $ref.name) "key" (default "client-secret" $ref.key) | toJson -}}
+{{- else if and (eq $mode "external") .Values.global.mcp.clientSecret -}}
+{{- dict "name" "mcp-server-secret" "key" "client-secret" | toJson -}}
 {{- else -}}
 {{- .Values.security.clientSecretRef | toJson -}}
 {{- end -}}
@@ -170,10 +176,16 @@ host without its port, so an IPv6 literal keeps its brackets, as MCP compares NO
 {{- end -}}
 {{- else if eq $mode "external" -}}
 {{- range $key := list "security.issuer" "security.jwkSetUri" "security.tokenUri" "security.clientId"
-    "security.clientSecretRef.name" "security.exchangeMode" -}}
+    "security.exchangeMode" -}}
 {{- if not (get $settings $key) -}}
 {{- fail (printf "%s is required with global.mcp.identity.mode external" $key) -}}
 {{- end -}}
+{{- end -}}
+{{- if and $security.clientSecretRef.name .Values.global.mcp.clientSecret -}}
+{{- fail "set only one of security.clientSecretRef.name and global.mcp.clientSecret" -}}
+{{- end -}}
+{{- if not (or $security.clientSecretRef.name .Values.global.mcp.clientSecret) -}}
+{{- fail "security.clientSecretRef.name or global.mcp.clientSecret is required with global.mcp.identity.mode external" -}}
 {{- end -}}
 {{- /* Plain http only to a Kubernetes Service, <service>.<namespace>.svc[.<domain>], as the ILM operator allows. */ -}}
 {{- range $key := list "jwkSetUri" "tokenUri" -}}

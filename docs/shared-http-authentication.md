@@ -62,8 +62,11 @@ select the exchange mode explicitly.
    credential private. Configure the source token for the public MCP resource, for example
    `https://ilm.example.invalid/mcp`, without the ILM API audience.
 3. Configure the requester's downstream scopes, audiences and username/role mappings so the exchanged token
-   represents the same user for ILM. Restrict any actor-delegation permission to the intended users and requester;
-   confirm the deployed ILM version supports and permits that delegate before selecting `delegation`.
+   represents the same user for ILM. Restrict any actor-delegation permission to the intended users and requester.
+   For `delegation`, the ILM provider for that issuer must also list MCP's client ID in `allowedDelegates` and set
+   `delegateClaim` to `client_id`, the field of the token's `act` claim that names the delegate; ILM accepts a
+   delegated token only from a listed delegate. Confirm the deployed ILM version supports these settings before
+   selecting `delegation`. `standard` needs neither.
 4. Validate signed source and exchanged tokens, rejected exchanges and different users' existing ILM permissions
    using the [acceptance checklist](shared-http-acceptance.md) before enabling shared access.
 

@@ -40,11 +40,11 @@ helm upgrade --install ilm-mcp \
 
 ## Choose chart and image versions
 
-Use a reviewed immutable chart version for repeatable deployments. Development
-versions have the form `0.1.0-develop.<full-40-character-commit-SHA>`; release charts
-use stable versions such as `0.1.0`. The `0.0.0` registry alias points to the latest
-successful development chart publication and can move. It is available when you
-intentionally want to follow development builds.
+Use a reviewed release chart version, such as `0.1.0`, for repeatable deployments.
+Every build of `main` publishes the development chart as `0.1.0-develop`, replacing
+the previous build, and the `0.0.0` registry alias points to the latest successful
+development chart publication. Both move, so use them when you intentionally want to
+follow development builds.
 
 Chart versions and application image references are independent. `image.tag`
 defaults to the chart's `appVersion`; a configured `image.digest` takes precedence.
