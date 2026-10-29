@@ -28,7 +28,7 @@ import org.springframework.web.client.RestTemplate;
 import tools.jackson.databind.json.JsonMapper;
 
 @Configuration(proxyBeanMethods = false)
-@EnableConfigurationProperties(SharedSecurityProperties.class)
+@EnableConfigurationProperties({SharedSecurityProperties.class, OutboundProperties.class})
 public class SharedSecurityConfiguration {
     @Bean
     InitializingBean sharedSecurityGuard(SharedSecurityProperties security, IlmApiProperties api,
@@ -144,13 +144,16 @@ public class SharedSecurityConfiguration {
     static class Enabled {
         @Bean
         @ConditionalOnMissingBean(ClientHttpRequestFactory.class)
-        ClientHttpRequestFactory sharedHttpRequestFactory(SharedSecurityProperties properties) {
-            HttpClient client = HttpClient
+        ClientHttpRequestFactory sharedHttpRequestFactory(SharedSecurityProperties properties,
+                OutboundProperties outbound) {
+            HttpClient.Builder builder = HttpClient
                     .newBuilder()
+                    .sslContext(OutboundTrust.sslContext(outbound.trustedCertificates()))
                     .connectTimeout(properties.getConnectTimeout())
-                    .followRedirects(HttpClient.Redirect.NEVER)
-                    .build();
-            JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory(client);
+                    .followRedirects(HttpClient.Redirect.NEVER);
+            // Without a proxy setting the client keeps the JDK's default selector, which reads the proxy properties.
+            OutboundProxy.from(outbound).ifPresent(proxy -> proxy.applyTo(builder));
+            JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory(builder.build());
             factory.setReadTimeout(properties.getReadTimeout());
             return factory;
         }

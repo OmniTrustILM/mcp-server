@@ -216,7 +216,9 @@ The server starts on port 8080 by default.
 Enable `ILM_MCP_SECURITY_ENABLED=true` and `SPRING_AI_MCP_SERVER_PROTOCOL=STATELESS`. Each request must carry an
 access token for the MCP resource. The server validates it and exchanges it through the configured issuer for an
 ILM token for the same user. Select `standard` exchange or explicit `delegation`; the server never switches modes
-after an error. See [all settings and identity guarantees](docs/shared-http-authentication.md), the
+after an error. Private certificate authorities and an outbound proxy are set under
+[Outbound connections](#outbound-connections). See
+[all settings and identity guarantees](docs/shared-http-authentication.md), the
 [example Keycloak integration](docs/keycloak/README.md), and the [deployment chart](deploy/charts/mcp-server/README.md).
 
 **Client Certificate** (`ILM_AUTH_METHOD=certificate`):
@@ -241,6 +243,30 @@ server so the MCP and ILM resource audiences are validated separately.
 | `ILM_OAUTH_TOKEN_URL`     | Token endpoint URL  | Yes      |
 | `ILM_OAUTH_SCOPE`         | OAuth scope         | No       |
 | `ILM_OAUTH_AUDIENCE`      | OAuth audience      | No       |
+
+#### Outbound connections
+
+Shared OAuth (`ILM_AUTH_METHOD=oauth-delegation`) sends its requests to ILM, the signing-key endpoint and the exchange
+endpoint through one HTTP client. These variables add private certificate authorities and an outbound proxy to it. They
+are named as ILM Core names them, so they carry no `ILM_` prefix, and the other authentication modes do not read them.
+
+| Variable               | Description                                                     | Default |
+|------------------------|-----------------------------------------------------------------|---------|
+| `TRUSTED_CERTIFICATES` | PEM certificates trusted in addition to the JVM's own           | (empty) |
+| `HTTP_PROXY`           | Proxy for `http` requests, `http://[user[:password]@]host:port` | (empty) |
+| `HTTPS_PROXY`          | Proxy for `https` requests, in the same form                    | (empty) |
+| `NO_PROXY`             | Hosts that bypass the proxy                                     | (empty) |
+
+`TRUSTED_CERTIFICATES` is read as ILM Core reads it: MCP trusts every certificate block and ignores anything else, and
+it skips a block it cannot read, with a warning, so the value that Core gets works here too.
+
+`NO_PROXY` takes host names separated by `,` or `|`, where a `*` at the start or end of an entry is a wildcard, as in
+`core,*.svc,*.cluster.local`. It must list every in-cluster host that MCP calls, such as ILM Core and an in-cluster
+identity provider, or the proxy receives those calls too. CIDR ranges are not supported. See
+[outbound connections](docs/shared-http-authentication.md#outbound-connections) for the rest of the syntax and the
+clear-text risk of an incomplete `NO_PROXY`, and
+[diagnosing failures](docs/shared-http-authentication.md#diagnosing-failures) for the log lines that show a trust or
+proxy problem.
 
 #### Tool Access
 
