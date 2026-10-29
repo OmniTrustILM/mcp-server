@@ -6,7 +6,7 @@
 {{- $additionalEnvFrom := include "mcp-server.customization.envFrom" . -}}
 {{- $managed := eq (include "mcp-server.identityMode" .) "managed" -}}
 {{- /* The ILM chart renders the Secret for this value, so only a checksum here can roll the pod when it changes. */ -}}
-{{- $managedClientSecret := and $managed .Values.global.mcp.clientSecret -}}
+{{- $umbrellaClientSecret := and .Values.global.mcp.enabled .Values.global.mcp.clientSecret -}}
 {{- $clientSecretRef := include "mcp-server.clientSecretRef" . | fromJson -}}
 apiVersion: apps/v1
 kind: Deployment
@@ -26,7 +26,7 @@ spec:
         {{- with .Values.podLabels }}
         {{- include "ilm-lib.tplvalues.render" (dict "value" . "context" $) | nindent 8 }}
         {{- end }}
-      {{- if or .Values.podAnnotations .Values.trusted.certificates .Values.global.trusted.certificates $managedClientSecret }}
+      {{- if or .Values.podAnnotations .Values.trusted.certificates .Values.global.trusted.certificates $umbrellaClientSecret }}
       annotations:
         {{- if .Values.trusted.certificates }}
         checksum/trusted-certificates-local: {{ include (print $.Template.BasePath "/trusted-certificates-secret.yaml") . | sha256sum }}
@@ -34,8 +34,8 @@ spec:
         {{- if .Values.global.trusted.certificates }}
         checksum/trusted-certificates-global: {{ include "ilm-lib.trusted.certificates.secret.global" . | sha256sum }}
         {{- end }}
-        {{- if $managedClientSecret }}
-        checksum/client-secret: {{ $managedClientSecret | sha256sum }}
+        {{- if $umbrellaClientSecret }}
+        checksum/client-secret: {{ $umbrellaClientSecret | sha256sum }}
         {{- end }}
         {{- with .Values.podAnnotations }}
         {{- include "ilm-lib.tplvalues.render" (dict "value" . "context" $) | nindent 8 }}

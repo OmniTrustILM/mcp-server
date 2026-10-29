@@ -841,12 +841,13 @@ class SharedMcpChartTests(unittest.TestCase):
             'ILM_MCP_SECURITY_ALLOW_HTTP_BACKCHANNEL': 'true',
         })
         self.assertEqual(client_secret_ref(objects), {'name': 'mcp-oauth', 'key': 'client-secret'})
-        for key in EXTERNAL_PROVIDER:
-            name = 'clientSecretRef.name' if key == 'clientSecretRef' else key
-            with self.subTest(missing=name):
+        # The client secret can also come from global.mcp.clientSecret;
+        # test_external_mode_takes_the_umbrella_client_secret covers it.
+        for key in [key for key in EXTERNAL_PROVIDER if key != 'clientSecretRef']:
+            with self.subTest(missing=key):
                 values = external_values()
                 del values['security'][key]
-                self.assert_render_fails(values, f'security.{name} is required with global.mcp.identity.mode external')
+                self.assert_render_fails(values, f'security.{key} is required with global.mcp.identity.mode external')
         values = external_values(resource='https://mcp.example.invalid/mcp', exchangeScope='ilm',
                                  authorizationScopes=['openid'])
         values['apiUrl'] = 'https://ilm.example.invalid/api'
@@ -854,6 +855,36 @@ class SharedMcpChartTests(unittest.TestCase):
                                  'ILM_MCP_SECURITY_RESOURCE': 'https://mcp.example.invalid/mcp',
                                  'ILM_MCP_SECURITY_EXCHANGE_SCOPE': 'ilm',
                                  'ILM_MCP_SECURITY_AUTHORIZATION_SCOPES': 'openid'})
+
+    def test_external_mode_takes_the_umbrella_client_secret(self):
+        values = external_values()
+        mcp = values['global']['mcp']
+        del values['security']['clientSecretRef']
+        mcp['clientSecret'] = 'SYNTHETIC_CLIENT_SECRET'
+        objects = render('mcp-server', values)
+        self.assertEqual(client_secret_ref(objects), {'name': 'mcp-server-secret', 'key': 'client-secret'})
+        checksum = pod_annotations(objects).get('checksum/client-secret')
+        self.assertTrue(checksum)
+        mcp['clientSecret'] = 'OTHER_SYNTHETIC_CLIENT_SECRET'
+        self.assertNotEqual(pod_annotations(render('mcp-server', values)).get('checksum/client-secret'), checksum)
+
+        # An existing Secret instead needs no checksum, and both sources together are refused.
+        values['security']['clientSecretRef'] = {'name': 'mcp-oauth'}
+        self.assert_render_fails(values, 'set only one of security.clientSecretRef.name and global.mcp.clientSecret')
+        del mcp['clientSecret']
+        objects = render('mcp-server', values)
+        self.assertEqual(client_secret_ref(objects), {'name': 'mcp-oauth', 'key': 'client-secret'})
+        self.assertNotIn('checksum/client-secret', pod_annotations(objects))
+
+        del values['security']['clientSecretRef']
+        self.assert_render_fails(values, 'security.clientSecretRef.name or global.mcp.clientSecret is required '
+                                         'with global.mcp.identity.mode external')
+
+        # Outside umbrella mode the global secret has no effect.
+        standalone = {**configured_values(), 'global': {'mcp': {'clientSecret': 'SYNTHETIC_CLIENT_SECRET'}}}
+        objects = render('mcp-server', standalone)
+        self.assertEqual(client_secret_ref(objects), {'name': 'ilm-mcp-oauth', 'key': 'client-secret'})
+        self.assertNotIn('checksum/client-secret', pod_annotations(objects))
 
     def test_external_mode_url_rules(self):
         for key, name in (('jwkSetUri', 'ILM_MCP_SECURITY_JWK_SET_URI'), ('tokenUri', 'ILM_MCP_SECURITY_TOKEN_URI')):
@@ -929,8 +960,6 @@ class SharedMcpChartTests(unittest.TestCase):
                 current = render('mcp-server', values)
                 for obj in baseline + current:
                     obj['metadata']['labels'].pop('helm.sh/chart')
-                mcp_container(current)['env'].remove(
-                    {'name': 'ILM_MCP_SECURITY_ALLOW_HTTP_BACKCHANNEL', 'value': 'false'})
                 self.assertEqual(current, baseline)
 
 

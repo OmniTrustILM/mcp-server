@@ -87,7 +87,7 @@ For **Codex CLI**, the official command accepts the pre-registered public ID and
 codex mcp add ilm --url https://ilm.example.invalid/mcp --oauth-client-id ilm-mcp-codex
 ```
 
-Copy the complete displayed callback, including any server-specific path/ID. For exact port matching, configure `mcp_servers.ilm.oauth.callback_port` and a matching explicit callback URL/listener as documented, then verify the final `redirect_uri`. Issuer-response support affects callback-ID selection; never guess its suffix. [Official Codex MCP registration/callback documentation](https://learn.chatgpt.com/docs/extend/mcp#oauth-client-registration-and-callbacks).
+Copy the complete displayed callback, including any server-specific path/ID. For exact port matching, configure `mcp_servers.ilm.oauth.callback_port` and a matching explicit callback URL/listener as documented, then verify the final `redirect_uri`. Issuer-response support affects callback-ID selection; never guess its suffix. [Official Codex MCP registration/callback documentation](https://learn.chatgpt.com/docs/extend/mcp#oauth-client-registration-and-callbacks). With delegation, Codex also needs its `scopes` set, which `codex mcp add` cannot do; the configuration entry is under [Connect clients](README.md#connect-clients).
 
 For **Claude Code**, choose an available fixed local callback port and supply the public ID without a client secret:
 

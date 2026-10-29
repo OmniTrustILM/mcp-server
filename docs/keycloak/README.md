@@ -73,3 +73,36 @@ For an intentionally chosen **ordinary Standard V2** deployment, set `mode=stand
 Deploy the MCP chart from this repository at `deploy/charts/mcp-server` with explicit delegation mode and the authorization scope set above. This is independent of Keycloak setup and still requires [shared HTTP acceptance](../shared-http-acceptance.md).
 
 To reproduce offline safety checks locally: `./scripts/keycloak/verify-keycloak-offline.sh`. This intercepts every HTTP call and uses synthetic fixtures; it cannot validate the live server.
+
+## Connect clients
+
+A client needs only the MCP endpoint, for example `https://ilm.example.invalid/mcp`, and finds the issuer and scopes in the protected-resource metadata.
+
+**Claude Code and the hosted Claude apps** sign in with their Client ID Metadata Documents, so no client is registered beforehand: on the first sign-in Keycloak fetches the document from `claude.ai` and creates a public client from it, with consent required. The supplied scripts configure none of what this needs:
+
+- the experimental `cimd` feature, a build option of the optimized image like `token-exchange-delegation` and `parameterized-scopes` above;
+- the client policy `mcp-cimd`, whose condition `client-id-uri` matches a client ID that is an `https` URL on `claude.ai` and whose profile applies the `client-id-metadata-document` executor, which trusts `claude.ai`, `localhost` and `127.0.0.1` in these documents;
+- `mcp:access` and `delegation:client` as default optional client scopes of the realm, which the created clients get and can request;
+- the client policy `mcp-pkce`, which applies the `pkce-enforcer` executor under the condition `client-scopes` on the optional scope `mcp:access`, so that every client requesting it uses PKCE S256, including these.
+
+Claude Code users add the server and sign in from `/mcp`:
+
+```bash
+claude mcp add --transport http --scope user ilm https://ilm.example.invalid/mcp
+```
+
+In the hosted apps, an organization owner adds a custom connector with the MCP endpoint, and members connect to it. These connectors reach MCP and Keycloak from Anthropic's cloud, so both must be reachable from the internet.
+
+**Codex** cannot sign in with its metadata document yet: Keycloak 26.8.1 rejects it ([keycloak#51236](https://github.com/keycloak/keycloak/issues/51236)). Register a public client by hand, such as the supplied `ilm-mcp-codex` template, with PKCE S256, consent required and the loopback redirect `http://127.0.0.1/callback`, which matches any local port. Name it in Codex's `oauth.client_id` and set `scopes` to what MCP needs: without `scopes`, Codex requests every scope Keycloak advertises, and Keycloak rejects those the client lacks. Add the entry by editing `~/.codex/config.toml`, because `codex mcp add` signs in before `scopes` can be set. In `standard` mode, leave out `delegation:client:ilm-mcp`:
+
+```toml
+[mcp_servers.ilm]
+url = "https://ilm.example.invalid/mcp"
+scopes = ["openid", "mcp:access", "delegation:client:ilm-mcp"]
+
+[mcp_servers.ilm.oauth]
+client_id = "ilm-mcp-codex"
+callback_url = "http://127.0.0.1/callback"
+```
+
+Run `codex mcp logout ilm` after changing `scopes`, then sign in with `codex mcp login ilm`. Without `oauth.client_id`, Codex uses its metadata document and sign-in fails.

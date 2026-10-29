@@ -5,7 +5,6 @@ from http.client import HTTPException
 import json
 import os
 import re
-import subprocess
 import sys
 from urllib.error import HTTPError
 from urllib.parse import quote
@@ -82,18 +81,6 @@ class HarborClient:
         self._request('POST', digest, '/tags', {'name': ALIAS})
 
 
-def read_main_sha(*, run=subprocess.run):
-    try:
-        result = run(['git', 'ls-remote', '--exit-code', 'origin', 'refs/heads/main'],
-                     capture_output=True, text=True, timeout=30, check=False)
-    except (OSError, subprocess.SubprocessError):
-        raise PublicationError('The current main ref lookup failed') from None
-    match = re.fullmatch(r'([a-f0-9]{40})\trefs/heads/main\n?', result.stdout)
-    if result.returncode != 0 or match is None:
-        raise PublicationError('The current main ref lookup did not return one valid commit')
-    return match[1]
-
-
 def _publish_alias(client, previous, digest):
     try:
         client.create_alias(digest)
@@ -123,13 +110,11 @@ def _publish_alias(client, previous, digest):
     raise PublicationError('Harbor development alias update failed; previous alias restored') from None
 
 
-def update_alias(*, event_name, ref_type, ref_name, version, digest, sha, client, current_main=read_main_sha):
+def update_alias(*, event_name, ref_type, ref_name, version, digest, client):
     if event_name not in ('push', 'workflow_dispatch') or (ref_type, ref_name) != ('branch', 'main'):
         raise PublicationError('The development alias is restricted to main branch publication')
-    if not re.fullmatch(r'\d+\.\d+\.\d+-develop\.[a-f0-9]{40}', version):
-        raise PublicationError('The development alias requires an immutable development chart version')
-    if not re.fullmatch(r'[a-f0-9]{40}', sha) or not version.endswith('.' + sha):
-        raise PublicationError('The development chart version must match the publication commit')
+    if not re.fullmatch(r'\d+\.\d+\.\d+-develop', version):
+        raise PublicationError('The development alias requires a development chart version')
     if not DIGEST.fullmatch(digest):
         raise PublicationError('The development alias requires a sha256 artifact digest')
     if client.artifact_digest(digest) != digest:
@@ -140,16 +125,11 @@ def update_alias(*, event_name, ref_type, ref_name, version, digest, sha, client
         if error.status != 404:
             raise
         previous = None
-    # Main publications share a workflow concurrency group. A rerun of an older
-    # commit may still run later, so check freshness immediately before writing.
-    if current_main() != sha:
-        return False
     if previous == digest:
-        return True
+        return
     if previous is not None:
         client.delete_alias(previous)
     _publish_alias(client, previous, digest)
-    return True
 
 
 def main():
@@ -159,18 +139,14 @@ def main():
     parser.add_argument('--ref-name', required=True)
     parser.add_argument('--version', required=True)
     parser.add_argument('--digest', required=True)
-    parser.add_argument('--sha', required=True)
     args = parser.parse_args()
     try:
         client = HarborClient(os.environ.get('HELM_USERNAME'), os.environ.get('HELM_PASSWORD'))
-        updated = update_alias(**vars(args), client=client)
+        update_alias(**vars(args), client=client)
     except PublicationError as error:
         print(f'Development alias publication failed: {error}', file=sys.stderr)
         return 1
-    if updated:
-        print('Verified Harbor development alias 0.0.0 at the signed chart digest')
-    else:
-        print('Skipped development alias 0.0.0: publication commit is no longer current main')
+    print('Verified Harbor development alias 0.0.0 at the signed chart digest')
     return 0
 
 
