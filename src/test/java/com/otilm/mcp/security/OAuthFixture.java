@@ -27,11 +27,15 @@ import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.options;
 
 final class OAuthFixture implements AutoCloseable {
+    // The server binds to the IPv4 loopback address and is reached by it, because a wildcard-bound server reached
+    // through localhost can end at another local process that listens on the same port number.
+    private static final String LOOPBACK = "127.0.0.1";
     static final String ISSUER = "https://auth.test/realm";
     static final String RESOURCE = "https://mcp.test/mcp";
     static final String SENTINEL = "secret-token-response-must-never-leak";
     final java.util.concurrent.atomic.AtomicReference<BlockedRequest> blocked = new java.util.concurrent.atomic.AtomicReference<>();
     final WireMockServer server = new WireMockServer(options()
+            .bindAddress(LOOPBACK)
             .dynamicPort()
             .extensions(new com.github.tomakehurst.wiremock.extension.ResponseDefinitionTransformerV2() {
                 @Override
@@ -73,10 +77,14 @@ final class OAuthFixture implements AutoCloseable {
                 HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NEVER).build());
         factory = (uri, method) -> delegate
                 .createRequest(URI
-                        .create(server.baseUrl() + uri.getRawPath()
+                        .create(baseUrl() + uri.getRawPath()
                                 + (uri.getRawQuery() == null ? "" : "?" + uri.getRawQuery())),
                         method);
         server.stubFor(get("/jwks").willReturn(okJson(new JWKSet(key.toPublicJWK()).toString())));
+    }
+
+    String baseUrl() {
+        return "http://" + LOOPBACK + ":" + server.port();
     }
 
     SharedAuthenticator authenticator() {
@@ -89,6 +97,11 @@ final class OAuthFixture implements AutoCloseable {
     }
 
     String token(String sub, String audience, Map<String, Object> overrides, JWSAlgorithm algorithm) throws Exception {
+        return token(sub, audience, overrides, algorithm, "test-key");
+    }
+
+    String token(String sub, String audience, Map<String, Object> overrides, JWSAlgorithm algorithm, String keyId)
+            throws Exception {
         Map<String, Object> claims = new HashMap<>();
         claims.put("iss", ISSUER);
         claims.put("sub", sub);
@@ -97,8 +110,7 @@ final class OAuthFixture implements AutoCloseable {
         claims.put("scope", "mcp:access");
         claims.putAll(overrides);
         claims.values().removeIf(java.util.Objects::isNull);
-        JWSObject token = new JWSObject(new JWSHeader.Builder(algorithm).keyID("test-key").build(),
-                new Payload(claims));
+        JWSObject token = new JWSObject(new JWSHeader.Builder(algorithm).keyID(keyId).build(), new Payload(claims));
         token.sign(new RSASSASigner(key));
         return token.serialize();
     }

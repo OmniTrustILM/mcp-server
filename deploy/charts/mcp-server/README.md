@@ -74,6 +74,13 @@ imports, so imported maps and Secrets cannot replace the chart's mandatory envir
 metadata and unrelated `global` values are accepted; known application configuration remains validated.
 Command/args and Java/Spring property overrides remain available to the deployment administrator.
 
+Pass `TRUSTED_CERTIFICATES`, `HTTP_PROXY`, `HTTPS_PROXY` and `NO_PROXY` through `additionalEnv`, and keep a proxy URL
+that carries credentials in a Secret behind `valueFrom`. `TRUSTED_CERTIFICATES` takes the value ILM Core takes: MCP
+reads its certificate blocks and ignores anything else. `NO_PROXY` must list every in-cluster host MCP calls, such as
+Core and an in-cluster identity provider, or the proxy receives those calls too. `networkPolicy.egress` must allow the
+proxy. See the [outbound connections guide](../../../docs/shared-http-authentication.md#outbound-connections) for the
+clear-text risk of an incomplete `NO_PROXY`.
+
 Liveness and readiness use the local health endpoints and do not sign in as a user.
 
 ## Identity-provider setup

@@ -94,6 +94,10 @@ Set via environment variables or application.yml:
 - Request-local credentials travel through the SDK transport context; no user sessions, grants or token cache
 - HTTPS, bounded timeouts and no redirects on ILM/JWK/token clients; sanitize response parsing failures as well as request failures
 - Only the ILM API, JWK and token URLs may use in-cluster HTTP, and only with `ILM_MCP_SECURITY_ALLOW_HTTP_BACKCHANNEL=true`
+- `TRUSTED_CERTIFICATES`, `HTTP_PROXY`, `HTTPS_PROXY` and `NO_PROXY` follow ILM Core's names instead of the `ILM_` prefix; they bind under `ilm.mcp.outbound` and only the shared client reads them (`OutboundTrust`, `OutboundProxy`)
+- `TRUSTED_CERTIFICATES` adds its certificate blocks to the JVM's anchors as ILM Core reads them: anything else is ignored and an unreadable block is skipped with a counted warning, so its content never stops startup; once a certificate is added the TLS context presents no client certificate
+- `NO_PROXY` is read as Java's `http.nonProxyHosts`, so no CIDR ranges, and loopback never uses the proxy
+- `SharedAuthenticator` logs one WARN per key-set or token-endpoint failure, naming what failed and giving the exception class names and the status where there are any, never a secret, token or body; a failure the token's sender controls stays silent
 - See [shared HTTP authentication](docs/shared-http-authentication.md) and [example Keycloak integration](docs/keycloak/README.md)
 
 **Client Certificate:**

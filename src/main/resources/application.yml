@@ -56,6 +56,12 @@ ilm:
       connect-timeout: ${ILM_MCP_SECURITY_CONNECT_TIMEOUT:5s}
       read-timeout: ${ILM_MCP_SECURITY_READ_TIMEOUT:15s}
       clock-skew: ${ILM_MCP_SECURITY_CLOCK_SKEW:30s}
+    # Named as ILM Core names them, without the ILM_ prefix.
+    outbound:
+      trusted-certificates: ${TRUSTED_CERTIFICATES:}
+      http-proxy: ${HTTP_PROXY:}
+      https-proxy: ${HTTPS_PROXY:}
+      no-proxy: ${NO_PROXY:}
   api:
     url: ${ILM_API_URL:https://localhost/api}
     auth:

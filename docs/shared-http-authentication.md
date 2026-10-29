@@ -98,6 +98,10 @@ HTTP profile remains `STREAMABLE`, so set `STATELESS` explicitly.
 | `ILM_MCP_SECURITY_CONNECT_TIMEOUT` | `5s`; between `100ms` and `60s` |
 | `ILM_MCP_SECURITY_READ_TIMEOUT` | `15s`; between `100ms` and `60s` |
 | `ILM_MCP_SECURITY_CLOCK_SKEW` | `30s`; between zero and `60s` |
+| `TRUSTED_CERTIFICATES` | PEM certificates trusted in addition to the JVM's own; default empty |
+| `HTTP_PROXY` | `http://[user[:password]@]host:port` proxy for `http` requests; default none |
+| `HTTPS_PROXY` | The same form, for `https` requests; default none |
+| `NO_PROXY` | Hosts that bypass the proxy; default empty. List every in-cluster host that MCP calls |
 | `ILM_MCP_ACCESS` / `ILM_MCP_TOOLSETS` | `read-only` / `all` |
 
 Supported algorithms are `RS256`, `RS384`, `RS512`, `ES256`, `ES384`, `ES512`, `PS256`, `PS384` and `PS512`.
@@ -105,8 +109,9 @@ URLs must be absolute HTTPS without user information or fragments. Only the ILM 
 may use HTTP, and only when in-cluster HTTP is allowed as described below. Chart values require query-free URLs.
 Configure the issuer/endpoints explicitly;
 request headers and token key URLs cannot select a different issuer or destination. All credential-bearing
-requests use bounded timeouts and no redirect following, and verify TLS for every HTTPS URL. Use the JVM
-trust store for private certificate authorities; shared mode has no TLS verification bypass.
+requests use bounded timeouts and no redirect following, and verify TLS for every HTTPS URL. Trust private
+certificate authorities with `TRUSTED_CERTIFICATES`, described under [Outbound connections](#outbound-connections);
+shared mode has no TLS verification bypass.
 
 When MCP runs beside ILM, it may call Core and the identity provider's JWKS and token endpoints over in-cluster HTTP,
 as Core does. Set `ILM_MCP_SECURITY_ALLOW_HTTP_BACKCHANNEL=true` to allow `http://` for `ILM_API_URL`,
@@ -126,6 +131,58 @@ each operation. Sensitive-output tools require `full` as well as the user's perm
 protected values. Authenticated errors and upstream parsing failures must not expose tokens, credentials or raw
 upstream bodies in client responses or logs. Keep request/body loggers disabled; never collect bearer headers in
 ingress access logs or traces.
+
+## Outbound connections
+
+Shared mode sends its requests to ILM, the signing-key endpoint and the exchange endpoint through one HTTP client. The
+variables described below configure that client, and the other authentication modes do not read them. They are named as
+ILM Core names them, so they carry no `ILM_` prefix. In `application.yml` they bind under `ilm.mcp.outbound` as
+`trusted-certificates`, `http-proxy`, `https-proxy` and `no-proxy`.
+
+`TRUSTED_CERTIFICATES` holds PEM certificates that the client trusts in addition to the JVM's default authorities, so a
+server behind a private certificate authority is reachable without a custom trust store. MCP reads every certificate
+block as ILM Core does and ignores anything else, such as keys, revocation lists and comments, and it skips a block it
+cannot read, with a warning. A value without a readable certificate adds nothing, with a warning, and a blank value
+changes nothing. The content of the value never stops startup. While a certificate is added, the client presents no
+client certificate, even when `javax.net.ssl.keyStore` is set.
+
+`HTTP_PROXY` serves `http` requests and `HTTPS_PROXY` serves `https` requests, with no fallback from one to the other.
+Both take `http://[user[:password]@]host:port`. As in ILM Core, anything after the port, such as a path, is ignored. A
+URL that does not parse, uses another scheme, or lacks a host or a port stops startup with
+`HTTP_PROXY and HTTPS_PROXY must be http://host:port URLs`. Percent-encode characters that a URL does not allow in
+credentials, such as `@` as `%40`. The credentials go to that proxy only, through Basic authentication, and the proxy's
+host name is resolved on each connection. While a proxy URL carries credentials, the JDK client throws on a 401 that
+offers a Basic challenge or none, even when the request bypasses the proxy. An identity provider that rejects the client
+secret usually answers that way, so the refusal is logged as "could not be reached or its answer could not be read" and
+fails the request with status 503.
+
+`NO_PROXY` is read as ILM Core reads it, as Java's `http.nonProxyHosts`. Entries are separated by `,` or `|`. Each entry
+matches a whole host name without regard to case, and a `*` at its start or end is a wildcard, as in `*.svc`. A leading
+dot is not special, so `.svc` matches nothing. Ports and CIDR ranges are not supported. The entries apply to `http` and
+`https` requests alike, and loopback hosts (`localhost`, `127.*`, `[::1]`, `0.0.0.0` and `[::0]`) never use the proxy.
+List every in-cluster host that MCP calls, such as Core and an in-cluster identity provider, for example
+`core,*.svc,*.cluster.local`. Otherwise the proxy receives those calls too. For the in-cluster `http://` endpoints
+(Core's API and an in-cluster identity provider), an incomplete `NO_PROXY` sends MCP's client secret and tokens to the
+proxy in clear text.
+
+## Diagnosing failures
+
+MCP logs one WARN when the key set cannot be retrieved or read, and when the token endpoint refuses a request, cannot be
+reached, or returns an answer or an exchanged token that MCP rejects. A line names what failed and, where there are
+any, the chain of exception classes, outermost first, and the HTTP status. It never holds a secret, a token or a
+response body. A failure that the sender of a token controls, such as a malformed, expired or wrongly signed token, is
+not logged. These lines are how to diagnose trust and proxy problems:
+
+```text
+The token endpoint answered HTTP 401 to the token exchange
+The key set could not be retrieved or read (JwtException < RemoteKeySourceException < ResourceAccessException < SSLHandshakeException < ValidatorException < SunCertPathBuilderException)
+The key set could not be retrieved or read (JwtException < RemoteKeySourceException < HttpClientErrorException, HTTP 407)
+```
+
+The second line is what a private certificate authority missing from `TRUSTED_CERTIFICATES` looks like, and the third is
+a proxy that refuses MCP. A proxy answers like any server, so when `NO_PROXY` omits an in-cluster host, the proxy's own
+errors appear as if the identity provider or ILM had answered. While the key-set endpoint fails, MCP logs one WARN for
+each retrieval attempt, and a token that names a key MCP does not hold triggers an attempt.
 
 ## Routing and discovery
 
