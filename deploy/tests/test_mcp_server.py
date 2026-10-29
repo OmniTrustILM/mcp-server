@@ -1,8 +1,14 @@
-"""Shared MCP deployment boundaries, rendered without cluster or registry access."""
+"""Shared MCP deployment boundaries, rendered without cluster access.
+
+Only the opt-in baseline test pulls the ilm-lib dependency from the registry.
+"""
+import base64
 import copy
 import json
+import os
 from pathlib import Path
 import shutil
+import subprocess
 import tempfile
 
 import yaml
@@ -36,7 +42,141 @@ def configured_values():
     }
 
 
+ILM_GLOBALS = {'hostName': 'ilm.example.invalid', 'keycloak': {'enabled': True}}
+EXTERNAL_PROVIDER = {
+    'issuer': 'https://identity.example.invalid/tenant',
+    'jwkSetUri': 'https://identity.example.invalid/oauth/jwks',
+    'tokenUri': 'https://identity.example.invalid/oauth/token',
+    'clientId': 'mcp-exchange',
+    'clientSecretRef': {'name': 'mcp-oauth'},
+    'exchangeMode': 'standard',
+}
+
+
+def umbrella_values(mode=None, **values):
+    """Values as the ILM chart passes them with MCP turned on; without a mode the chart's default applies."""
+    mcp = {'enabled': True, **({'identity': {'mode': mode}} if mode else {})}
+    return {'global': {**copy.deepcopy(ILM_GLOBALS), 'mcp': mcp}, 'networkPolicy': {'enabled': False}, **values}
+
+
+def external_values(**security):
+    return umbrella_values('external', security={**copy.deepcopy(EXTERNAL_PROVIDER), **security})
+
+
+# Each case patches configured values into values the chart refuses: a dict updates the map under its key, anything
+# else replaces the key.
+UNSAFE_INPUTS = (
+    ('volumes', {'ephemeral': {'sizeLimit': ''}}),
+    ('image', {'digest': 'unpublished'}),
+    ('apiUrl', 'http://ilm.example.invalid/api'),
+    ('apiUrl', None),
+    ('apiUrl', ''),
+    ('security', {'issuer': None}),
+    ('security', {'clientSecretRef': None}),
+    ('networkPolicy', {'ingress': None}),
+    ('security', {'issuer': ''}),
+    ('security', {'issuer': 'http://identity.example.invalid'}),
+    ('security', {'resource': ''}),
+    ('security', {'resource': 'https://ilm.example.invalid/mcp?token=x'}),
+    ('security', {'jwkSetUri': ''}),
+    ('security', {'tokenUri': ''}),
+    ('security', {'clientId': ''}),
+    ('security', {'clientSecretRef': {'name': '', 'key': 'client-secret'}}),
+    ('security', {'clientSecret': 'SYNTHETIC_INLINE_SECRET'}),
+    ('security', {'exchangeMode': 'fallback'}),
+    ('security', {'apiAudience': 'https://ilm.example.invalid/mcp'}),
+    ('security', {'jwsAlgorithms': ['HS256']}),
+    ('security', {'jwsAlgorithms': ['none']}),
+    ('security', {'allowedOrigins': ['https://example.invalid/path']}),
+    ('access', 'administrator'),
+    ('replicaCount', 0),
+    ('networkPolicy', {'ingress': []}),
+    ('networkPolicy', {'egress': []}),
+    ('security', {'allowHttpBackchannel': 'false'}),
+    ('security', {'allowHttpBackchannel': None}),
+    ('networkPolicy', {'enabled': 'false'}),
+    ('networkPolicy', {'enabled': None}),
+    ('trusted', None),
+    ('global', {'trusted': None}),
+)
+
+
+def patched(values, key, patch):
+    if isinstance(patch, dict) and key in values:
+        values[key].update(patch)
+    else:
+        values[key] = patch
+    return values
+
+
+def by_kind(objects, kind):
+    return next(o for o in objects if o['kind'] == kind)
+
+
+def mcp_container(objects):
+    return by_kind(objects, 'Deployment')['spec']['template']['spec']['containers'][0]
+
+
+def deployment_env(objects):
+    return {entry['name']: entry.get('value') for entry in mcp_container(objects)['env']}
+
+
+def trusted_certificates_entries(objects):
+    return [entry for entry in mcp_container(objects)['env'] if entry['name'] == 'TRUSTED_CERTIFICATES']
+
+
+def client_secret_ref(objects):
+    entry = next(e for e in mcp_container(objects)['env'] if e['name'] == 'ILM_MCP_SECURITY_CLIENT_SECRET')
+    return entry['valueFrom']['secretKeyRef']
+
+
+def pod_annotations(objects):
+    return by_kind(objects, 'Deployment')['spec']['template']['metadata'].get('annotations', {})
+
+
+def scoped(values, scope):
+    """The mapping that holds a setting in the given scope: the chart's own values or the shared globals."""
+    return values if scope == 'local' else values.setdefault('global', {})
+
+
+PROXY_ENV_NAMES = {'httpProxy': 'HTTP_PROXY', 'httpsProxy': 'HTTPS_PROXY', 'noProxy': 'NO_PROXY'}
+SYNTHETIC_CA = '-----BEGIN CERTIFICATE-----\nc3ludGhldGljLWNh\n-----END CERTIFICATE-----\n'
+OTHER_SYNTHETIC_CA = '-----BEGIN CERTIFICATE-----\nb3RoZXItc3ludGhldGlj\n-----END CERTIFICATE-----\n'
+
+
+def render_ref(ref, values):
+    """Renders the chart as committed at a git ref, using that ref's own locked dependencies."""
+    with tempfile.TemporaryDirectory(prefix='ilm-mcp-baseline-') as temp:
+        archive = subprocess.run(['git', 'archive', ref, 'deploy/charts/mcp-server'],
+                                 cwd=ROOT, check=True, stdout=subprocess.PIPE).stdout
+        subprocess.run(['tar', '-x', '-C', temp], check=True, input=archive)
+        chart = Path(temp) / 'deploy/charts/mcp-server'
+        subprocess.run([os.environ.get('HELM_BIN', 'helm'), 'dependency', 'build', str(chart)],
+                       check=True, stdout=subprocess.DEVNULL)
+        return render_path(chart, values)
+
+
 class SharedMcpChartTests(unittest.TestCase):
+    def assert_render_fails(self, values, expected):
+        with self.assertRaises(AssertionError) as raised:
+            render('mcp-server', values)
+        self.assertIn(expected, str(raised.exception))
+
+    def assert_env(self, values, expected):
+        """Renders values, expects the given environment entries, and returns the rendered objects."""
+        objects = render('mcp-server', values)
+        env = deployment_env(objects)
+        self.assertEqual({name: env.get(name) for name in expected}, expected)
+        return objects
+
+    def assert_unsafe_inputs_fail(self, values):
+        """Patches each of UNSAFE_INPUTS into a fresh values() and expects the render to fail."""
+        for key, patch in UNSAFE_INPUTS:
+            with self.subTest(key=key, patch=patch):
+                unsafe = patched(values(), key, patch)
+                with self.assertRaises(AssertionError):
+                    render('mcp-server', unsafe)
+
     def test_missing_required_configuration_fails_without_an_activation_switch(self):
         with self.assertRaises(AssertionError):
             render('mcp-server', {})
@@ -292,6 +432,7 @@ class SharedMcpChartTests(unittest.TestCase):
                            'ILM_API_URL', 'ILM_MCP_ACCESS', 'ILM_MCP_TOOLSETS',
                            'ILM_MCP_SECURITY_ISSUER', 'ILM_MCP_SECURITY_RESOURCE',
                            'ILM_MCP_SECURITY_JWK_SET_URI', 'ILM_MCP_SECURITY_TOKEN_URI',
+                           'ILM_MCP_SECURITY_ALLOW_HTTP_BACKCHANNEL',
                            'ILM_MCP_SECURITY_CLIENT_ID', 'ILM_MCP_SECURITY_CLIENT_SECRET',
                            'ILM_MCP_SECURITY_API_AUDIENCE', 'ILM_MCP_SECURITY_EXCHANGE_MODE',
                            'ILM_MCP_SECURITY_EXCHANGE_SCOPE', 'ILM_MCP_SECURITY_REQUIRED_SCOPE',
@@ -312,41 +453,485 @@ class SharedMcpChartTests(unittest.TestCase):
                 with self.assertRaises(AssertionError):
                     render('mcp-server', values)
 
+    def test_proxy_and_trust_names_are_reserved_only_while_the_chart_sets_them(self):
+        proxy = 'http://proxy.example.invalid:3128'
+        for name, setting in (('HTTP_PROXY', {'httpProxy': proxy}),
+                              ('HTTPS_PROXY', {'httpsProxy': proxy}),
+                              ('NO_PROXY', {'noProxy': 'core'}),
+                              ('TRUSTED_CERTIFICATES', {'trusted': {'certificates': SYNTHETIC_CA}})):
+            with self.subTest(name=name):
+                entry = {'name': name, 'valueFrom': {'secretKeyRef': {'name': 'outbound', 'key': name.lower()}}}
+                values = {**configured_values(), 'additionalEnv': {'variables': [entry]}}
+                self.assertIn(entry, mcp_container(render('mcp-server', values))['env'])
+                self.assert_render_fails({**values, **setting},
+                                         f'additionalEnv.variables cannot duplicate environment variable {name}')
+        # In umbrella mode a proxy alone makes the chart render NO_PROXY with MCP's own hosts.
+        values = umbrella_values(additionalEnv={'variables': [{'name': 'NO_PROXY', 'value': 'localhost'}]})
+        values['global']['httpProxy'] = proxy
+        self.assert_render_fails(values, 'additionalEnv.variables cannot duplicate environment variable NO_PROXY')
+
     def test_incomplete_or_unsafe_inputs_fail_rendering(self):
-        cases = (
-            ('volumes', {'ephemeral': {'sizeLimit': ''}}),
-            ('image', {'digest': 'unpublished'}),
-            ('apiUrl', 'http://ilm.example.invalid/api'),
-            ('apiUrl', None),
-            ('security', {'issuer': None}),
-            ('security', {'clientSecretRef': None}),
-            ('networkPolicy', {'ingress': None}),
-            ('security', {'issuer': 'http://identity.example.invalid'}),
-            ('security', {'resource': 'https://ilm.example.invalid/mcp?token=x'}),
-            ('security', {'jwkSetUri': ''}),
-            ('security', {'tokenUri': ''}),
-            ('security', {'clientId': ''}),
-            ('security', {'clientSecretRef': {'name': '', 'key': 'client-secret'}}),
-            ('security', {'clientSecret': 'SYNTHETIC_INLINE_SECRET'}),
-            ('security', {'exchangeMode': 'fallback'}),
-            ('security', {'apiAudience': 'https://ilm.example.invalid/mcp'}),
-            ('security', {'jwsAlgorithms': ['HS256']}),
-            ('security', {'jwsAlgorithms': ['none']}),
-            ('security', {'allowedOrigins': ['https://example.invalid/path']}),
-            ('access', 'administrator'),
-            ('replicaCount', 0),
-            ('networkPolicy', {'ingress': []}),
-            ('networkPolicy', {'egress': []}),
+        self.assert_unsafe_inputs_fail(configured_values)
+
+    def test_http_backchannel_requires_the_switch(self):
+        switch = 'ILM_MCP_SECURITY_ALLOW_HTTP_BACKCHANNEL'
+        default_env = deployment_env(render('mcp-server', configured_values()))
+        self.assertEqual(default_env[switch], 'false')
+        for key, name, url in (
+                ('apiUrl', 'ILM_API_URL', 'http://ilm.example.invalid/api'),
+                ('jwkSetUri', 'ILM_MCP_SECURITY_JWK_SET_URI', 'http://identity.example.invalid/oauth/jwks'),
+                ('tokenUri', 'ILM_MCP_SECURITY_TOKEN_URI', 'http://identity.example.invalid/oauth/token')):
+            with self.subTest(key=key):
+                values = configured_values()
+                owner = values if key == 'apiUrl' else values['security']
+                owner[key] = url
+                self.assert_render_fails(
+                    values, 'security.allowHttpBackchannel must be true for http backchannel URLs')
+                values['security']['allowHttpBackchannel'] = True
+                env = deployment_env(render('mcp-server', values))
+                self.assertEqual(env, {**default_env, name: url, switch: 'true'})
+
+    def test_public_endpoints_stay_https_with_the_switch(self):
+        for key in ('issuer', 'resource'):
+            with self.subTest(key=key):
+                values = configured_values()
+                values['security']['allowHttpBackchannel'] = True
+                render('mcp-server', values)
+                values['security'][key] = values['security'][key].replace('https://', 'http://')
+                self.assert_render_fails(values, key)
+
+    def test_service_name_can_be_fixed(self):
+        values = configured_values()
+        objects = render('mcp-server', values)
+        full_name = by_kind(objects, 'Deployment')['metadata']['name']
+        self.assertEqual(by_kind(objects, 'Service')['metadata']['name'], full_name)
+        values['service'] = {'name': 'mcp-server-service'}
+        objects = render('mcp-server', values)
+        deployment, service = by_kind(objects, 'Deployment'), by_kind(objects, 'Service')
+        self.assertEqual(service['metadata']['name'], 'mcp-server-service')
+        self.assertEqual(service['spec']['selector'], deployment['spec']['selector']['matchLabels'])
+        self.assertEqual(deployment['metadata']['name'], full_name)
+        # Valid names that YAML would read as a boolean or null stay strings.
+        for name in ('true', 'null', 'yes'):
+            with self.subTest(name=name):
+                values['service'] = {'name': name}
+                self.assertEqual(by_kind(render('mcp-server', values), 'Service')['metadata']['name'], name)
+
+    def test_network_policy_can_be_disabled(self):
+        values = configured_values()
+        values['networkPolicy']['enabled'] = False
+        remaining = {'Deployment', 'Service', 'ServiceAccount'}
+        self.assertEqual({o['kind'] for o in render('mcp-server', values)}, remaining)
+        values['networkPolicy'].update(ingress=[], egress=[])
+        self.assertEqual({o['kind'] for o in render('mcp-server', values)}, remaining)
+        values['networkPolicy']['enabled'] = True
+        self.assert_render_fails(values, 'networkPolicy')
+
+    def test_proxy_comes_from_the_globals(self):
+        shared = {'httpProxy': 'http://proxy.example.invalid:3128',
+                  'httpsProxy': 'http://proxy.example.invalid:3129', 'noProxy': 'core,*.svc'}
+        local = {'httpProxy': 'http://local.example.invalid:3128',
+                 'httpsProxy': 'http://local.example.invalid:3129', 'noProxy': 'local-core'}
+
+        def env_names(settings):
+            return {PROXY_ENV_NAMES[key]: value for key, value in settings.items()}
+
+        for case, global_values, local_values, expected in (
+                ('globals', shared, {}, shared),
+                ('local values apply when the globals are empty', dict.fromkeys(PROXY_ENV_NAMES, ''), local, local),
+                ('a global wins over a local value', shared, local, shared),
+                ('each name is chosen on its own', {'noProxy': 'core'}, local, {**local, 'noProxy': 'core'})):
+            with self.subTest(case):
+                values = {**configured_values(), **local_values, 'global': global_values}
+                env = deployment_env(render('mcp-server', values))
+                self.assertEqual({name: env.get(name) for name in PROXY_ENV_NAMES.values()}, env_names(expected))
+
+    def test_proxy_unset_renders_nothing(self):
+        names = set(PROXY_ENV_NAMES.values())
+        for settings in ({}, dict.fromkeys(PROXY_ENV_NAMES, '')):
+            with self.subTest(settings=settings):
+                values = {**configured_values(), **settings, 'global': settings}
+                self.assertEqual(names & set(deployment_env(render('mcp-server', values))), set())
+        samples = {'httpProxy': 'http://proxy.example.invalid:3128',
+                   'httpsProxy': 'http://proxy.example.invalid:3129', 'noProxy': 'core'}
+        for key, value in samples.items():
+            with self.subTest(only=key):
+                values = {**configured_values(), key: value}
+                self.assertEqual(names & set(deployment_env(render('mcp-server', values))), {PROXY_ENV_NAMES[key]})
+
+    def test_proxy_url_must_suit_mcp(self):
+        for key in ('httpProxy', 'httpsProxy'):
+            for scope in ('global', 'local'):
+                for url in ('https://proxy.example.invalid:3129', 'http://proxy.example.invalid'):
+                    with self.subTest(key=key, scope=scope, url=url):
+                        values = configured_values()
+                        scoped(values, scope)[key] = url
+                        self.assert_render_fails(
+                            values, f'{key} must be an http://host:port URL for the MCP server')
+                for url in ('http://user:pass@proxy.example.invalid:3128', 'http://proxy.example.invalid:3128/'):
+                    with self.subTest(key=key, scope=scope, url=url):
+                        values = configured_values()
+                        scoped(values, scope)[key] = url
+                        self.assertEqual(deployment_env(render('mcp-server', values))[PROXY_ENV_NAMES[key]], url)
+
+    # What OutboundProxy takes and refuses at startup: the URLs of the server's OutboundProxyTest and the edges of the
+    # java.net.URI grammar behind it, namely hosts, IPv6 addresses, ports and the characters of each URL part.
+    def test_proxy_url_check_accepts_and_refuses_the_listed_urls(self):
+        accepted = (
+            'http://proxy.example.invalid:3128',
+            'http://user:p%40ss@secure.example.invalid:3129',
+            'http://only-user@proxy.example.invalid:3128',
+            'http://@proxy.example.invalid:3128',
+            'http://127.0.0.1:3128',
+            'http://1.2.3.4:65535',
+            'http://proxy.example.invalid.:03128',
+            'http://[2001:db8::1]:3128',
+            'http://[::1]:3128',
+            'http://[::ffff:1.2.3.4]:3128',
+            'http://[fe80::1%eth0]:3128',
+            ' HTTP://proxy.example.invalid:3128/\n',
+            'http://proxy.example.invalid:3128/path?x=1#y',
+            'http://proxy.example.invalid:3128?x=1',
         )
-        for key, patch in cases:
-            with self.subTest(key=key, patch=patch):
-                values = copy.deepcopy(configured_values())
-                if isinstance(patch, dict) and key in values:
-                    values[key].update(patch)
-                else:
-                    values[key] = patch
-                with self.assertRaises(AssertionError):
+        refused = (
+            'https://proxy.example.invalid:443',
+            'proxy-without-scheme',
+            'proxy.example.invalid:3128',
+            'http://proxy.example.invalid',
+            'http://proxy.example.invalid:0',
+            'http://proxy.example.invalid:65536',
+            'http://proxy.example.invalid:99999',
+            'http://proxy.example.invalid:3128x',
+            'http://',
+            'http://:3128',
+            'http://under_score:3128',
+            'http://-proxy.example.invalid:3128',
+            'http://proxy.example.invalid.1:3128',
+            'http://1.2.3.256:3128',
+            'http://proxy.example.invalid:port',
+            'http://[::1]',
+            'http://[:::1]:3128',
+            'http://[1:2:3]:3128',
+            'http://[::1%a-b]:3128',
+            'http://proxy.example.invalid:3128/a b',
+            'http://user:must-not-leak@proxy.example.invalid',
+            'https://user:must-not-leak@proxy.example.invalid:443',
+            'http://user:p%ss-must-not-leak@proxy.example.invalid:3128',
+            'http://user:p%4@proxy.example.invalid:3128',
+            'http://user:p ss-must-not-leak@proxy.example.invalid:3128',
+            'http://user:p@ss-must-not-leak@proxy.example.invalid:3128',
+        )
+        for url in accepted:
+            with self.subTest(accepted=url):
+                values = {**configured_values(), 'httpProxy': url}
+                self.assertEqual(deployment_env(render('mcp-server', values))['HTTP_PROXY'], url)
+        for url in refused:
+            with self.subTest(refused=url):
+                values = {**configured_values(), 'global': {'httpsProxy': url}}
+                with self.assertRaises(AssertionError) as raised:
                     render('mcp-server', values)
+                self.assertIn('httpsProxy must be an http://host:port URL for the MCP server', str(raised.exception))
+                self.assertNotIn('must-not-leak', str(raised.exception))
+
+    def test_proxy_env_appends_extra_hosts_to_no_proxy_while_a_proxy_is_set(self):
+        with tempfile.TemporaryDirectory(prefix='ilm-mcp-proxy-env-') as temp:
+            chart = Path(temp) / 'mcp-server'
+            shutil.copytree(ROOT / 'deploy/charts/mcp-server', chart)
+            (chart / 'templates/proxy-env-probe.yaml').write_text(
+                'apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: probe\ndata:\n'
+                '  env: {{ include "mcp-server.proxyEnv" (dict "context" . "noProxyHosts" .Values.probeHosts) | quote }}\n')
+
+            def no_proxy(hosts, **settings):
+                values = {**configured_values(), 'probeHosts': hosts, **settings}
+                probe = by_kind(render_path(chart, values), 'ConfigMap')
+                env = yaml.safe_load(probe['data']['env']) or []
+                return {entry['name']: entry['value'] for entry in env}.get('NO_PROXY')
+
+            proxy = {'httpProxy': 'http://proxy.example.invalid:3128'}
+            self.assertEqual(no_proxy(['core', 'kc.idp.svc'], noProxy='localhost', **proxy),
+                             'localhost,core,kc.idp.svc')
+            self.assertEqual(no_proxy(['core', 'kc.idp.svc'], **proxy), 'core,kc.idp.svc')
+            self.assertEqual(no_proxy(['core'], httpsProxy='http://proxy.example.invalid:3129'), 'core')
+            # Listed hosts are not repeated, whatever their case, separator or position in the extra hosts.
+            self.assertEqual(no_proxy(['Core', 'new', 'NEW'], noProxy='core | other', **proxy), 'core | other,new')
+            self.assertEqual(no_proxy(['core'], noProxy='core', **proxy), 'core')
+            self.assertEqual(no_proxy([], noProxy='localhost', **proxy), 'localhost')
+            # Without a proxy the extra hosts add nothing, and NO_PROXY is only what was set.
+            self.assertIsNone(no_proxy(['core']))
+            self.assertEqual(no_proxy(['core'], noProxy='localhost'), 'localhost')
+
+    def test_trusted_certificates_follow_the_shared_secrets(self):
+        def reference(name):
+            return [{'name': 'TRUSTED_CERTIFICATES',
+                     'valueFrom': {'secretKeyRef': {'name': name, 'key': 'ca.crt'}}}]
+
+        values = configured_values()
+        values['global'] = {'trusted': {'certificates': SYNTHETIC_CA}}
+        objects = render('mcp-server', values)
+        self.assertEqual(trusted_certificates_entries(objects), reference('trusted-certificates'))
+        # The umbrella renders the shared Secret.
+        self.assertNotIn('Secret', [o['kind'] for o in objects])
+
+        values = configured_values()
+        values['trusted'] = {'certificates': SYNTHETIC_CA}
+        objects = render('mcp-server', values)
+        self.assertEqual(trusted_certificates_entries(objects), reference('trusted-certificates-mcp-server'))
+        secret = by_kind(objects, 'Secret')
+        self.assertEqual(secret['metadata']['name'], 'trusted-certificates-mcp-server')
+        self.assertEqual(secret['data'], {'ca.crt': base64.b64encode(SYNTHETIC_CA.encode()).decode()})
+
+        values['global'] = {'trusted': {'certificates': OTHER_SYNTHETIC_CA}}
+        self.assertEqual(trusted_certificates_entries(render('mcp-server', values)), reference('trusted-certificates'))
+
+        for values in (configured_values(),
+                       {**configured_values(), 'trusted': {'certificates': ''},
+                        'global': {'trusted': {'certificates': ''}}}):
+            objects = render('mcp-server', values)
+            self.assertEqual(trusted_certificates_entries(objects), [])
+            self.assertNotIn('Secret', [o['kind'] for o in objects])
+
+    def test_trust_change_rolls_the_pod(self):
+        checksums = {'checksum/trusted-certificates-local', 'checksum/trusted-certificates-global'}
+
+        def annotations(scope=None, certificates=SYNTHETIC_CA, **extra):
+            values = {**configured_values(), **extra}
+            if scope:
+                scoped(values, scope)['trusted'] = {'certificates': certificates}
+            return pod_annotations(render('mcp-server', values))
+
+        self.assertEqual(checksums & set(annotations()), set())
+        for scope in ('local', 'global'):
+            key = f'checksum/trusted-certificates-{scope}'
+            with self.subTest(scope=scope):
+                current = annotations(scope)
+                self.assertEqual(checksums & set(current), {key})
+                self.assertEqual(annotations(scope)[key], current[key])
+                self.assertNotEqual(annotations(scope, OTHER_SYNTHETIC_CA)[key], current[key])
+        values = {**configured_values(), 'trusted': {'certificates': SYNTHETIC_CA},
+                  'global': {'trusted': {'certificates': SYNTHETIC_CA}},
+                  'podAnnotations': {'example.invalid/review': 'kept'}}
+        merged = pod_annotations(render('mcp-server', values))
+        self.assertEqual(checksums & set(merged), checksums)
+        self.assertEqual(merged['example.invalid/review'], 'kept')
+
+    # Null deletes a default map when Helm coalesces the values, so the schema has to require both maps.
+    def test_null_trust_values_fail_the_schema(self):
+        for patch in ({'trusted': None}, {'global': {'trusted': None}}):
+            with self.subTest(patch=patch):
+                nulled = {**configured_values(), **patch}
+                with self.assertRaises(AssertionError) as raised:
+                    render('mcp-server', nulled)
+                self.assertIn("values don't meet the specifications of the schema", str(raised.exception))
+                self.assertIn('trusted', str(raised.exception))
+
+    def test_null_umbrella_values_fail_the_schema(self):
+        for path in ('keycloak', 'keycloak.enabled', 'mcp', 'mcp.enabled', 'mcp.identity', 'mcp.clientSecretRef'):
+            with self.subTest(path=path):
+                values = umbrella_values('managed')
+                *parents, leaf = path.split('.')
+                target = values['global']
+                for key in parents:
+                    target = target[key]
+                target[leaf] = None
+                with self.assertRaises(AssertionError) as raised:
+                    render('mcp-server', values)
+                self.assertIn("values don't meet the specifications of the schema", str(raised.exception))
+                self.assertIn(leaf, str(raised.exception))
+
+    def test_pod_annotations_that_render_to_invalid_yaml_fail_the_render(self):
+        values = {**configured_values(), 'x': "it's",
+                  'podAnnotations': {'foo': '{{ .Values.x }}', 'keep': 'yes'}}
+        self.assert_render_fails(values, 'YAML parse error')
+
+    def test_pod_annotations_render_as_given(self):
+        # No annotation name is special, and without any annotation the pod has no annotations key.
+        values = {**configured_values(), 'podAnnotations': {'Error': 'example', 'example.invalid/review': 'kept'}}
+        self.assertEqual(pod_annotations(render('mcp-server', values)),
+                         {'Error': 'example', 'example.invalid/review': 'kept'})
+        pod = by_kind(render('mcp-server', configured_values()), 'Deployment')['spec']['template']
+        self.assertNotIn('annotations', pod['metadata'])
+
+    def test_umbrella_managed_mode_derives_everything(self):
+        keycloak = 'http://keycloak-internal-service:8080/kc/realms/ILM/protocol/openid-connect'
+        objects = self.assert_env(umbrella_values(), {
+            'ILM_API_URL': 'http://core-service:8080/api',
+            'ILM_MCP_SECURITY_RESOURCE': 'https://ilm.example.invalid/mcp',
+            'ILM_MCP_SECURITY_ISSUER': 'https://ilm.example.invalid/kc/realms/ILM',
+            'ILM_MCP_SECURITY_JWK_SET_URI': f'{keycloak}/certs',
+            'ILM_MCP_SECURITY_TOKEN_URI': f'{keycloak}/token',
+            'ILM_MCP_SECURITY_CLIENT_ID': 'ilm-mcp',
+            'ILM_MCP_SECURITY_EXCHANGE_MODE': 'delegation',
+            'ILM_MCP_SECURITY_EXCHANGE_SCOPE': 'openid ilm-mcp-upstream',
+            'ILM_MCP_SECURITY_AUTHORIZATION_SCOPES': 'openid,delegation:client:ilm-mcp',
+            'ILM_MCP_SECURITY_ALLOW_HTTP_BACKCHANNEL': 'true',
+        })
+        self.assertEqual(client_secret_ref(objects), {'name': 'mcp-server-secret', 'key': 'client-secret'})
+
+    def test_umbrella_mode_uses_the_global_secret_reference(self):
+        values = umbrella_values()
+        values['global']['mcp']['clientSecretRef'] = {'name': 'mcp-oauth', 'key': 'secret'}
+        self.assertEqual(client_secret_ref(render('mcp-server', values)), {'name': 'mcp-oauth', 'key': 'secret'})
+
+    def test_umbrella_mode_host_falls_back_to_hostName(self):
+        values = umbrella_values(hostName='ilm.example.invalid')
+        values['global']['hostName'] = ''
+        self.assert_env(values, {'ILM_MCP_SECURITY_RESOURCE': 'https://ilm.example.invalid/mcp',
+                                 'ILM_MCP_SECURITY_ISSUER': 'https://ilm.example.invalid/kc/realms/ILM'})
+        values['global']['hostName'] = 'global.example.invalid'
+        self.assert_env(values, {'ILM_MCP_SECURITY_RESOURCE': 'https://global.example.invalid/mcp'})
+
+    def test_umbrella_mode_requires_the_host_name(self):
+        for mode, values in (('managed', umbrella_values()), ('external', external_values())):
+            with self.subTest(mode=mode):
+                values['global']['hostName'] = ''
+                self.assert_render_fails(values, 'global.hostName is required when global.mcp.enabled is true')
+
+    def test_managed_mode_needs_the_bundled_keycloak(self):
+        values = umbrella_values('managed')
+        values['global']['keycloak']['enabled'] = False
+        self.assert_render_fails(
+            values, 'global.mcp.identity.mode managed needs global.keycloak.enabled; use external for another provider')
+
+    def test_managed_mode_owns_the_identity_settings(self):
+        # Even the values the chart derives fail, because the ILM chart's realm import cannot see them.
+        for key, value in (('resource', 'https://ilm.example.invalid/mcp'),
+                           ('issuer', 'https://ilm.example.invalid/kc/realms/ILM'),
+                           ('clientId', 'ilm-mcp'),
+                           ('clientSecretRef.name', 'mcp-server-secret'),
+                           ('exchangeMode', 'delegation'),
+                           ('exchangeScope', 'openid ilm-mcp-upstream'),
+                           ('authorizationScopes', ['openid', 'delegation:client:ilm-mcp'])):
+            with self.subTest(key=key):
+                setting = {'clientSecretRef': {'name': value}} if key == 'clientSecretRef.name' else {key: value}
+                self.assert_render_fails(umbrella_values(security=setting),
+                                         f'security.{key} cannot be set with global.mcp.identity.mode managed')
+
+    def test_managed_mode_in_cluster_urls_can_be_set(self):
+        keycloak = 'http://keycloak-internal-service:8081/kc/realms/ILM/protocol/openid-connect'
+        values = umbrella_values(apiUrl='http://core-service:8081/api',
+                                 security={'jwkSetUri': f'{keycloak}/certs', 'tokenUri': f'{keycloak}/token'})
+        self.assert_env(values, {'ILM_API_URL': 'http://core-service:8081/api',
+                                 'ILM_MCP_SECURITY_JWK_SET_URI': f'{keycloak}/certs',
+                                 'ILM_MCP_SECURITY_TOKEN_URI': f'{keycloak}/token'})
+
+    def test_managed_client_secret_rolls_the_pod(self):
+        def checksum(**mcp):
+            values = umbrella_values()
+            values['global']['mcp'].update(mcp)
+            return pod_annotations(render('mcp-server', values)).get('checksum/client-secret')
+
+        current = checksum(clientSecret='SYNTHETIC_CLIENT_SECRET')
+        self.assertTrue(current)
+        self.assertEqual(checksum(clientSecret='SYNTHETIC_CLIENT_SECRET'), current)
+        self.assertNotEqual(checksum(clientSecret='OTHER_SYNTHETIC_CLIENT_SECRET'), current)
+        self.assertIsNone(checksum(clientSecretRef={'name': 'mcp-oauth', 'key': 'secret'}))
+        self.assertIsNone(checksum())
+
+    def test_external_mode_requires_the_provider_settings(self):
+        objects = self.assert_env(external_values(), {
+            'ILM_API_URL': 'http://core-service:8080/api',
+            'ILM_MCP_SECURITY_RESOURCE': 'https://ilm.example.invalid/mcp',
+            'ILM_MCP_SECURITY_ISSUER': 'https://identity.example.invalid/tenant',
+            'ILM_MCP_SECURITY_JWK_SET_URI': 'https://identity.example.invalid/oauth/jwks',
+            'ILM_MCP_SECURITY_TOKEN_URI': 'https://identity.example.invalid/oauth/token',
+            'ILM_MCP_SECURITY_CLIENT_ID': 'mcp-exchange',
+            'ILM_MCP_SECURITY_EXCHANGE_MODE': 'standard',
+            'ILM_MCP_SECURITY_EXCHANGE_SCOPE': '',
+            'ILM_MCP_SECURITY_AUTHORIZATION_SCOPES': '',
+            'ILM_MCP_SECURITY_ALLOW_HTTP_BACKCHANNEL': 'true',
+        })
+        self.assertEqual(client_secret_ref(objects), {'name': 'mcp-oauth', 'key': 'client-secret'})
+        for key in EXTERNAL_PROVIDER:
+            name = 'clientSecretRef.name' if key == 'clientSecretRef' else key
+            with self.subTest(missing=name):
+                values = external_values()
+                del values['security'][key]
+                self.assert_render_fails(values, f'security.{name} is required with global.mcp.identity.mode external')
+        values = external_values(resource='https://mcp.example.invalid/mcp', exchangeScope='ilm',
+                                 authorizationScopes=['openid'])
+        values['apiUrl'] = 'https://ilm.example.invalid/api'
+        self.assert_env(values, {'ILM_API_URL': 'https://ilm.example.invalid/api',
+                                 'ILM_MCP_SECURITY_RESOURCE': 'https://mcp.example.invalid/mcp',
+                                 'ILM_MCP_SECURITY_EXCHANGE_SCOPE': 'ilm',
+                                 'ILM_MCP_SECURITY_AUTHORIZATION_SCOPES': 'openid'})
+
+    def test_external_mode_url_rules(self):
+        for key, name in (('jwkSetUri', 'ILM_MCP_SECURITY_JWK_SET_URI'), ('tokenUri', 'ILM_MCP_SECURITY_TOKEN_URI')):
+            with self.subTest(key=key):
+                self.assert_render_fails(external_values(**{key: 'http://idp.example.invalid/realms/x/endpoint'}),
+                                         f'security.{key} must be https, or http to a <service>.<namespace>.svc host')
+                for url in ('http://kc.idp.svc:8080/realms/x/endpoint',
+                            'http://kc.idp.svc.cluster.local/realms/x/endpoint',
+                            'https://identity.example.invalid/oauth/endpoint?tenant=x',
+                            'http://kc.idp.svc:8080/realms/x/endpoint?tenant=x'):
+                    self.assert_env(external_values(**{key: url}), {name: url})
+                for url in ('https://identity.example.invalid/oauth/endpoint#x',
+                            'http://kc.idp.svc:8080/realms/x/endpoint#x'):
+                    self.assert_render_fails(external_values(**{key: url}), key)
+        for issuer in ('https://user@identity.example.invalid/tenant',
+                       'https://identity.example.invalid/tenant?realm=x',
+                       'https://identity.example.invalid/tenant#x'):
+            with self.subTest(issuer=issuer):
+                self.assert_render_fails(external_values(issuer=issuer), 'issuer')
+
+    def test_external_mode_refuses_the_bundled_keycloak(self):
+        for issuer in ('https://ilm.example.invalid/kc/realms/x',
+                       'https://ILM.example.invalid/kc/realms/x',
+                       'https://ilm.example.invalid:443/kc/realms/x'):
+            with self.subTest(issuer=issuer):
+                values = external_values(issuer=issuer)
+                self.assert_render_fails(values, 'use global.mcp.identity.mode managed for the bundled Keycloak')
+                # Without the bundled Keycloak, an issuer on the ILM host belongs to another provider.
+                values['global']['keycloak']['enabled'] = False
+                self.assert_env(values, {'ILM_MCP_SECURITY_ISSUER': issuer})
+
+    def test_umbrella_no_proxy_lists_mcp_hosts(self):
+        def no_proxy(values, **proxy):
+            values['global'].update(proxy)
+            return deployment_env(render('mcp-server', values)).get('NO_PROXY')
+
+        proxy = {'httpProxy': 'http://proxy.example.invalid:3128', 'noProxy': 'localhost'}
+        in_cluster_keys = 'http://kc.idp.svc:8080/realms/x/protocol/openid-connect/certs'
+        self.assertEqual(no_proxy(umbrella_values(), **proxy), 'localhost,core-service,keycloak-internal-service')
+        self.assertEqual(no_proxy(external_values(jwkSetUri=in_cluster_keys), **proxy),
+                         'localhost,core-service,kc.idp.svc')
+        self.assertEqual(no_proxy(external_values(), **proxy), 'localhost,core-service')
+        # MCP matches NO_PROXY against Java's URI host, which keeps an IPv6 literal's brackets.
+        self.assertEqual(no_proxy(umbrella_values(apiUrl='http://[fd00::20]:8080/api'), **proxy),
+                         'localhost,[fd00::20],keycloak-internal-service')
+        self.assertIsNone(no_proxy(umbrella_values()))
+        self.assertEqual(no_proxy(umbrella_values(), **{**proxy, 'noProxy': 'keycloak-internal-service,core-service'}),
+                         'keycloak-internal-service,core-service')
+
+    def test_standalone_exchange_mode_defaults_to_standard(self):
+        values = configured_values()
+        del values['security']['exchangeMode']
+        self.assert_env(values, {'ILM_MCP_SECURITY_EXCHANGE_MODE': 'standard'})
+
+    def test_standalone_mode_ignores_ilm_globals(self):
+        def with_ilm_globals():
+            return {**configured_values(), 'global': copy.deepcopy(ILM_GLOBALS)}
+
+        values = with_ilm_globals()
+        del values['security']['issuer']
+        self.assert_render_fails(values, 'security.issuer is required')
+        self.assert_unsafe_inputs_fail(with_ilm_globals)
+
+    @unittest.skipUnless(os.environ.get('MCP_CHART_BASELINE'),
+                         'set MCP_CHART_BASELINE to the git ref to compare the standalone render with')
+    def test_standalone_render_matches_baseline(self):
+        self.maxDiff = None
+        default_exchange_mode = configured_values()
+        del default_exchange_mode['security']['exchangeMode']
+        for case, values in (('configured', configured_values()), ('default exchangeMode', default_exchange_mode)):
+            with self.subTest(case):
+                baseline = render_ref(os.environ['MCP_CHART_BASELINE'], values)
+                current = render('mcp-server', values)
+                for obj in baseline + current:
+                    obj['metadata']['labels'].pop('helm.sh/chart')
+                mcp_container(current)['env'].remove(
+                    {'name': 'ILM_MCP_SECURITY_ALLOW_HTTP_BACKCHANNEL', 'value': 'false'})
+                self.assertEqual(current, baseline)
 
 
 if __name__ == '__main__':

@@ -26,6 +26,75 @@
             }
           }
         },
+        "trusted": {
+          "$ref": "#/definitions/trusted"
+        },
+        "httpProxy": {
+          "type": "string"
+        },
+        "httpsProxy": {
+          "type": "string"
+        },
+        "noProxy": {
+          "type": "string"
+        },
+        "hostName": {
+          "type": "string"
+        },
+        "keycloak": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "enabled"
+          ]
+        },
+        "mcp": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "identity": {
+              "type": "object",
+              "properties": {
+                "mode": {
+                  "enum": [
+                    "managed",
+                    "external"
+                  ]
+                }
+              },
+              "required": [
+                "mode"
+              ]
+            },
+            "clientSecret": {
+              "type": "string"
+            },
+            "clientSecretRef": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "key": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9._-]+$"
+                }
+              }
+            }
+          },
+          "required": [
+            "enabled",
+            "identity",
+            "clientSecretRef"
+          ]
+        },
         "additionalEnv": {
           "$ref": "#/definitions/additionalEnv"
         },
@@ -47,7 +116,12 @@
             "type": "object"
           }
         }
-      }
+      },
+      "required": [
+        "trusted",
+        "keycloak",
+        "mcp"
+      ]
     },
     "image": {
       "type": "object",
@@ -125,6 +199,9 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
+        "name": {
+          "type": "string"
+        },
         "port": {
           "type": "integer",
           "minimum": 1,
@@ -134,7 +211,7 @@
     },
     "apiUrl": {
       "type": "string",
-      "pattern": "^https://[^/?#@\\s]+(/[^?#\\s]*)?$"
+      "pattern": "^(https?://[^/?#@\\s]+(/[^?#\\s]*)?)?$"
     },
     "access": {
       "enum": [
@@ -153,23 +230,25 @@
       "properties": {
         "issuer": {
           "type": "string",
-          "pattern": "^https://[^/?#@\\s]+(/[^?#\\s]*)?$"
+          "pattern": "^(https://[^/?#@\\s]+(/[^?#\\s]*)?)?$"
         },
         "resource": {
           "type": "string",
-          "pattern": "^https://[^/?#@\\s]+(/[^?#\\s]*)?$"
+          "pattern": "^(https://[^/?#@\\s]+(/[^?#\\s]*)?)?$"
         },
         "jwkSetUri": {
           "type": "string",
-          "pattern": "^https://[^/?#@\\s]+(/[^?#\\s]*)?$"
+          "pattern": "^(https?://[^/?#@\\s]+(/[^#\\s]*)?)?$"
         },
         "tokenUri": {
           "type": "string",
-          "pattern": "^https://[^/?#@\\s]+(/[^?#\\s]*)?$"
+          "pattern": "^(https?://[^/?#@\\s]+(/[^#\\s]*)?)?$"
+        },
+        "allowHttpBackchannel": {
+          "type": "boolean"
         },
         "clientId": {
-          "type": "string",
-          "minLength": 1
+          "type": "string"
         },
         "apiAudience": {
           "type": "string",
@@ -184,6 +263,7 @@
         },
         "exchangeMode": {
           "enum": [
+            "",
             "standard",
             "delegation"
           ]
@@ -222,8 +302,7 @@
           ],
           "properties": {
             "name": {
-              "type": "string",
-              "minLength": 1
+              "type": "string"
             },
             "key": {
               "type": "string",
@@ -245,6 +324,7 @@
         "resource",
         "jwkSetUri",
         "tokenUri",
+        "allowHttpBackchannel",
         "clientId",
         "clientSecretRef",
         "apiAudience",
@@ -253,29 +333,63 @@
         "jwsAlgorithms"
       ]
     },
+    "trusted": {
+      "$ref": "#/definitions/trusted"
+    },
+    "httpProxy": {
+      "type": "string"
+    },
+    "httpsProxy": {
+      "type": "string"
+    },
+    "noProxy": {
+      "type": "string"
+    },
+    "hostName": {
+      "type": "string"
+    },
     "networkPolicy": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
         "ingress": {
           "type": "array",
           "items": {
             "type": "object"
-          },
-          "minItems": 1
+          }
         },
         "egress": {
           "type": "array",
           "items": {
             "type": "object"
-          },
-          "minItems": 1
+          }
         }
       },
       "required": [
+        "enabled",
         "ingress",
         "egress"
-      ]
+      ],
+      "if": {
+        "properties": {
+          "enabled": {
+            "const": true
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "ingress": {
+            "minItems": 1
+          },
+          "egress": {
+            "minItems": 1
+          }
+        }
+      }
     },
     "nameOverride": {
       "type": "string"
@@ -386,9 +500,19 @@
     "image",
     "apiUrl",
     "security",
+    "trusted",
     "networkPolicy"
   ],
   "definitions": {
+    "trusted": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "certificates": {
+          "type": "string"
+        }
+      }
+    },
     "probe": {
       "type": "object",
       "additionalProperties": false,
