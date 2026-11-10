@@ -15,6 +15,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static com.otilm.mcp.service.AdministrationInput.JSON;
 import static com.otilm.mcp.service.TextFormat.code;
 import static com.otilm.mcp.service.TextFormat.orNa;
 
@@ -37,42 +38,51 @@ public final class WorkflowText {
     }
 
     /**
-     * Writes fields by source, each with its type, optionally its operators, and at most ten of its possible values.
+     * Writes fields by source, each with its type and at most ten of its possible values. Fields for conditions also
+     * get their operators and show ILM objects by the name conditions match, as it is written in a JSON list; fields
+     * for setFields show them with the UUID that sets them.
      */
-    static void fields(StringBuilder sb, List<SearchFieldDataByGroupDto> groups, boolean operators) {
+    static void fields(StringBuilder sb, List<SearchFieldDataByGroupDto> groups, boolean conditions) {
         if (groups == null || groups.isEmpty()) {
             sb.append("  none\n");
             return;
         }
         for (SearchFieldDataByGroupDto group : groups) {
             sb.append("Source: ").append(group.getFilterFieldSource().getCode()).append("\n");
-            stream(group.getSearchFieldData()).forEach(field -> fieldLine(sb, field, operators));
+            stream(group.getSearchFieldData()).forEach(field -> fieldLine(sb, field, conditions));
         }
     }
 
-    private static void fieldLine(StringBuilder sb, SearchFieldDataDto field, boolean operators) {
+    private static void fieldLine(StringBuilder sb, SearchFieldDataDto field, boolean conditions) {
         sb.append(ITEM).append(field.getFieldIdentifier()).append(" | ").append(field.getFieldLabel());
         sb.append(" (").append(field.getType().name()).append(")");
-        if (operators && field.getConditions() != null && !field.getConditions().isEmpty()) {
+        if (conditions && field.getConditions() != null && !field.getConditions().isEmpty()) {
             sb.append(" — Operators: ");
             sb.append(field.getConditions().stream().map(Enum::name).collect(Collectors.joining(", ")));
         }
         if (field.getValue() instanceof List<?> options && !options.isEmpty()) {
-            sb.append(" — Values: ").append(options(options));
+            sb.append(" — Values: ").append(options(options, conditions));
         }
         sb.append("\n");
     }
 
-    private static String options(List<?> options) {
-        String shown = options.stream().limit(SHOWN_VALUES).map(WorkflowText::option).collect(Collectors.joining(", "));
+    private static String options(List<?> options, boolean byName) {
+        String shown = options
+                .stream()
+                .limit(SHOWN_VALUES)
+                .map(option -> option(option, byName))
+                .collect(Collectors.joining(", "));
         int more = options.size() - SHOWN_VALUES;
         return more > 0 ? shown + ", and " + more + " more" : shown;
     }
 
-    private static String option(Object option) {
-        return option instanceof Map<?, ?> object && object.containsKey("uuid")
-                ? object.get("name") + " [" + object.get("uuid") + "]"
-                : String.valueOf(option);
+    private static String option(Object option, boolean byName) {
+        if (option instanceof Map<?, ?> object && object.containsKey("uuid")) {
+            return byName
+                    ? JSON.writeValueAsString(object.get("name"))
+                    : object.get("name") + " [" + object.get("uuid") + "]";
+        }
+        return String.valueOf(option);
     }
 
     public static String eventLine(TriggerDto trigger) {

@@ -124,7 +124,7 @@ class WorkflowServiceTest {
 
         assertThat(service.listTriggerFields("certificate_expiring"))
                 .contains("Trigger fields for certificate_expiring (certificates)\n", """
-                        Conditions can check:
+                        Conditions can check (ILM objects, such as groups, by name):
                         Source: custom
                           - attribute-1|STRING | attribute-1 (LIST) — Operators: EQUALS, NOT_EQUALS, EMPTY, \
                         NOT_EMPTY — Values: value-1, value-2
@@ -132,13 +132,13 @@ class WorkflowServiceTest {
                         "  - COMMON_NAME | Common Name (STRING) — Operators: CONTAINS, NOT_CONTAINS, EQUALS, NOT_EQUALS, "
                                 + "EMPTY, NOT_EMPTY, STARTS_WITH, ENDS_WITH, MATCHES, NOT_MATCHES\n",
                         "  - GROUP_NAME | Groups (LIST) — Operators: EQUALS, NOT_EQUALS, EMPTY, NOT_EMPTY, COUNT_EQUAL, "
-                                + "COUNT_NOT_EQUAL, COUNT_GREATER_THAN, COUNT_LESS_THAN — Values: "
-                                + "group-1 [00000000-0000-4000-8000-000000000201], group-2 [",
-                        "group-10 [00000000-0000-4000-8000-000000000210], and 2 more\n",
+                                + "COUNT_NOT_EQUAL, COUNT_GREATER_THAN, COUNT_LESS_THAN — Values: \"group-1\", "
+                                + "\"group-2\", \"group-3\", \"group-4\", \"group-5\", \"group-6\", \"group-7\", "
+                                + "\"group-8\", \"group-9\", \"group-10\", and 2 more\n",
                         "  - KEY_SIZE | Key Size (LIST) — Operators: EQUALS, NOT_EQUALS, EMPTY, NOT_EMPTY — Values: -1, "
                                 + "192, 256\n",
                         """
-                                setFields can set:
+                                setFields can set (ILM objects, such as groups, by the UUID in brackets):
                                 Source: custom
                                   - attribute-1|STRING | attribute-1 (LIST) — Values: value-1, value-2
                                 Source: property
@@ -146,9 +146,26 @@ class WorkflowServiceTest {
                                 ra-profile-1 [00000000-0000-4000-8000-000000000301], \
                                 ra-profile-2 [00000000-0000-4000-8000-000000000302]
                                 """,
+                        "  - GROUP_NAME | Groups (LIST) — Values: group-1 [00000000-0000-4000-8000-000000000201], "
+                                + "group-2 [",
+                        "group-10 [00000000-0000-4000-8000-000000000210], and 2 more\n",
                         "  - OWNER | Owner (LIST) — Values: user-1 [00000000-0000-4000-8000-000000000401], "
                                 + "user-2 [00000000-0000-4000-8000-000000000402]\n")
                 .doesNotContain("group-11");
+    }
+
+    @Test
+    void listTriggerFieldsShowsAConditionNameAsItIsWrittenInAList() {
+        stubFor(get(urlEqualTo("/v1/resources/certificates/filters/rules?settable=false")).willReturn(okJson("""
+                [{"filterFieldSource":"property","searchFieldData":[
+                  {"fieldIdentifier":"GROUP_NAME","fieldLabel":"Groups","type":"list","conditions":["EQUALS"],
+                   "value":[{"name":"east, \\"production\\"","uuid":"00000000-0000-4000-8000-000000000201"},
+                            {"name":"west","uuid":"00000000-0000-4000-8000-000000000202"}],"multiValue":true}]}]
+                """)));
+        stubFor(get(urlEqualTo("/v1/resources/certificates/filters/rules?settable=true")).willReturn(okJson("[]")));
+
+        assertThat(service.listTriggerFields("certificate_expiring"))
+                .contains("— Values: \"east, \\\"production\\\"\", \"west\"\n");
     }
 
     @Test
@@ -156,8 +173,9 @@ class WorkflowServiceTest {
         stubFor(get(urlPathEqualTo("/v1/resources/comments/filters/rules")).willReturn(okJson("[]")));
 
         assertThat(service.listTriggerFields("comment_created"))
-                .contains("Trigger fields for comment_created (comments)\n", "Conditions can check:\n  none\n",
-                        "setFields can set:\n  none\n");
+                .contains("Trigger fields for comment_created (comments)\n",
+                        "Conditions can check (ILM objects, such as groups, by name):\n  none\n",
+                        "setFields can set (ILM objects, such as groups, by the UUID in brackets):\n  none\n");
     }
 
     @Test

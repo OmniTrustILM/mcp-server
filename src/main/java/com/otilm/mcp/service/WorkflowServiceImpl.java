@@ -307,9 +307,9 @@ public class WorkflowServiceImpl implements WorkflowService {
             String resource = resourceEvent.getResource().getCode();
             StringBuilder sb = new StringBuilder();
             title(sb, "Trigger fields for " + resourceEvent.getCode() + " (" + resource + ")");
-            sb.append("Conditions can check:\n");
+            sb.append("Conditions can check (ILM objects, such as groups, by name):\n");
             WorkflowText.fields(sb, ilmApiClient.listRuleFilterFields(resource, false), true);
-            sb.append("\nsetFields can set:\n");
+            sb.append("\nsetFields can set (ILM objects, such as groups, by the UUID in brackets):\n");
             WorkflowText.fields(sb, ilmApiClient.listRuleFilterFields(resource, true), false);
             return sb.toString();
         });

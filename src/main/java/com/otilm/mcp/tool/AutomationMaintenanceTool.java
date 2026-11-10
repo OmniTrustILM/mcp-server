@@ -75,7 +75,7 @@ public class AutomationMaintenanceTool {
             description = "Maintain a whole workflow without replacing its trigger UUID or attachments. Metadata-only changes retain composition. Complete replacement creates new owned parts, retains shared parts, and restores original references on failure. Renaming requires ILM 2.18+.",
             annotations = @McpTool.McpAnnotations(destructiveHint = false))
     public String updateTrigger(@McpToolParam(description = "Canonical object UUID") String uuid, @McpToolParam(
-            description = "JSON object: optional name/description. To replace composition, give replaceComposition=true and all of conditions (existing create_trigger filter array), setFields (existing create_trigger field array), notificationProfileUuid (UUID or null), ignore (boolean). Event/resource stay fixed to preserve attachment compatibility.") String configuration) {
+            description = "JSON object: optional name/description. To replace composition, give replaceComposition=true and all of conditions (existing create_trigger filter array; EQUALS and NOT_EQUALS take a list of names for ILM objects such as groups), setFields (existing create_trigger field array; ILM objects by UUID), notificationProfileUuid (UUID or null), ignore (boolean). Event/resource stay fixed to preserve attachment compatibility.") String configuration) {
         return service.updateTrigger(uuid, configuration);
     }
 }

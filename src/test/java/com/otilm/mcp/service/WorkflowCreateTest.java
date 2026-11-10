@@ -42,8 +42,8 @@ class WorkflowCreateTest {
     static final String NOTIFY_EXECUTION = "00000000-0000-4000-8000-000000000004";
     static final String ACTION = "00000000-0000-4000-8000-000000000005";
     static final String TRIGGER = "00000000-0000-4000-8000-000000000006";
-    private static final String GROUP = "00000000-0000-4000-8000-000000000100";
-    private static final String OWNER = "00000000-0000-4000-8000-000000000101";
+    private static final String GROUP = "00000000-0000-4000-8000-000000000201";
+    private static final String OWNER = "00000000-0000-4000-8000-000000000401";
     private static final String PROFILE = "00000000-0000-4000-8000-000000000102";
     private static final String WORKFLOW_OBJECTS = "/v1/workflows/.*";
     private static final String EVENTS = "/v1/settings/events";
