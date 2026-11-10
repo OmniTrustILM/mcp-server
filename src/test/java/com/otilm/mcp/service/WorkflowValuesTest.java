@@ -33,6 +33,17 @@ class WorkflowValuesTest {
     private static final String PROFILE = "00000000-0000-4000-8000-000000000102";
     private static final String WORKFLOW_OBJECTS = "/v1/workflows/.*";
     private static final String CONDITION_FIELDS = "/v1/resources/certificates/filters/rules?settable=false";
+    private static final String SETTABLE_FIELDS = "/v1/resources/certificates/filters/rules?settable=true";
+    private static final String NOTHING_LISTED = """
+            [{"filterFieldSource":"custom","searchFieldData":[
+              {"fieldIdentifier":"attribute-1|STRING","fieldLabel":"attribute-1","type":"list","conditions":["EQUALS"],
+               "attributeContentType":"string","value":[],"multiValue":true}]},
+             {"filterFieldSource":"property","searchFieldData":[
+              {"fieldIdentifier":"GROUP_NAME","fieldLabel":"Groups","type":"list","conditions":["EQUALS"],
+               "value":[],"multiValue":true},
+              {"fieldIdentifier":"KEY_SIZE","fieldLabel":"Key Size","type":"list","conditions":["EQUALS"],
+               "value":[],"multiValue":true}]}]
+            """;
     private static final String BY_NAME = "; ILM matches such fields by name, and list_trigger_fields lists the names.";
     private static final String BY_UUID = "; ILM sets such fields by UUID, and list_trigger_fields lists the UUIDs.";
 
@@ -42,8 +53,7 @@ class WorkflowValuesTest {
     void setUp(WireMockRuntimeInfo wmInfo) {
         service = new WorkflowServiceImpl(IlmTestSupport.client(wmInfo));
         stubFor(get(urlEqualTo(CONDITION_FIELDS)).willReturn(okJson(fixture("rule-fields-certificates"))));
-        stubFor(get(urlEqualTo("/v1/resources/certificates/filters/rules?settable=true"))
-                .willReturn(okJson(fixture("rule-fields-certificates-settable"))));
+        stubFor(get(urlEqualTo(SETTABLE_FIELDS)).willReturn(okJson(fixture("rule-fields-certificates-settable"))));
         stubFor(get(urlEqualTo("/v1/notificationProfiles/" + PROFILE)).willReturn(okJson("""
                 {"uuid":"%s","name":"p","version":1,"recipientType":"owner","internalNotification":true}
                 """.formatted(PROFILE))));
@@ -157,6 +167,17 @@ class WorkflowValuesTest {
     }
 
     @Test
+    void aConditionOnAListFieldWithoutValuesYetIsNotChecked() {
+        stubFor(get(urlEqualTo(CONDITION_FIELDS)).willReturn(okJson(NOTHING_LISTED)));
+        stubCreates();
+
+        notifyWhen("[{\"fieldSource\":\"property\",\"fieldIdentifier\":\"KEY_SIZE\",\"condition\":\"EQUALS\","
+                + "\"value\":[1024]}]");
+
+        verify(postRequestedFor(urlEqualTo("/v1/workflows/conditions")));
+    }
+
+    @Test
     void setFieldsWithAGroupNameIsRefusedWithTheUuidToUse() {
         String result = set("GROUP_NAME", "[\"group-1\"]");
 
@@ -202,6 +223,43 @@ class WorkflowValuesTest {
         verify(postRequestedFor(urlEqualTo("/v1/workflows/executions"))
                 .withRequestBody(
                         equalToJson("{\"items\":[" + setField.replace("\"value\"", "\"data\"") + "]}", false, true)));
+    }
+
+    @Test
+    void setFieldsAcceptsAListedUuidInEitherCase() {
+        stubFor(get(urlEqualTo(SETTABLE_FIELDS)).willReturn(okJson("""
+                [{"filterFieldSource":"property","searchFieldData":[
+                  {"fieldIdentifier":"OWNER","fieldLabel":"Owner","type":"list","conditions":["EQUALS"],
+                   "value":[{"name":"user-1","uuid":"0000000a-0000-4000-8000-00000000040b"}],"multiValue":true}]}]
+                """)));
+        stubCreates();
+
+        set("OWNER", "\"0000000A-0000-4000-8000-00000000040B\"");
+
+        verify(postRequestedFor(urlEqualTo("/v1/workflows/executions")));
+    }
+
+    @Test
+    void setFieldsOnAPropertyThatListsNothingIsRefused() {
+        stubFor(get(urlEqualTo(SETTABLE_FIELDS)).willReturn(okJson(NOTHING_LISTED)));
+
+        String result = set("GROUP_NAME", "[\"group-1\"]");
+
+        verify(0, postRequestedFor(urlMatching(WORKFLOW_OBJECTS)));
+        assertThat(result).isEqualTo("setFields cannot set property GROUP_NAME to \"group-1\"" + BY_UUID);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "{\"fieldSource\":\"property\",\"fieldIdentifier\":\"GROUP_NAME\",\"value\":[]}",
+            "{\"fieldSource\":\"custom\",\"fieldIdentifier\":\"attribute-1|STRING\",\"value\":\"value-3\"}"})
+    void setFieldsThatNeedNoListedObjectAreSentWhenNothingIsListed(String setField) {
+        stubFor(get(urlEqualTo(SETTABLE_FIELDS)).willReturn(okJson(NOTHING_LISTED)));
+        stubCreates();
+
+        set("[" + setField + "]");
+
+        verify(postRequestedFor(urlEqualTo("/v1/workflows/executions")));
     }
 
     @Test

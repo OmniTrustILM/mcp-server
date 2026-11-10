@@ -18,6 +18,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.slf4j.Logger;
@@ -160,7 +161,8 @@ public final class TriggerRequests {
 
     /**
      * What a condition cannot match on a field that lists ILM objects: ILM compares the names of those objects with a
-     * list of names, so with any other value an EQUALS would never hold and a NOT_EQUALS always would.
+     * list of names, so with any other value an EQUALS would never hold and a NOT_EQUALS always would. A field that
+     * lists nothing is not checked, because it may be one that lists the values in use, of which there are none yet.
      */
     private static Optional<String> unmatchable(ConditionItemRequestDto item, SearchFieldDataDto field) {
         Map<String, String> namesByUuid = objectNamesByUuid(field);
@@ -172,29 +174,33 @@ public final class TriggerRequests {
         if (!(item.getValue() instanceof List<?> values) || values.isEmpty()) {
             return Optional.of(conditionName(item) + " without a list of names, such as [\"<name>\"]");
         }
-        return unlisted(values, namesByUuid.values(), namesByUuid, "name")
+        return unlisted(values, namesByUuid.values()::contains, namesByUuid, "name")
                 .map(unlisted -> conditionName(item) + " with " + unlisted);
     }
 
     /**
-     * What a setFields entry cannot set on a field that lists ILM objects: ILM sets those objects by UUID, so any other
-     * value would be saved and fail whenever the trigger runs.
+     * What a setFields entry cannot set on a field that lists ILM objects: ILM sets those objects by UUID, in either
+     * case, so any other value would be saved and fail whenever the trigger runs. A property that lists nothing has
+     * nothing to set.
      */
     private static Optional<String> unsettable(ExecutionItemRequestDto item, SearchFieldDataDto field) {
         Map<String, String> namesByUuid = objectNamesByUuid(field);
-        if (namesByUuid.isEmpty()) {
+        boolean listsNothing = item.getFieldSource() == FilterFieldSource.PROPERTY
+                && field.getValue() instanceof List<?> options && options.isEmpty();
+        if (namesByUuid.isEmpty() && !listsNothing) {
             return Optional.empty();
         }
         Map<String, String> uuidsByName = new HashMap<>();
         namesByUuid.forEach((uuid, name) -> uuidsByName.putIfAbsent(name, uuid));
         Collection<?> given = item.getData() instanceof Collection<?> values ? values : List.of(item.getData());
-        return unlisted(given, namesByUuid.keySet(), uuidsByName, "UUID")
-                .map(unlisted -> setFieldName(item) + " to " + unlisted);
+        Predicate<Object> listed = value -> value instanceof String uuid
+                && namesByUuid.keySet().stream().anyMatch(uuid::equalsIgnoreCase);
+        return unlisted(given, listed, uuidsByName, "UUID").map(unlisted -> setFieldName(item) + " to " + unlisted);
     }
 
     /**
-     * The names of the ILM objects, such as groups, that a field lists as its values, by UUID. Only the listed objects
-     * tell such a field apart, so one that lists none is treated like any other field.
+     * The names of the ILM objects, such as groups, that a field lists as its values, by UUID; empty for a field that
+     * lists none or lists something else.
      */
     private static Map<String, String> objectNamesByUuid(SearchFieldDataDto field) {
         Map<String, String> namesByUuid = new LinkedHashMap<>();
@@ -213,11 +219,11 @@ public final class TriggerRequests {
      * Describes the given values that are not accepted, as they are written in JSON. A value that is the other
      * identifier of a listed object comes with the accepted identifier to use instead.
      */
-    private static Optional<String> unlisted(Collection<?> given, Collection<String> accepted,
+    private static Optional<String> unlisted(Collection<?> given, Predicate<Object> accepted,
             Map<String, String> acceptedByOther, String identifier) {
         List<String> unlisted = given
                 .stream()
-                .filter(value -> !accepted.contains(value))
+                .filter(accepted.negate())
                 .map(value -> acceptedByOther.containsKey(value)
                         ? "%s (use the %s %s)".formatted(json(value), identifier, json(acceptedByOther.get(value)))
                         : json(value))
