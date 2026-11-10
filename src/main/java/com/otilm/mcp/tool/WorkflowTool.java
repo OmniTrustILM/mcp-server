@@ -52,17 +52,17 @@ public class WorkflowTool {
     }
 
     @McpTool(name = "create_trigger",
-            description = "Set up an ILM workflow in one call: when the event happens and the conditions hold, set fields, send a notification, or ignore the object. Creates the condition, rule, executions, action and trigger behind it, named after the trigger, and removes them again if a step fails. By default it also attaches the trigger to its event platform-wide; ILM then re-saves every platform trigger of that event to run as the identity that made the change. Conditions and setFields can only use the fields list_trigger_fields lists.",
+            description = "Set up an ILM workflow in one call: when the event happens and the conditions hold, set fields, send a notification, or ignore the object. Creates the condition, rule, executions, action and trigger behind it, named after the trigger, and removes them again if a step fails. By default it also attaches the trigger to its event platform-wide; ILM then re-saves every platform trigger of that event to run as the identity that made the change. Conditions and setFields can only use the fields and the ILM objects, such as groups, that list_trigger_fields lists.",
             annotations = @McpTool.McpAnnotations(destructiveHint = false))
     public String createTrigger(
             @McpToolParam(
                     description = "Name of the trigger; the objects created behind it are named after it") String name,
             @McpToolParam(description = "Event that fires the trigger. One of: " + EVENT_CODES) String event,
             @McpToolParam(
-                    description = "JSON array of conditions that must all hold, in the search filter format, e.g. [{\"fieldSource\":\"property\",\"fieldIdentifier\":\"COMMON_NAME\",\"condition\":\"ENDS_WITH\",\"value\":\".example.com\"}]. Omit to match every object of the event.",
+                    description = "JSON array of conditions that must all hold, in the search filter format, e.g. [{\"fieldSource\":\"property\",\"fieldIdentifier\":\"COMMON_NAME\",\"condition\":\"ENDS_WITH\",\"value\":\".example.com\"}, {\"fieldSource\":\"property\",\"fieldIdentifier\":\"GROUP_NAME\",\"condition\":\"EQUALS\",\"value\":[\"<group name>\"]}]. EQUALS and NOT_EQUALS compare groups, users, RA profiles and other ILM objects with a list of their names, not their UUIDs. Omit to match every object of the event.",
                     required = false) String conditions,
             @McpToolParam(
-                    description = "JSON array of fields to set, e.g. [{\"fieldSource\":\"property\",\"fieldIdentifier\":\"GROUP_NAME\",\"value\":[\"<group uuid>\"]}, {\"fieldSource\":\"property\",\"fieldIdentifier\":\"OWNER\",\"value\":\"<user uuid>\"}, {\"fieldSource\":\"property\",\"fieldIdentifier\":\"RA_PROFILE_NAME\",\"value\":\"<RA profile uuid>\"}, {\"fieldSource\":\"custom\",\"fieldIdentifier\":\"<attribute name>|<CONTENT TYPE>\",\"value\":\"<value>\"}]",
+                    description = "JSON array of fields to set, e.g. [{\"fieldSource\":\"property\",\"fieldIdentifier\":\"GROUP_NAME\",\"value\":[\"<group uuid>\"]}, {\"fieldSource\":\"property\",\"fieldIdentifier\":\"OWNER\",\"value\":\"<user uuid>\"}, {\"fieldSource\":\"property\",\"fieldIdentifier\":\"RA_PROFILE_NAME\",\"value\":\"<RA profile uuid>\"}, {\"fieldSource\":\"custom\",\"fieldIdentifier\":\"<attribute name>|<CONTENT TYPE>\",\"value\":\"<value>\"}]. Groups, users and RA profiles are set by their UUIDs, not their names.",
                     required = false) String setFields,
             @McpToolParam(
                     description = "UUID of the notification profile to send a notification through; create_notification_profile makes one",

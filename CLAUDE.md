@@ -158,6 +158,7 @@ MCP Tool (@McpTool) → Service (formatting) → IlmApiClient (RestClient) → I
 - Connector attribute definitions and callback answers are read into the server's own records (`ConnectorAttribute`), because the interfaces' attribute classes need Jackson 2
 - Test fixtures hold synthetic values only, with canonical UUIDs; responses recorded from ILM 2.20 live in `src/test/resources/fixtures/v2_20`
 - Write tools validate their input before calling ILM and answer with what they created or changed, including UUIDs; `create_trigger` removes what it created when a later step fails
+- ILM matches a trigger condition on ILM objects, such as groups, users or RA profiles, against a list of their names, and `setFields` sets them by UUID; `TriggerRequests` refuses any other value and `list_trigger_fields` shows each form
 - Commits carry a DCO sign-off (`git commit -s`)
 
 ## Docker

@@ -41,7 +41,8 @@ class WorkflowToolTest {
         assertThat(tool.getTrigger(SET_FIELD)).contains("Trigger: name-1");
         assertThat(tool.listEventTriggers(null)).contains("Platform event triggers");
         stubFor(get(urlPathEqualTo("/v1/resources/comments/filters/rules")).willReturn(okJson("[]")));
-        assertThat(tool.listTriggerFields("comment_created")).contains("Conditions can check:\n  none\n");
+        assertThat(tool.listTriggerFields("comment_created"))
+                .contains("Conditions can check (ILM objects, such as groups, by name):\n  none\n");
     }
 
     @Test

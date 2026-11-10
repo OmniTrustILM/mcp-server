@@ -37,6 +37,7 @@ class AutomationUpdateTest {
     private static final String C = "22222222-2222-4222-8222-222222222222";
     private static final String E = "33333333-3333-4333-8333-333333333333";
     private static final String A = "44444444-4444-4444-8444-444444444444";
+    private static final String GROUP_1 = "00000000-0000-4000-8000-000000000201";
     private AutomationMaintenanceTool tool;
     private NotificationMaintenanceTool notifications;
 
@@ -115,6 +116,43 @@ class AutomationUpdateTest {
                 .withRequestBody(matchingJsonPath("$.actionsUuids[0]", equalTo(A))));
         verify(0, postRequestedFor(urlEqualTo("/v1/workflows/triggers")));
         verify(0, deleteRequestedFor(urlEqualTo("/v1/workflows/actions/" + C)));
+    }
+
+    @Test
+    void wholeWorkflowUpdateRefusesAConditionOnAGroupUuidAndChangesNothing() {
+        stubTriggerWithRuleFields();
+        assertThat(tool.updateTrigger(T, """
+                {"replaceComposition":true,"conditions":[{"fieldSource":"property","fieldIdentifier":"GROUP_NAME",
+                "condition":"EQUALS","value":["%s"]}],"setFields":[],"notificationProfileUuid":"%s","ignore":false}
+                """.formatted(GROUP_1, C)))
+                .isEqualTo("Conditions cannot match property GROUP_NAME with \"" + GROUP_1
+                        + "\" (use the name \"group-1\"); ILM matches such fields by name, and list_trigger_fields "
+                        + "lists the names.");
+        verify(0, postRequestedFor(anyUrl()));
+        verify(0, putRequestedFor(anyUrl()));
+    }
+
+    @Test
+    void wholeWorkflowUpdateRefusesSetFieldsWithAGroupNameAndChangesNothing() {
+        stubTriggerWithRuleFields();
+        assertThat(tool.updateTrigger(T, """
+                {"replaceComposition":true,"conditions":[],"setFields":[{"fieldSource":"property",
+                "fieldIdentifier":"GROUP_NAME","value":["group-1"]}],"notificationProfileUuid":null,"ignore":false}
+                """))
+                .isEqualTo("setFields cannot set property GROUP_NAME to \"group-1\" (use the UUID \"" + GROUP_1
+                        + "\"); ILM sets such fields by UUID, and list_trigger_fields lists the UUIDs.");
+        verify(0, postRequestedFor(anyUrl()));
+        verify(0, putRequestedFor(anyUrl()));
+    }
+
+    private static void stubTriggerWithRuleFields() {
+        stubFor(get(urlEqualTo("/v1/workflows/triggers/" + T))
+                .willReturn(okJson("{\"uuid\":\"" + T
+                        + "\",\"name\":\"Ops\",\"type\":\"event\",\"resource\":\"certificates\",\"event\":\"certificate_expiring\",\"rules\":[],\"actions\":[]}")));
+        stubFor(get(urlEqualTo("/v1/resources/certificates/filters/rules?settable=false"))
+                .willReturn(okJson(IlmTestSupport.fixture("rule-fields-certificates"))));
+        stubFor(get(urlEqualTo("/v1/resources/certificates/filters/rules?settable=true"))
+                .willReturn(okJson(IlmTestSupport.fixture("rule-fields-certificates-settable"))));
     }
 
     @Test

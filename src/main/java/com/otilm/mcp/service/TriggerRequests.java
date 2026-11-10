@@ -10,13 +10,19 @@ import com.otilm.api.model.core.workflows.ConditionItemRequestDto;
 import com.otilm.api.model.core.workflows.ExecutionItemRequestDto;
 import java.io.Serializable;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import tools.jackson.core.JacksonException;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.DeserializationFeature;
@@ -28,6 +34,8 @@ import static com.otilm.mcp.service.TextFormat.code;
  * Reads what a client sends for a trigger, with readable messages for anything ILM would reject.
  */
 public final class TriggerRequests {
+
+    private static final Logger logger = LoggerFactory.getLogger(TriggerRequests.class);
 
     private static final JsonMapper JSON_MAPPER = JsonMapper
             .builder()
@@ -97,33 +105,33 @@ public final class TriggerRequests {
     }
 
     /**
-     * Refuses conditions on fields, or with operators, that ILM does not list for rule conditions on the trigger's
-     * resource.
+     * Refuses conditions on fields or with operators that ILM does not list for rule conditions on the trigger's
+     * resource, and conditions that match ILM objects by anything but their listed names.
      */
     public static void checkConditionFields(List<ConditionItemRequestDto> conditions,
             List<SearchFieldDataByGroupDto> fields) {
         Map<String, SearchFieldDataDto> listed = listed(fields);
         refuseUnlisted(conditions.stream().map(TriggerRequests::conditionName), listed,
                 "Conditions cannot check %s; list_trigger_fields lists the fields they can check.");
-        List<String> unsupported = conditions
+        refuse(conditions
                 .stream()
                 .filter(item -> !takes(listed.get(conditionName(item)), item.getOperator()))
-                .map(item -> item.getOperator().name() + " on " + conditionName(item))
-                .distinct()
-                .toList();
-        if (!unsupported.isEmpty()) {
-            throw new IllegalArgumentException(
-                    "Conditions cannot use %s; list_trigger_fields lists the operators each field takes."
-                            .formatted(String.join(", ", unsupported)));
-        }
+                .map(item -> item.getOperator().name() + " on " + conditionName(item)),
+                "Conditions cannot use %s; list_trigger_fields lists the operators each field takes.");
+        refuse(conditions.stream().flatMap(item -> unmatchable(item, listed.get(conditionName(item))).stream()),
+                "Conditions cannot match %s; ILM matches such fields by name, and list_trigger_fields lists the names.");
     }
 
     /**
-     * Refuses setFields entries for fields that ILM does not list as settable on the trigger's resource.
+     * Refuses setFields entries for fields that ILM does not list as settable on the trigger's resource, and entries
+     * that set ILM objects by anything but their listed UUIDs.
      */
     public static void checkSetFields(List<ExecutionItemRequestDto> setFields, List<SearchFieldDataByGroupDto> fields) {
-        refuseUnlisted(setFields.stream().map(item -> fieldName(item.getFieldSource(), item.getFieldIdentifier())),
-                listed(fields), "setFields cannot set %s; list_trigger_fields lists the fields it can set.");
+        Map<String, SearchFieldDataDto> listed = listed(fields);
+        refuseUnlisted(setFields.stream().map(TriggerRequests::setFieldName), listed,
+                "setFields cannot set %s; list_trigger_fields lists the fields it can set.");
+        refuse(setFields.stream().flatMap(item -> unsettable(item, listed.get(setFieldName(item))).stream()),
+                "setFields cannot set %s; ILM sets such fields by UUID, and list_trigger_fields lists the UUIDs.");
     }
 
     private static Map<String, SearchFieldDataDto> listed(List<SearchFieldDataByGroupDto> fields) {
@@ -140,10 +148,91 @@ public final class TriggerRequests {
 
     private static void refuseUnlisted(Stream<String> requested, Map<String, SearchFieldDataDto> listed,
             String refusal) {
-        List<String> unlisted = requested.filter(name -> !listed.containsKey(name)).distinct().toList();
-        if (!unlisted.isEmpty()) {
-            throw new IllegalArgumentException(refusal.formatted(String.join(", ", unlisted)));
+        refuse(requested.filter(name -> !listed.containsKey(name)), refusal);
+    }
+
+    private static void refuse(Stream<String> refused, String refusal) {
+        List<String> distinct = refused.distinct().toList();
+        if (!distinct.isEmpty()) {
+            logger.debug("Refused a trigger with fields, operators or values that ILM does not list");
+            throw new IllegalArgumentException(refusal.formatted(String.join(", ", distinct)));
         }
+    }
+
+    /**
+     * What a condition cannot match on a field that lists ILM objects: ILM compares the names of those objects with a
+     * list of names, so with any other value an EQUALS would never hold and a NOT_EQUALS always would. A field that
+     * lists nothing is not checked, because it may be one that lists the values in use, of which there are none yet.
+     */
+    private static Optional<String> unmatchable(ConditionItemRequestDto item, SearchFieldDataDto field) {
+        Map<String, String> namesByUuid = objectNamesByUuid(field);
+        boolean compares = item.getOperator() == FilterConditionOperator.EQUALS
+                || item.getOperator() == FilterConditionOperator.NOT_EQUALS;
+        if (namesByUuid.isEmpty() || !compares) {
+            return Optional.empty();
+        }
+        if (!(item.getValue() instanceof List<?> values) || values.isEmpty()) {
+            return Optional.of(conditionName(item) + " without a list of names, such as [\"<name>\"]");
+        }
+        return unlisted(values, namesByUuid.values()::contains, namesByUuid, "name")
+                .map(unlisted -> conditionName(item) + " with " + unlisted);
+    }
+
+    /**
+     * What a setFields entry cannot set on a field that lists ILM objects: ILM sets those objects by UUID, in either
+     * case, so any other value would be saved and fail whenever the trigger runs. A property that lists nothing has
+     * nothing to set.
+     */
+    private static Optional<String> unsettable(ExecutionItemRequestDto item, SearchFieldDataDto field) {
+        Map<String, String> namesByUuid = objectNamesByUuid(field);
+        boolean listsNothing = item.getFieldSource() == FilterFieldSource.PROPERTY
+                && field.getValue() instanceof List<?> options && options.isEmpty();
+        if (namesByUuid.isEmpty() && !listsNothing) {
+            return Optional.empty();
+        }
+        Map<String, String> uuidsByName = new HashMap<>();
+        namesByUuid.forEach((uuid, name) -> uuidsByName.putIfAbsent(name, uuid));
+        Collection<?> given = item.getData() instanceof Collection<?> values ? values : List.of(item.getData());
+        Predicate<Object> listed = value -> value instanceof String uuid
+                && namesByUuid.keySet().stream().anyMatch(uuid::equalsIgnoreCase);
+        return unlisted(given, listed, uuidsByName, "UUID").map(unlisted -> setFieldName(item) + " to " + unlisted);
+    }
+
+    /**
+     * The names of the ILM objects, such as groups, that a field lists as its values, by UUID; empty for a field that
+     * lists none or lists something else.
+     */
+    private static Map<String, String> objectNamesByUuid(SearchFieldDataDto field) {
+        Map<String, String> namesByUuid = new LinkedHashMap<>();
+        if (field.getValue() instanceof List<?> options) {
+            for (Object option : options) {
+                if (option instanceof Map<?, ?> object && object.get("uuid") instanceof String uuid
+                        && object.get("name") instanceof String name) {
+                    namesByUuid.put(uuid, name);
+                }
+            }
+        }
+        return namesByUuid;
+    }
+
+    /**
+     * Describes the given values that are not accepted, as they are written in JSON. A value that is the other
+     * identifier of a listed object comes with the accepted identifier to use instead.
+     */
+    private static Optional<String> unlisted(Collection<?> given, Predicate<Object> accepted,
+            Map<String, String> acceptedByOther, String identifier) {
+        List<String> unlisted = given
+                .stream()
+                .filter(accepted.negate())
+                .map(value -> acceptedByOther.containsKey(value)
+                        ? "%s (use the %s %s)".formatted(json(value), identifier, json(acceptedByOther.get(value)))
+                        : json(value))
+                .toList();
+        return unlisted.isEmpty() ? Optional.empty() : Optional.of(String.join(" or ", unlisted));
+    }
+
+    private static String json(Object value) {
+        return JSON_MAPPER.writeValueAsString(value);
     }
 
     private static boolean takes(SearchFieldDataDto field, FilterConditionOperator operator) {
@@ -152,6 +241,10 @@ public final class TriggerRequests {
     }
 
     private static String conditionName(ConditionItemRequestDto item) {
+        return fieldName(item.getFieldSource(), item.getFieldIdentifier());
+    }
+
+    private static String setFieldName(ExecutionItemRequestDto item) {
         return fieldName(item.getFieldSource(), item.getFieldIdentifier());
     }
 
