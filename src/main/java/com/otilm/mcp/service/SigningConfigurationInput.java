@@ -10,7 +10,6 @@ final class SigningConfigurationInput {
     private static final String ALLOWED_POLICY_IDS = "allowedPolicyIds";
     private static final String CONTENT_SIGNING = "content_signing";
     private static final String DEFAULT_POLICY_ID = "defaultPolicyId";
-    private static final String DOCUMENT_SIZE_CAP = "documentSizeCap";
     private static final String FAMILY = "family";
     private static final String MAX_LEVEL = "maxLevel";
     private static final String PERSISTENCE_MODE = "persistenceMode";
@@ -24,8 +23,7 @@ final class SigningConfigurationInput {
     private static final String TIMESTAMP_SOURCE = "timestampSource";
 
     private static final Set<String> EXTENDED = Set
-            .of(FAMILY, MAX_LEVEL, TIMESTAMP_SOURCE, DOCUMENT_SIZE_CAP, REQUIRE_NON_REPUDIATION,
-                    REQUIRED_EXTENDED_KEY_USAGE_OIDS);
+            .of(FAMILY, MAX_LEVEL, TIMESTAMP_SOURCE, REQUIRE_NON_REPUDIATION, REQUIRED_EXTENDED_KEY_USAGE_OIDS);
 
     private SigningConfigurationInput() {
     }
@@ -106,8 +104,7 @@ final class SigningConfigurationInput {
             case RAW_SIGNING -> Set.of("type");
             case CONTENT_SIGNING -> Set
                     .of("type", SIGNATURE_FORMATTING_CONNECTOR_UUID, "signatureFormattingConnectorAttributes", FAMILY,
-                            MAX_LEVEL, TIMESTAMP_SOURCE, DOCUMENT_SIZE_CAP, REQUIRE_NON_REPUDIATION,
-                            REQUIRED_EXTENDED_KEY_USAGE_OIDS);
+                            MAX_LEVEL, TIMESTAMP_SOURCE, REQUIRE_NON_REPUDIATION, REQUIRED_EXTENDED_KEY_USAGE_OIDS);
             default -> Set
                     .of("type", SIGNATURE_FORMATTING_CONNECTOR_UUID, "signatureFormattingConnectorAttributes",
                             "qualifiedTimestamp", TIME_QUALITY_CONFIGURATION_UUID, DEFAULT_POLICY_ID,
@@ -124,10 +121,6 @@ final class SigningConfigurationInput {
             if (workflow.hasNonNull(field)) {
                 CryptoInput.uuid(workflow.path(field).asString());
             }
-        }
-        if (workflow.hasNonNull(DOCUMENT_SIZE_CAP) && (!workflow.path(DOCUMENT_SIZE_CAP).isIntegralNumber()
-                || workflow.path(DOCUMENT_SIZE_CAP).asLong() <= 0)) {
-            throw new IllegalArgumentException("Document size cap must be a positive integer.");
         }
     }
 

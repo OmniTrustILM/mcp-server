@@ -97,30 +97,29 @@ class SigningConfigurationTest {
     }
 
     @Test
-    void clearDocumentSizeCapPreservesOtherWorkflowAndRecordPolicyFields() {
+    void clearTimestampSourcePreservesOtherWorkflowAndRecordPolicyFields() {
         String policy = "{\"recordingEnabled\":false,\"recordSignature\":true,\"retentionDays\":30,\"persistenceMode\":\"immediate\"}";
-        stubFor(get(urlEqualTo(BASE + "/" + PROFILE))
-                .willReturn(okJson(
-                        "{\"name\":\"profile\",\"signingScheme\":{\"signingScheme\":\"managed\",\"managedSigningType\":\"static_key\",\"certificateUuid\":\""
-                                + CERTIFICATE
-                                + "\",\"signingOperationAttributes\":[]},\"workflow\":{\"type\":\"content_signing\",\"family\":\"pades\",\"maxLevel\":\"signed\",\"documentSizeCap\":1024,\"signatureFormattingConnectorUuid\":\""
-                                + CONNECTOR + "\",\"signatureFormattingConnectorAttributes\":[]},\"recordPolicy\":"
-                                + policy + ",\"customAttributes\":[]}")));
-        stubFor(get(urlEqualTo(BASE + "/signatureFormattingConnectors/" + CONNECTOR
-                + "/contentSigningFormattingAttributes?family=pades&maxLevel=signed")).willReturn(okJson("[]")));
+        stubSignedContentSigningProfile(policy);
         stubFor(put(urlEqualTo(BASE + "/" + PROFILE)).willReturn(okJson("{\"uuid\":\"" + PROFILE + "\"}")));
         assertThat(tool
                 .updateSigningProfile(PROFILE,
-                        "{\"workflow\":{\"documentSizeCap\":null},\"recordPolicy\":{\"retentionDays\":null}}"))
+                        "{\"workflow\":{\"timestampSource\":null},\"recordPolicy\":{\"retentionDays\":null}}"))
                 .contains(PROFILE);
         String expectedPolicy = policy.replace(":30", ":null");
-        String expectedWorkflow = "{\"type\":\"content_signing\",\"family\":\"pades\",\"maxLevel\":\"signed\",\"documentSizeCap\":null,\"signatureFormattingConnectorUuid\":\""
+        String expectedWorkflow = "{\"type\":\"content_signing\",\"family\":\"pades\",\"maxLevel\":\"signed\",\"timestampSource\":null,\"signatureFormattingConnectorUuid\":\""
                 + CONNECTOR + "\",\"signatureFormattingConnectorAttributes\":[]}";
         verify(putRequestedFor(urlEqualTo(BASE + "/" + PROFILE))
                 .withRequestBody(
                         equalToJson("{\"recordPolicy\":" + expectedPolicy + ",\"workflow\":" + expectedWorkflow + "}",
                                 false, true)));
+    }
 
+    @Test
+    void documentSizeCapFailsAsUnknownFieldBeforeMutation() {
+        stubSignedContentSigningProfile("{\"recordingEnabled\":false}");
+        assertThat(tool.updateSigningProfile(PROFILE, "{\"workflow\":{\"documentSizeCap\":1024}}"))
+                .contains("Unknown signing configuration field");
+        verify(0, putRequestedFor(urlEqualTo(BASE + "/" + PROFILE)));
     }
 
     @Test
@@ -257,4 +256,15 @@ class SigningConfigurationTest {
                 .withRequestBody(matchingJsonPath("$.workflow.timestampSource.signingProfileUuid", equalTo(TSP))));
     }
 
+    private static void stubSignedContentSigningProfile(String recordPolicy) {
+        stubFor(get(urlEqualTo(BASE + "/" + PROFILE))
+                .willReturn(okJson(
+                        "{\"name\":\"profile\",\"signingScheme\":{\"signingScheme\":\"managed\",\"managedSigningType\":\"static_key\",\"certificateUuid\":\""
+                                + CERTIFICATE
+                                + "\",\"signingOperationAttributes\":[]},\"workflow\":{\"type\":\"content_signing\",\"family\":\"pades\",\"maxLevel\":\"signed\",\"signatureFormattingConnectorUuid\":\""
+                                + CONNECTOR + "\",\"signatureFormattingConnectorAttributes\":[]},\"recordPolicy\":"
+                                + recordPolicy + ",\"customAttributes\":[]}")));
+        stubFor(get(urlEqualTo(BASE + "/signatureFormattingConnectors/" + CONNECTOR
+                + "/contentSigningFormattingAttributes?family=pades&maxLevel=signed")).willReturn(okJson("[]")));
+    }
 }
