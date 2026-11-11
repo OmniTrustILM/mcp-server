@@ -126,6 +126,18 @@ class SigningConfigurationTest {
     }
 
     @Test
+    void unrelatedUpdateDropsDocumentSizeCapStoredByAnEarlierIlm() {
+        stubContentSigningProfile(SIGNED_LEVEL + ",\"documentSizeCap\":1024", "{\"recordingEnabled\":false}");
+        stubFor(put(urlEqualTo(BASE + "/" + PROFILE)).willReturn(okJson("{\"uuid\":\"" + PROFILE + "\"}")));
+        assertThat(tool.updateSigningProfile(PROFILE, "{\"description\":\"updated\"}")).contains(PROFILE);
+        String expectedWorkflow = "{\"type\":\"content_signing\",\"family\":\"pades\",\"maxLevel\":\"signed\",\"signatureFormattingConnectorUuid\":\""
+                + CONNECTOR + "\",\"signatureFormattingConnectorAttributes\":[]}";
+        verify(putRequestedFor(urlEqualTo(BASE + "/" + PROFILE))
+                .withRequestBody(matchingJsonPath("$.description", equalTo("updated")))
+                .withRequestBody(matchingJsonPath("$.workflow", equalToJson(expectedWorkflow))));
+    }
+
+    @Test
     void nullRecordPolicyFailsBeforeAnyProfileReadOrMutation() {
         assertThat(tool.updateSigningProfile(PROFILE, "{\"recordPolicy\":null}")).containsIgnoringCase("object");
         verify(0, getRequestedFor(urlEqualTo(BASE + "/" + PROFILE)));
