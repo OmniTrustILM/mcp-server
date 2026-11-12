@@ -254,8 +254,7 @@ public class SigningConfigurationServiceImpl implements SigningConfigurationServ
                 .merge(supplied, existing, "type", SIGNATURE_FORMATTING_CONNECTOR_UUID,
                         SIGNATURE_FORMATTING_CONNECTOR_ATTRIBUTES, "qualifiedTimestamp", "timeQualityConfigurationUuid",
                         "defaultPolicyId", "allowedPolicyIds", "allowedDigestAlgorithms", "validateTokenSignature",
-                        FAMILY, MAX_LEVEL, TIMESTAMP_SOURCE, "documentSizeCap", "requireNonRepudiation",
-                        "requiredExtendedKeyUsageOids");
+                        FAMILY, MAX_LEVEL, TIMESTAMP_SOURCE, "requireNonRepudiation", "requiredExtendedKeyUsageOids");
         SigningConfigurationInput.reference(workflow, existing, "signatureFormattingConnector");
         SigningConfigurationInput.reference(workflow, existing, "timeQualityConfiguration");
         if (!workflow.has(SIGNATURE_FORMATTING_CONNECTOR_UUID) && existing.has("signatureFormatterConnector")) {

@@ -34,6 +34,9 @@ class SigningConfigurationTest {
     static final String CONNECTOR = "00000000-0000-4000-8000-000000000913";
     static final String TSP = "00000000-0000-4000-8000-000000000914";
     static final String BASE = "/v1/signingProfiles";
+    static final String SIGNED_LEVEL = "\"maxLevel\":\"signed\"";
+    static final String TIMESTAMPED_LEVEL = "\"maxLevel\":\"timestamped\",\"timestampSource\":{\"type\":\"internal\",\"signingProfile\":{\"uuid\":\""
+            + TSP + "\"}}";
     private SigningConfigurationTool tool;
 
     @BeforeEach
@@ -97,30 +100,41 @@ class SigningConfigurationTest {
     }
 
     @Test
-    void clearDocumentSizeCapPreservesOtherWorkflowAndRecordPolicyFields() {
+    void clearTimestampSourcePreservesOtherWorkflowAndRecordPolicyFields() {
         String policy = "{\"recordingEnabled\":false,\"recordSignature\":true,\"retentionDays\":30,\"persistenceMode\":\"immediate\"}";
-        stubFor(get(urlEqualTo(BASE + "/" + PROFILE))
-                .willReturn(okJson(
-                        "{\"name\":\"profile\",\"signingScheme\":{\"signingScheme\":\"managed\",\"managedSigningType\":\"static_key\",\"certificateUuid\":\""
-                                + CERTIFICATE
-                                + "\",\"signingOperationAttributes\":[]},\"workflow\":{\"type\":\"content_signing\",\"family\":\"pades\",\"maxLevel\":\"signed\",\"documentSizeCap\":1024,\"signatureFormattingConnectorUuid\":\""
-                                + CONNECTOR + "\",\"signatureFormattingConnectorAttributes\":[]},\"recordPolicy\":"
-                                + policy + ",\"customAttributes\":[]}")));
-        stubFor(get(urlEqualTo(BASE + "/signatureFormattingConnectors/" + CONNECTOR
-                + "/contentSigningFormattingAttributes?family=pades&maxLevel=signed")).willReturn(okJson("[]")));
+        stubContentSigningProfile(TIMESTAMPED_LEVEL, policy);
         stubFor(put(urlEqualTo(BASE + "/" + PROFILE)).willReturn(okJson("{\"uuid\":\"" + PROFILE + "\"}")));
         assertThat(tool
                 .updateSigningProfile(PROFILE,
-                        "{\"workflow\":{\"documentSizeCap\":null},\"recordPolicy\":{\"retentionDays\":null}}"))
+                        "{\"workflow\":{\"maxLevel\":\"signed\",\"timestampSource\":null},\"recordPolicy\":{\"retentionDays\":null}}"))
                 .contains(PROFILE);
         String expectedPolicy = policy.replace(":30", ":null");
-        String expectedWorkflow = "{\"type\":\"content_signing\",\"family\":\"pades\",\"maxLevel\":\"signed\",\"documentSizeCap\":null,\"signatureFormattingConnectorUuid\":\""
+        String expectedWorkflow = "{\"type\":\"content_signing\",\"family\":\"pades\",\"maxLevel\":\"signed\",\"timestampSource\":null,\"signatureFormattingConnectorUuid\":\""
                 + CONNECTOR + "\",\"signatureFormattingConnectorAttributes\":[]}";
         verify(putRequestedFor(urlEqualTo(BASE + "/" + PROFILE))
                 .withRequestBody(
                         equalToJson("{\"recordPolicy\":" + expectedPolicy + ",\"workflow\":" + expectedWorkflow + "}",
                                 false, true)));
+    }
 
+    @Test
+    void documentSizeCapFailsAsUnknownFieldBeforeMutation() {
+        stubContentSigningProfile(SIGNED_LEVEL, "{\"recordingEnabled\":false}");
+        assertThat(tool.updateSigningProfile(PROFILE, "{\"workflow\":{\"documentSizeCap\":1024}}"))
+                .contains("Unknown signing configuration field");
+        verify(0, putRequestedFor(urlEqualTo(BASE + "/" + PROFILE)));
+    }
+
+    @Test
+    void unrelatedUpdateDropsDocumentSizeCapStoredByAnEarlierIlm() {
+        stubContentSigningProfile(SIGNED_LEVEL + ",\"documentSizeCap\":1024", "{\"recordingEnabled\":false}");
+        stubFor(put(urlEqualTo(BASE + "/" + PROFILE)).willReturn(okJson("{\"uuid\":\"" + PROFILE + "\"}")));
+        assertThat(tool.updateSigningProfile(PROFILE, "{\"description\":\"updated\"}")).contains(PROFILE);
+        String expectedWorkflow = "{\"type\":\"content_signing\",\"family\":\"pades\",\"maxLevel\":\"signed\",\"signatureFormattingConnectorUuid\":\""
+                + CONNECTOR + "\",\"signatureFormattingConnectorAttributes\":[]}";
+        verify(putRequestedFor(urlEqualTo(BASE + "/" + PROFILE))
+                .withRequestBody(matchingJsonPath("$.description", equalTo("updated")))
+                .withRequestBody(matchingJsonPath("$.workflow", equalToJson(expectedWorkflow))));
     }
 
     @Test
@@ -257,4 +271,20 @@ class SigningConfigurationTest {
                 .withRequestBody(matchingJsonPath("$.workflow.timestampSource.signingProfileUuid", equalTo(TSP))));
     }
 
+    /**
+     * Stubs a stored content-signing profile and the signed level's formatting attributes, the level every caller
+     * saves.
+     */
+    private static void stubContentSigningProfile(String storedLevel, String recordPolicy) {
+        stubFor(get(urlEqualTo(BASE + "/" + PROFILE))
+                .willReturn(okJson(
+                        "{\"name\":\"profile\",\"signingScheme\":{\"signingScheme\":\"managed\",\"managedSigningType\":\"static_key\",\"certificateUuid\":\""
+                                + CERTIFICATE
+                                + "\",\"signingOperationAttributes\":[]},\"workflow\":{\"type\":\"content_signing\",\"family\":\"pades\","
+                                + storedLevel + ",\"signatureFormattingConnectorUuid\":\"" + CONNECTOR
+                                + "\",\"signatureFormattingConnectorAttributes\":[]},\"recordPolicy\":" + recordPolicy
+                                + ",\"customAttributes\":[]}")));
+        stubFor(get(urlEqualTo(BASE + "/signatureFormattingConnectors/" + CONNECTOR
+                + "/contentSigningFormattingAttributes?family=pades&maxLevel=signed")).willReturn(okJson("[]")));
+    }
 }
