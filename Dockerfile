@@ -1,5 +1,5 @@
 # Stage 1: Build
-FROM eclipse-temurin:21-jdk AS build
+FROM eclipse-temurin:27-jdk AS build
 
 WORKDIR /build
 
@@ -11,7 +11,7 @@ RUN --mount=type=cache,target=/root/.m2 \
     mvn -B -U package -DskipTests
 
 # Stage 2: Optimize - create custom JRE for the Alpine runtime
-FROM eclipse-temurin:21-jdk-alpine AS optimize
+FROM eclipse-temurin:27-jdk-alpine AS optimize
 
 COPY --from=build /build/target/*.jar /app/app.jar
 
