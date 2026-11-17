@@ -13,6 +13,7 @@ public enum IlmFeature {
     SETTINGS_CBOM_SYNC("CBOM synchronization settings", 2, 20),
     SETTINGS_OAUTH_USERNAME_CLAIM("OAuth username claim", 2, 18),
     SETTINGS_OAUTH_DELEGATION("OAuth delegation settings", 2, 21),
+    SETTINGS_OAUTH_APPLICATIONS("OAuth sign-in settings for applications", 2, 21),
     CONNECTOR_PROXY("Connector proxies", 2, 18),
     KEY_TRANSFER("Key import and export", 2, 20),
     TOKEN_PROVIDER_ATTRIBUTES("Provider-neutral token attributes", 2, 20),
