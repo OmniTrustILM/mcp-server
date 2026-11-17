@@ -9,7 +9,7 @@ public interface SigningConfigurationService {
 
     String getSigningOperationAttributes(String certificateUuid);
 
-    String getSigningFormattingAttributes(String connectorUuid, String family, String maxLevel, String values);
+    String getSigningFormattingAttributes(String connectorUuid, String family, String level, String values);
 
     String createSigningProfile(String configuration);
 

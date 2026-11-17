@@ -34,8 +34,8 @@ class SigningConfigurationTest {
     static final String CONNECTOR = "00000000-0000-4000-8000-000000000913";
     static final String TSP = "00000000-0000-4000-8000-000000000914";
     static final String BASE = "/v1/signingProfiles";
-    static final String SIGNED_LEVEL = "\"maxLevel\":\"signed\"";
-    static final String TIMESTAMPED_LEVEL = "\"maxLevel\":\"timestamped\",\"timestampSource\":{\"type\":\"internal\",\"signingProfile\":{\"uuid\":\""
+    static final String SIGNED_LEVEL = "\"level\":\"signed\"";
+    static final String TIMESTAMPED_LEVEL = "\"level\":\"timestamped\",\"timestampSource\":{\"type\":\"internal\",\"signingProfile\":{\"uuid\":\""
             + TSP + "\"}}";
     private SigningConfigurationTool tool;
 
@@ -44,7 +44,7 @@ class SigningConfigurationTest {
         tool = new SigningConfigurationTool(new SigningConfigurationServiceImpl(
                 new ConfigurationApiClient(IlmApiClient.restClientBuilder(wm.getHttpBaseUrl()).build()),
                 new PlatformVersionCheck(IlmTestSupport.client(wm))));
-        IlmTestSupport.stubIlmVersion("2.20.0");
+        IlmTestSupport.stubIlmVersion("2.21.0");
         stubFor(get(urlEqualTo("/v1/attributes/custom/resources/signingProfiles")).willReturn(okJson("[]")));
         stubFor(get(urlEqualTo(BASE + "/certificates/" + CERTIFICATE + "/signatureAttributes"))
                 .willReturn(okJson("[]")));
@@ -106,10 +106,10 @@ class SigningConfigurationTest {
         stubFor(put(urlEqualTo(BASE + "/" + PROFILE)).willReturn(okJson("{\"uuid\":\"" + PROFILE + "\"}")));
         assertThat(tool
                 .updateSigningProfile(PROFILE,
-                        "{\"workflow\":{\"maxLevel\":\"signed\",\"timestampSource\":null},\"recordPolicy\":{\"retentionDays\":null}}"))
+                        "{\"workflow\":{\"level\":\"signed\",\"timestampSource\":null},\"recordPolicy\":{\"retentionDays\":null}}"))
                 .contains(PROFILE);
         String expectedPolicy = policy.replace(":30", ":null");
-        String expectedWorkflow = "{\"type\":\"content_signing\",\"family\":\"pades\",\"maxLevel\":\"signed\",\"timestampSource\":null,\"signatureFormattingConnectorUuid\":\""
+        String expectedWorkflow = "{\"type\":\"content_signing\",\"family\":\"pades\",\"level\":\"signed\",\"timestampSource\":null,\"signatureFormattingConnectorUuid\":\""
                 + CONNECTOR + "\",\"signatureFormattingConnectorAttributes\":[]}";
         verify(putRequestedFor(urlEqualTo(BASE + "/" + PROFILE))
                 .withRequestBody(
@@ -130,7 +130,7 @@ class SigningConfigurationTest {
         stubContentSigningProfile(SIGNED_LEVEL + ",\"documentSizeCap\":1024", "{\"recordingEnabled\":false}");
         stubFor(put(urlEqualTo(BASE + "/" + PROFILE)).willReturn(okJson("{\"uuid\":\"" + PROFILE + "\"}")));
         assertThat(tool.updateSigningProfile(PROFILE, "{\"description\":\"updated\"}")).contains(PROFILE);
-        String expectedWorkflow = "{\"type\":\"content_signing\",\"family\":\"pades\",\"maxLevel\":\"signed\",\"signatureFormattingConnectorUuid\":\""
+        String expectedWorkflow = "{\"type\":\"content_signing\",\"family\":\"pades\",\"level\":\"signed\",\"signatureFormattingConnectorUuid\":\""
                 + CONNECTOR + "\",\"signatureFormattingConnectorAttributes\":[]}";
         verify(putRequestedFor(urlEqualTo(BASE + "/" + PROFILE))
                 .withRequestBody(matchingJsonPath("$.description", equalTo("updated")))
@@ -174,11 +174,11 @@ class SigningConfigurationTest {
         IlmTestSupport.stubIlmVersion("2.18.0");
         assertThat(tool.updateSigningProfile(PROFILE, "{\"recordPolicy\":{\"recordingEnabled\":true}}"))
                 .contains("2.19");
-        IlmTestSupport.stubIlmVersion("2.19.0");
+        IlmTestSupport.stubIlmVersion("2.20.0");
         assertThat(tool
                 .updateSigningProfile(PROFILE,
-                        "{\"workflow\":{\"type\":\"content_signing\",\"family\":\"PADES\",\"maxLevel\":\"SIGNED\"}}"))
-                .contains("2.20");
+                        "{\"workflow\":{\"type\":\"content_signing\",\"family\":\"PADES\",\"level\":\"SIGNED\"}}"))
+                .contains("2.21");
         verify(0, putRequestedFor(urlEqualTo(BASE + "/" + PROFILE)));
         IlmTestSupport.stubIlmVersion("2.17.0");
         assertThat(tool.createSigningProfile("{}")).contains("2.18");
@@ -215,7 +215,7 @@ class SigningConfigurationTest {
     @Test
     void modernContentFormattingAndRecordPolicyAreEncodedWithOwnedSchemas() {
         stubFor(get(urlEqualTo(BASE + "/signatureFormattingConnectors/" + CONNECTOR
-                + "/contentSigningFormattingAttributes?family=pades&maxLevel=signed"))
+                + "/contentSigningFormattingAttributes?family=pades&level=signed"))
                 .willReturn(okJson(EntityLocationConfigurationTest.SCHEMA)));
         stubFor(post(urlEqualTo(BASE)).willReturn(okJson("{\"uuid\":\"" + PROFILE + "\",\"version\":1}")));
         assertThat(tool.getSigningFormattingAttributes(CONNECTOR, "pades", "signed", null)).contains("path");
@@ -225,7 +225,7 @@ class SigningConfigurationTest {
                                 + CERTIFICATE
                                 + "\"},\"workflow\":{\"type\":\"content_signing\",\"signatureFormattingConnectorUuid\":\""
                                 + CONNECTOR
-                                + "\",\"family\":\"pades\",\"maxLevel\":\"signed\"},\"recordPolicy\":{\"recordingEnabled\":true,\"recordSignedDocument\":true}}"))
+                                + "\",\"family\":\"pades\",\"level\":\"signed\"},\"recordPolicy\":{\"recordingEnabled\":true,\"recordSignedDocument\":true}}"))
                 .contains(PROFILE);
         verify(postRequestedFor(urlEqualTo(BASE))
                 .withRequestBody(
@@ -258,12 +258,12 @@ class SigningConfigurationTest {
                 .willReturn(okJson("{\"uuid\":\"" + PROFILE
                         + "\",\"name\":\"profile\",\"signingScheme\":{\"signingScheme\":\"managed\",\"managedSigningType\":\"static_key\",\"certificate\":{\"uuid\":\""
                         + CERTIFICATE
-                        + "\"},\"signingOperationAttributes\":[]},\"workflow\":{\"type\":\"content_signing\",\"family\":\"pades\",\"maxLevel\":\"timestamped\",\"signatureFormattingConnector\":{\"uuid\":\""
+                        + "\"},\"signingOperationAttributes\":[]},\"workflow\":{\"type\":\"content_signing\",\"family\":\"pades\",\"level\":\"timestamped\",\"signatureFormattingConnector\":{\"uuid\":\""
                         + CONNECTOR
                         + "\"},\"signatureFormattingConnectorAttributes\":[],\"timestampSource\":{\"type\":\"internal\",\"signingProfile\":{\"uuid\":\""
                         + TSP + "\"}}},\"customAttributes\":[]}")));
         stubFor(get(urlEqualTo(BASE + "/signatureFormattingConnectors/" + CONNECTOR
-                + "/contentSigningFormattingAttributes?family=pades&maxLevel=timestamped")).willReturn(okJson("[]")));
+                + "/contentSigningFormattingAttributes?family=pades&level=timestamped")).willReturn(okJson("[]")));
         stubFor(put(urlEqualTo(BASE + "/" + PROFILE))
                 .willReturn(okJson("{\"uuid\":\"" + PROFILE + "\",\"version\":2}")));
         assertThat(tool.updateSigningProfile(PROFILE, "{\"description\":\"updated\"}")).contains(PROFILE);
@@ -285,6 +285,6 @@ class SigningConfigurationTest {
                                 + "\",\"signatureFormattingConnectorAttributes\":[]},\"recordPolicy\":" + recordPolicy
                                 + ",\"customAttributes\":[]}")));
         stubFor(get(urlEqualTo(BASE + "/signatureFormattingConnectors/" + CONNECTOR
-                + "/contentSigningFormattingAttributes?family=pades&maxLevel=signed")).willReturn(okJson("[]")));
+                + "/contentSigningFormattingAttributes?family=pades&level=signed")).willReturn(okJson("[]")));
     }
 }
