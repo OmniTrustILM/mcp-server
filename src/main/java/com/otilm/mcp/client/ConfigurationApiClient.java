@@ -178,7 +178,7 @@ public class ConfigurationApiClient {
     }
 
     /** ILM refused a conditional write because the resource changed since the tag was read. */
-    public static final class PreconditionFailedException extends ApiException {
+    public static final class PreconditionFailedException extends RuntimeException {
 
         private static final long serialVersionUID = 1L;
 

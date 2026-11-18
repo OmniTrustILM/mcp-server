@@ -26,6 +26,7 @@ final class SettingsFields {
     private static final String CONTENT_TYPE = "contentType";
     private static final String DELEGATE_CLAIM = "delegateClaim";
     private static final String DISABLE_LOCALHOST_USER = "disableLocalhostUser";
+    private static final String ENABLED = "enabled";
     private static final String EVENTS_MAPPING = "eventsMapping";
     private static final String EXTERNAL_CSR_VALIDATION_STRICT = "externalCsrValidationStrict";
     private static final String OAUTH2_PROVIDERS = "oauth2Providers";
@@ -39,14 +40,14 @@ final class SettingsFields {
             .of("utilsServiceUrl", "cbomRepositoryUrl", "cbomSyncOverlapSeconds", "cbomSyncSkippedRetryRuns",
                     "cbomSyncMaxIngestDocuments", CBOM_SYNC_SKIP_RETENTION_DAYS, CBOM_SYNC_PAGE_SIZE,
                     "cbomSyncAssetIngestEnabled", "cbomSyncAssetBatchSize", "cbomSyncIngestRetryAfterSeconds");
-    static final Set<String> VALIDATION = Set.of("enabled", "frequency", "expiringThreshold");
+    static final Set<String> VALIDATION = Set.of(ENABLED, "frequency", "expiringThreshold");
     static final Set<String> REQUEST = Set.of(REQUEST_ATTRIBUTES, EXTERNAL_CSR_VALIDATION_STRICT);
     static final Set<String> REGISTRATION = Set.of("defaultIssuanceWindowDays", "maxFailedAttempts");
     static final Set<String> OAUTH = Set
             .of("issuerUrl", "clientId", CLIENT_SECRET, "authorizationUrl", "tokenUrl", "jwkSetUrl", "jwkSet", "scope",
                     "logoutUrl", "postLogoutUrl", "userInfoUrl", "audiences", "skew", "sessionMaxInactiveInterval",
                     "usernameClaim", ALLOWED_DELEGATES, DELEGATE_CLAIM, APPLICATIONS);
-    static final Set<String> OAUTH_APPLICATIONS = Set.of("enabled", "name", "clientId", "scopes", "resource");
+    static final Set<String> OAUTH_APPLICATIONS = Set.of(ENABLED, "name", "clientId", "scopes", "resource");
     static final Set<String> LOG = Set
             .of("logAllModules", "logAllResources", "loggedModules", "ignoredModules", "loggedResources",
                     "ignoredResources");
@@ -84,18 +85,22 @@ final class SettingsFields {
             if (value.isValueNode()) {
                 out.set(key, value);
             } else if (value.isArray()) {
-                ArrayNode items = JSON.createArrayNode();
-                for (JsonNode item : value) {
-                    if (item.isValueNode()) {
-                        items.add(item);
-                    }
-                }
-                out.set(key, items);
+                out.set(key, valueItems(value));
             } else if (value.isObject() && key.equals(APPLICATIONS)) {
                 out.set(key, metadata(value, OAUTH_APPLICATIONS));
             }
         }
         return out;
+    }
+
+    private static ArrayNode valueItems(JsonNode array) {
+        ArrayNode items = JSON.createArrayNode();
+        for (JsonNode item : array) {
+            if (item.isValueNode()) {
+                items.add(item);
+            }
+        }
+        return items;
     }
 
     static ObjectNode eventMetadata(JsonNode source) {
@@ -191,7 +196,7 @@ final class SettingsFields {
     private static void validateCertificates(JsonNode node) {
         allowed(node, VALIDATION);
         for (var entry : node.properties()) {
-            if (entry.getKey().equals("enabled")) {
+            if (entry.getKey().equals(ENABLED)) {
                 bool(entry.getValue(), false);
             } else {
                 range(entry.getValue(), 1, Integer.MAX_VALUE, true);
@@ -298,7 +303,7 @@ final class SettingsFields {
         for (var entry : value.properties()) {
             JsonNode field = entry.getValue();
             switch (entry.getKey()) {
-                case "enabled" -> bool(field, false);
+                case ENABLED -> bool(field, false);
                 case "scopes" -> nonBlankStrings(field);
                 case "resource" -> resource(field);
                 default -> {

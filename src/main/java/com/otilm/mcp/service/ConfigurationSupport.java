@@ -1,6 +1,7 @@
 package com.otilm.mcp.service;
 
 import com.otilm.mcp.client.ConfigurationApiClient.ApiException;
+import com.otilm.mcp.client.ConfigurationApiClient.PreconditionFailedException;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
@@ -115,7 +116,7 @@ public final class ConfigurationSupport {
             return body.get();
         } catch (InvalidMediaTypeException failure) {
             return "Error " + action + ": the response could not be read.";
-        } catch (IllegalArgumentException | ApiException failure) {
+        } catch (IllegalArgumentException | ApiException | PreconditionFailedException failure) {
             return failure.getMessage();
         } catch (RuntimeException failure) {
             return "Error " + action + ": the request could not be completed.";
