@@ -5,7 +5,9 @@ import java.nio.charset.UnsupportedCharsetException;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.function.Supplier;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.InvalidMediaTypeException;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -30,12 +32,37 @@ public class ConfigurationApiClient {
         return json(HttpMethod.GET, path, null, variables);
     }
 
+    /** Reads JSON together with the response's {@code ETag}, which is null when ILM sends none. */
+    public TaggedJson getTagged(String path, Object... variables) {
+        return safely(() -> {
+            ResponseEntity<JsonNode> response = request(HttpMethod.GET, path, null, variables)
+                    .retrieve()
+                    .toEntity(JsonNode.class);
+            JsonNode body = Objects.requireNonNullElse(response.getBody(), NullNode.getInstance());
+            return new TaggedJson(body, response.getHeaders().getETag());
+        }, false);
+    }
+
     public JsonNode post(String path, Object body, Object... variables) {
         return json(HttpMethod.POST, path, body, variables);
     }
 
     public JsonNode put(String path, Object body, Object... variables) {
         return json(HttpMethod.PUT, path, body, variables);
+    }
+
+    /**
+     * Writes like {@link #put} and, when {@code entityTag} is not null, sends it as {@code If-Match}; ILM refusing it
+     * throws {@link PreconditionFailedException}.
+     */
+    public JsonNode putIfMatch(String path, Object body, String entityTag, Object... variables) {
+        return safely(() -> {
+            RestClient.RequestBodySpec request = request(HttpMethod.PUT, path, body, variables);
+            if (entityTag != null) {
+                request.header(HttpHeaders.IF_MATCH, entityTag);
+            }
+            return Objects.requireNonNullElse(request.retrieve().body(JsonNode.class), NullNode.getInstance());
+        }, false);
     }
 
     public JsonNode patch(String path, Object body, Object... variables) {
@@ -95,6 +122,9 @@ public class ConfigurationApiClient {
             return operation.get();
         } catch (RestClientResponseException failure) {
             String message = "ILM answered HTTP " + failure.getStatusCode().value() + ".";
+            if (failure.getStatusCode().isSameCodeAs(HttpStatus.PRECONDITION_FAILED)) {
+                throw new PreconditionFailedException(message);
+            }
             if (dependencyMessage && failure.getStatusCode().value() == 422) {
                 message += " Deletion was refused; check dependencies in ILM.";
             }
@@ -135,11 +165,24 @@ public class ConfigurationApiClient {
         }
     }
 
-    public static final class ApiException extends IllegalStateException {
+    public record TaggedJson(JsonNode body, String entityTag) {
+    }
+
+    public static class ApiException extends IllegalStateException {
 
         private static final long serialVersionUID = 1L;
 
         public ApiException(String message) {
+            super(message);
+        }
+    }
+
+    /** ILM refused a conditional write because the resource changed since the tag was read. */
+    public static final class PreconditionFailedException extends RuntimeException {
+
+        private static final long serialVersionUID = 1L;
+
+        public PreconditionFailedException(String message) {
             super(message);
         }
     }

@@ -1,13 +1,19 @@
 package com.otilm.mcp.service;
 
 import com.otilm.mcp.client.ConfigurationApiClient;
+import com.otilm.mcp.client.ConfigurationApiClient.ApiException;
+import com.otilm.mcp.client.ConfigurationApiClient.PreconditionFailedException;
+import com.otilm.mcp.client.ConfigurationApiClient.TaggedJson;
 import java.util.Set;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.node.ObjectNode;
 
 @Service
 public class SettingsServiceImpl implements SettingsService {
+    private static final Logger logger = LoggerFactory.getLogger(SettingsServiceImpl.class);
     private static final String AUDIT_LOGS = "auditLogs";
     private static final String AUTHENTICATION = "authentication";
     private static final String CERTIFICATES = "certificates";
@@ -24,6 +30,7 @@ public class SettingsServiceImpl implements SettingsService {
 
     private static final String ROOT = "/v1/settings";
     private static final String PROVIDER = ROOT + "/authentication/oauth2Providers/{name}";
+    private static final int PROVIDER_WRITE_ATTEMPTS = 2;
     private static final Set<String> SECTIONS = Set
             .of(PLATFORM, VALIDATION, REQUEST_ATTRIBUTES, REGISTRATION, UTILS, "cbom", AUTHENTICATION, LOGGING, EVENTS);
     private final ConfigurationApiClient client;
@@ -112,15 +119,40 @@ public class SettingsServiceImpl implements SettingsService {
             if (unsupported != null) {
                 return unsupported;
             }
-            JsonNode current = client.get(PROVIDER, name);
-            ObjectNode request = SettingsFields.merge(provider(current, true), patch);
-            request.remove("name");
-            SettingsFields.validateOAuth(request);
-            SettingsFields.completeOAuth(request);
-            client.put(PROVIDER, request, name);
+            mergeIntoProvider(name, patch);
             return "OAuth provider " + name
                     + " updated. Omitted readable fields and the existing secret were preserved.";
         });
+    }
+
+    /**
+     * Reads the provider, merges the patch and writes it back conditionally on the read's tag. A provider changed in
+     * between is read and merged once more; a second change is reported instead of overwriting it.
+     */
+    private void mergeIntoProvider(String name, ObjectNode patch) {
+        for (int attempt = 0; attempt < PROVIDER_WRITE_ATTEMPTS; attempt++) {
+            try {
+                writeMergedProvider(name, patch);
+                return;
+            } catch (PreconditionFailedException changedSinceRead) {
+                logger.info("OAuth provider {} changed since it was read; attempt {} refused", name, attempt + 1);
+            }
+        }
+        throw new ApiException(
+                "OAuth provider " + name + " was changed concurrently in ILM and was not updated. Retry the update.");
+    }
+
+    private void writeMergedProvider(String name, ObjectNode patch) {
+        TaggedJson current = client.getTagged(PROVIDER, name);
+        // ILM answers the read of a provider that does not exist with an empty body, not 404
+        if (!current.body().isObject()) {
+            throw new ApiException("OAuth provider " + name + " does not exist in ILM and was not updated.");
+        }
+        ObjectNode request = SettingsFields.merge(provider(current.body(), true), patch);
+        request.remove("name");
+        SettingsFields.validateOAuth(request);
+        SettingsFields.completeOAuth(request);
+        client.putIfMatch(PROVIDER, request, current.entityTag(), name);
     }
 
     @Override
@@ -359,6 +391,12 @@ public class SettingsServiceImpl implements SettingsService {
     private String oauthVersion(JsonNode patch) {
         if (patch.has("allowedDelegates") || patch.has("delegateClaim")) {
             String refusal = versions.unsupported(IlmFeature.SETTINGS_OAUTH_DELEGATION).orElse(null);
+            if (refusal != null) {
+                return refusal;
+            }
+        }
+        if (patch.has("applications")) {
+            String refusal = versions.unsupported(IlmFeature.SETTINGS_OAUTH_APPLICATIONS).orElse(null);
             if (refusal != null) {
                 return refusal;
             }

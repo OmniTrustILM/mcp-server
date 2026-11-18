@@ -5,6 +5,7 @@ import com.otilm.api.model.core.logging.enums.AuditLogOutput;
 import com.otilm.api.model.core.logging.enums.Module;
 import com.otilm.api.model.core.other.ResourceEvent;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
@@ -16,6 +17,7 @@ import tools.jackson.databind.node.ObjectNode;
 /** The published settings fields and their wire types, independent of the interfaces' Jackson 2 serializers. */
 final class SettingsFields {
     private static final String ALLOWED_DELEGATES = "allowedDelegates";
+    private static final String APPLICATIONS = "applications";
     private static final String CBOM_SYNC_PAGE_SIZE = "cbomSyncPageSize";
     private static final String CBOM_SYNC_SKIP_RETENTION_DAYS = "cbomSyncSkipRetentionDays";
     private static final String CERTIFICATES = "certificates";
@@ -24,25 +26,28 @@ final class SettingsFields {
     private static final String CONTENT_TYPE = "contentType";
     private static final String DELEGATE_CLAIM = "delegateClaim";
     private static final String DISABLE_LOCALHOST_USER = "disableLocalhostUser";
+    private static final String ENABLED = "enabled";
     private static final String EVENTS_MAPPING = "eventsMapping";
     private static final String EXTERNAL_CSR_VALIDATION_STRICT = "externalCsrValidationStrict";
     private static final String OAUTH2_PROVIDERS = "oauth2Providers";
     private static final String REQUEST_ATTRIBUTES = "requestAttributes";
     private static final String UTILS_2 = "utils";
     private static final String VERSION = "version";
+    private static final String RESOURCE_MESSAGE = "The resource for applications must be an absolute http or https URI without credentials or a fragment.";
 
     static final JsonMapper JSON = JsonMapper.builder().build();
     static final Set<String> UTILS = Set
             .of("utilsServiceUrl", "cbomRepositoryUrl", "cbomSyncOverlapSeconds", "cbomSyncSkippedRetryRuns",
                     "cbomSyncMaxIngestDocuments", CBOM_SYNC_SKIP_RETENTION_DAYS, CBOM_SYNC_PAGE_SIZE,
                     "cbomSyncAssetIngestEnabled", "cbomSyncAssetBatchSize", "cbomSyncIngestRetryAfterSeconds");
-    static final Set<String> VALIDATION = Set.of("enabled", "frequency", "expiringThreshold");
+    static final Set<String> VALIDATION = Set.of(ENABLED, "frequency", "expiringThreshold");
     static final Set<String> REQUEST = Set.of(REQUEST_ATTRIBUTES, EXTERNAL_CSR_VALIDATION_STRICT);
     static final Set<String> REGISTRATION = Set.of("defaultIssuanceWindowDays", "maxFailedAttempts");
     static final Set<String> OAUTH = Set
             .of("issuerUrl", "clientId", CLIENT_SECRET, "authorizationUrl", "tokenUrl", "jwkSetUrl", "jwkSet", "scope",
                     "logoutUrl", "postLogoutUrl", "userInfoUrl", "audiences", "skew", "sessionMaxInactiveInterval",
-                    "usernameClaim", ALLOWED_DELEGATES, DELEGATE_CLAIM);
+                    "usernameClaim", ALLOWED_DELEGATES, DELEGATE_CLAIM, APPLICATIONS);
+    static final Set<String> OAUTH_APPLICATIONS = Set.of(ENABLED, "name", "clientId", "scopes", "resource");
     static final Set<String> LOG = Set
             .of("logAllModules", "logAllResources", "loggedModules", "ignoredModules", "loggedResources",
                     "ignoredResources");
@@ -80,16 +85,22 @@ final class SettingsFields {
             if (value.isValueNode()) {
                 out.set(key, value);
             } else if (value.isArray()) {
-                ArrayNode items = JSON.createArrayNode();
-                for (JsonNode item : value) {
-                    if (item.isValueNode()) {
-                        items.add(item);
-                    }
-                }
-                out.set(key, items);
+                out.set(key, valueItems(value));
+            } else if (value.isObject() && key.equals(APPLICATIONS)) {
+                out.set(key, metadata(value, OAUTH_APPLICATIONS));
             }
         }
         return out;
+    }
+
+    private static ArrayNode valueItems(JsonNode array) {
+        ArrayNode items = JSON.createArrayNode();
+        for (JsonNode item : array) {
+            if (item.isValueNode()) {
+                items.add(item);
+            }
+        }
+        return items;
     }
 
     static ObjectNode eventMetadata(JsonNode source) {
@@ -185,7 +196,7 @@ final class SettingsFields {
     private static void validateCertificates(JsonNode node) {
         allowed(node, VALIDATION);
         for (var entry : node.properties()) {
-            if (entry.getKey().equals("enabled")) {
+            if (entry.getKey().equals(ENABLED)) {
                 bool(entry.getValue(), false);
             } else {
                 range(entry.getValue(), 1, Integer.MAX_VALUE, true);
@@ -264,6 +275,8 @@ final class SettingsFields {
                 allowedDelegates(value);
             } else if (key.equals(DELEGATE_CLAIM)) {
                 nonBlankString(value);
+            } else if (key.equals(APPLICATIONS)) {
+                applications(value);
             } else if (key.endsWith("Url")) {
                 url(value);
             } else if (key.equals("scope") || key.equals("audiences")) {
@@ -279,6 +292,55 @@ final class SettingsFields {
     private static void nonBlankString(JsonNode value) {
         if (!value.isString() || value.asString().isBlank()) {
             invalid();
+        }
+    }
+
+    private static void applications(JsonNode value) {
+        if (value.isNull()) {
+            return;
+        }
+        allowed(value, OAUTH_APPLICATIONS);
+        for (var entry : value.properties()) {
+            JsonNode field = entry.getValue();
+            switch (entry.getKey()) {
+                case ENABLED -> bool(field, false);
+                case "scopes" -> nonBlankStrings(field);
+                case "resource" -> resource(field);
+                default -> {
+                    if (!field.isString() && !field.isNull()) {
+                        invalid();
+                    }
+                }
+            }
+        }
+    }
+
+    private static void nonBlankStrings(JsonNode value) {
+        stringArray(value);
+        for (JsonNode item : value) {
+            if (item.asString().isBlank()) {
+                invalid();
+            }
+        }
+    }
+
+    private static void resource(JsonNode value) {
+        if (value.isNull() || value.isString() && value.asString().isBlank()) {
+            return;
+        }
+        if (!value.isString()) {
+            invalid();
+        }
+        URI uri;
+        try {
+            uri = new URI(value.asString().trim());
+        } catch (URISyntaxException malformed) {
+            throw new IllegalArgumentException(RESOURCE_MESSAGE);
+        }
+        String scheme = uri.getScheme();
+        if (!"http".equalsIgnoreCase(scheme) && !"https".equalsIgnoreCase(scheme) || uri.getHost() == null
+                || uri.getRawUserInfo() != null || uri.getRawFragment() != null) {
+            throw new IllegalArgumentException(RESOURCE_MESSAGE);
         }
     }
 
