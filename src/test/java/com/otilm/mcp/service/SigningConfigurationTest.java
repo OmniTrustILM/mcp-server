@@ -186,6 +186,17 @@ class SigningConfigurationTest {
     }
 
     @Test
+    void contentSigningWithoutOptionsFailsBeforeOldServerMutation() {
+        IlmTestSupport.stubIlmVersion("2.20.0");
+        assertThat(tool
+                .createSigningProfile(
+                        "{\"name\":\"delegated\",\"signingScheme\":{\"signingScheme\":\"delegated\",\"connectorUuid\":\""
+                                + CONNECTOR + "\"},\"workflow\":{\"type\":\"content_signing\"}}"))
+                .contains("Content signing", "2.21");
+        verify(0, postRequestedFor(urlEqualTo(BASE)));
+    }
+
+    @Test
     void signingCapabilityAndTspAssociationOperationsUseSupportedReadsAndPatches() {
         stubFor(get(urlEqualTo(BASE + "/supportedProtocols?signingWorkflowType=timestamping"))
                 .willReturn(okJson("[\"tsp\"]")));

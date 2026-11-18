@@ -22,7 +22,7 @@ final class SigningConfigurationInput {
     private static final String TIME_QUALITY_CONFIGURATION_UUID = "timeQualityConfigurationUuid";
     private static final String TIMESTAMP_SOURCE = "timestampSource";
 
-    private static final Set<String> EXTENDED = Set
+    private static final Set<String> CONTENT_SIGNING_OPTIONS = Set
             .of(FAMILY, LEVEL, TIMESTAMP_SOURCE, REQUIRE_NON_REPUDIATION, REQUIRED_EXTENDED_KEY_USAGE_OIDS);
 
     private SigningConfigurationInput() {
@@ -58,8 +58,12 @@ final class SigningConfigurationInput {
         choice(value, Set.of(RAW_SIGNING, CONTENT_SIGNING, "timestamping"), "Signing workflow type");
     }
 
-    static boolean extended(JsonNode workflow) {
-        for (String field : EXTENDED) {
+    /** Whether the workflow is content signing, by its type or by an option only content signing takes. */
+    static boolean contentSigning(JsonNode workflow) {
+        if (CONTENT_SIGNING.equals(workflow.path("type").asString(null))) {
+            return true;
+        }
+        for (String field : CONTENT_SIGNING_OPTIONS) {
             if (workflow.has(field)) {
                 return true;
             }

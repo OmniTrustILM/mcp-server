@@ -62,7 +62,7 @@ public class SigningConfigurationTool {
     }
 
     @McpTool(name = "create_signing_profile",
-            description = "Create signing profile; ILM 2.18+. Configuration: name, signingScheme and workflow required; description, customAttributes, recordPolicy optional. Scheme uses managed/static_key certificateUuid, managed/one_time_key raProfileUuid/csrTemplateUuid/tokenProfileUuid, or delegated connectorUuid. Provider attributes are name-value objects. recordPolicy requires 2.19+; content family/level and timestampSource require 2.21+.",
+            description = "Create signing profile; ILM 2.18+. Configuration: name, signingScheme and workflow required; description, customAttributes, recordPolicy optional. Scheme uses managed/static_key certificateUuid, managed/one_time_key raProfileUuid/csrTemplateUuid/tokenProfileUuid, or delegated connectorUuid. Provider attributes are name-value objects. recordPolicy requires 2.19+; the content_signing workflow requires 2.21+.",
             annotations = @McpTool.McpAnnotations(destructiveHint = false))
     public String createSigningProfile(@McpToolParam(
             description = "JSON configuration using the documented fields; omitted update values retain readable existing data. Protected replacements require fresh explicit input.") String configuration) {

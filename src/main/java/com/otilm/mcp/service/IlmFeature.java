@@ -26,7 +26,7 @@ public enum IlmFeature {
     ENROLLMENT_EXTENSIONS("Extended enrollment configuration", 2, 20),
     AUTHORITY_INTERFACES("Authority connector interfaces", 2, 19),
     TSP_AUTHENTICATION("TSP authentication and basic credentials", 2, 19),
-    SIGNING_FORMATTING_EXTENSIONS("Extended signing formatting", 2, 21),
+    CONTENT_SIGNING("Content signing", 2, 21),
     TIME_QUALITY("Time quality configurations", 2, 18),
     TRUSTED_CERTIFICATES("Trusted certificates", 2, 18),
     SYSTEM_OIDS("System OID catalog", 2, 19),

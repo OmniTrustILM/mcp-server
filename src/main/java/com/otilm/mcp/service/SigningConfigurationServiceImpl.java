@@ -100,7 +100,7 @@ public class SigningConfigurationServiceImpl implements SigningConfigurationServ
         CryptoInput.uuid(connectorUuid);
         JsonNode definitions;
         if (family != null || level != null) {
-            require(IlmFeature.SIGNING_FORMATTING_EXTENSIONS);
+            require(IlmFeature.CONTENT_SIGNING);
             SigningConfigurationInput.family(family);
             SigningConfigurationInput.level(level);
             definitions = client
@@ -163,8 +163,8 @@ public class SigningConfigurationServiceImpl implements SigningConfigurationServ
                     throw new IllegalArgumentException("Signing record policy must be an object.");
                 }
             }
-            if (SigningConfigurationInput.extended(body.path(WORKFLOW))) {
-                require(IlmFeature.SIGNING_FORMATTING_EXTENSIONS);
+            if (SigningConfigurationInput.contentSigning(body.path(WORKFLOW))) {
+                require(IlmFeature.CONTENT_SIGNING);
             }
             JsonNode existing = uuid == null
                     ? ConfigurationAttributes.JSON.createObjectNode()
@@ -262,11 +262,10 @@ public class SigningConfigurationServiceImpl implements SigningConfigurationServ
         }
         String type = workflow.path("type").asString("");
         SigningConfigurationInput.workflowType(type);
-        if (SigningConfigurationInput.extended(workflow)) {
-            require(IlmFeature.SIGNING_FORMATTING_EXTENSIONS);
+        if (SigningConfigurationInput.contentSigning(workflow)) {
+            require(IlmFeature.CONTENT_SIGNING);
         }
-        if (MANAGED.equals(scheme) && "content_signing".equals(type)
-                && versions.unsupported(IlmFeature.SIGNING_FORMATTING_EXTENSIONS).isEmpty()) {
+        if (MANAGED.equals(scheme) && "content_signing".equals(type)) {
             SigningConfigurationInput.family(workflow.path(FAMILY).asString(null));
             SigningConfigurationInput.level(workflow.path(LEVEL).asString(null));
         }
