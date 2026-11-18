@@ -14,7 +14,7 @@ public class SigningConfigurationServiceImpl implements SigningConfigurationServ
     private static final String ENABLED = "enabled";
     private static final String FAMILY = "family";
     private static final String MANAGED = "managed";
-    private static final String MAX_LEVEL = "maxLevel";
+    private static final String LEVEL = "level";
     private static final String RECORD_POLICY = "recordPolicy";
     private static final String SIGNATURE_FORMATTING_CONNECTOR_ATTRIBUTES = "signatureFormattingConnectorAttributes";
     private static final String SIGNATURE_FORMATTING_CONNECTOR_UUID = "signatureFormattingConnectorUuid";
@@ -86,29 +86,27 @@ public class SigningConfigurationServiceImpl implements SigningConfigurationServ
     }
 
     @Override
-    public String getSigningFormattingAttributes(String connectorUuid, String family, String maxLevel, String values) {
-        return run("retrieving signing formatting settings",
-                () -> ConfigurationAttributes
-                        .settings("Signing formatting settings",
-                                formattingDefinitions(connectorUuid, family, maxLevel, values)));
+    public String getSigningFormattingAttributes(String connectorUuid, String family, String level, String values) {
+        return run("retrieving signing formatting settings", () -> ConfigurationAttributes
+                .settings("Signing formatting settings", formattingDefinitions(connectorUuid, family, level, values)));
     }
 
-    private JsonNode formattingDefinitions(String connectorUuid, String family, String maxLevel, String values) {
-        return formattingDefinitions(connectorUuid, family, maxLevel, values, null);
+    private JsonNode formattingDefinitions(String connectorUuid, String family, String level, String values) {
+        return formattingDefinitions(connectorUuid, family, level, values, null);
     }
 
-    private JsonNode formattingDefinitions(String connectorUuid, String family, String maxLevel, String values,
+    private JsonNode formattingDefinitions(String connectorUuid, String family, String level, String values,
             JsonNode existing) {
         CryptoInput.uuid(connectorUuid);
         JsonNode definitions;
-        if (family != null || maxLevel != null) {
-            require(IlmFeature.SIGNING_FORMATTING_EXTENSIONS);
+        if (family != null || level != null) {
+            require(IlmFeature.CONTENT_SIGNING);
             SigningConfigurationInput.family(family);
-            SigningConfigurationInput.level(maxLevel);
+            SigningConfigurationInput.level(level);
             definitions = client
                     .get(BASE
-                            + "/signatureFormattingConnectors/{uuid}/contentSigningFormattingAttributes?family={family}&maxLevel={level}",
-                            connectorUuid, family, maxLevel);
+                            + "/signatureFormattingConnectors/{uuid}/contentSigningFormattingAttributes?family={family}&level={level}",
+                            connectorUuid, family, level);
         } else if (older219()) {
             definitions = client.get(BASE + "/signatureFormatterConnectors/{uuid}/formatterAttributes", connectorUuid);
         } else {
@@ -165,8 +163,8 @@ public class SigningConfigurationServiceImpl implements SigningConfigurationServ
                     throw new IllegalArgumentException("Signing record policy must be an object.");
                 }
             }
-            if (SigningConfigurationInput.extended(body.path(WORKFLOW))) {
-                require(IlmFeature.SIGNING_FORMATTING_EXTENSIONS);
+            if (SigningConfigurationInput.contentSigning(body.path(WORKFLOW))) {
+                require(IlmFeature.CONTENT_SIGNING);
             }
             JsonNode existing = uuid == null
                     ? ConfigurationAttributes.JSON.createObjectNode()
@@ -254,7 +252,7 @@ public class SigningConfigurationServiceImpl implements SigningConfigurationServ
                 .merge(supplied, existing, "type", SIGNATURE_FORMATTING_CONNECTOR_UUID,
                         SIGNATURE_FORMATTING_CONNECTOR_ATTRIBUTES, "qualifiedTimestamp", "timeQualityConfigurationUuid",
                         "defaultPolicyId", "allowedPolicyIds", "allowedDigestAlgorithms", "validateTokenSignature",
-                        FAMILY, MAX_LEVEL, TIMESTAMP_SOURCE, "requireNonRepudiation", "requiredExtendedKeyUsageOids");
+                        FAMILY, LEVEL, TIMESTAMP_SOURCE, "requireNonRepudiation", "requiredExtendedKeyUsageOids");
         SigningConfigurationInput.reference(workflow, existing, "signatureFormattingConnector");
         SigningConfigurationInput.reference(workflow, existing, "timeQualityConfiguration");
         if (!workflow.has(SIGNATURE_FORMATTING_CONNECTOR_UUID) && existing.has("signatureFormatterConnector")) {
@@ -264,13 +262,12 @@ public class SigningConfigurationServiceImpl implements SigningConfigurationServ
         }
         String type = workflow.path("type").asString("");
         SigningConfigurationInput.workflowType(type);
-        if (SigningConfigurationInput.extended(workflow)) {
-            require(IlmFeature.SIGNING_FORMATTING_EXTENSIONS);
+        if (SigningConfigurationInput.contentSigning(workflow)) {
+            require(IlmFeature.CONTENT_SIGNING);
         }
-        if (MANAGED.equals(scheme) && "content_signing".equals(type)
-                && versions.unsupported(IlmFeature.SIGNING_FORMATTING_EXTENSIONS).isEmpty()) {
+        if (MANAGED.equals(scheme) && "content_signing".equals(type)) {
             SigningConfigurationInput.family(workflow.path(FAMILY).asString(null));
-            SigningConfigurationInput.level(workflow.path(MAX_LEVEL).asString(null));
+            SigningConfigurationInput.level(workflow.path(LEVEL).asString(null));
         }
         if (!supplied.has(TIMESTAMP_SOURCE)
                 && workflow.path(TIMESTAMP_SOURCE).path("signingProfile").path("uuid").isString()) {
@@ -283,7 +280,7 @@ public class SigningConfigurationServiceImpl implements SigningConfigurationServ
         if (MANAGED.equals(scheme) && !"raw_signing".equals(type)) {
             String connector = CryptoInput.uuid(workflow.path(SIGNATURE_FORMATTING_CONNECTOR_UUID).asString(null));
             String family = workflow.path(FAMILY).asString(null);
-            String level = workflow.path(MAX_LEVEL).asString(null);
+            String level = workflow.path(LEVEL).asString(null);
             String values = values(supplied, SIGNATURE_FORMATTING_CONNECTOR_ATTRIBUTES);
             JsonNode old = existing.path(SIGNATURE_FORMATTING_CONNECTOR_ATTRIBUTES);
             if (!old.isArray()) {

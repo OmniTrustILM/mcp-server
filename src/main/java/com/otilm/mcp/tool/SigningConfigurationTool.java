@@ -45,24 +45,24 @@ public class SigningConfigurationTool {
     }
 
     @McpTool(name = "get_signing_formatting_attributes",
-            description = "Discover formatting schema; chooses the ILM 2.18 or 2.19+ route. Supplying family/maxLevel selects content formatting and requires ILM 2.20+.",
+            description = "Discover formatting schema; chooses the ILM 2.18 or 2.19+ route. Supplying family/level selects content formatting and requires ILM 2.21+.",
             annotations = @McpTool.McpAnnotations(readOnlyHint = true))
     public String getSigningFormattingAttributes(
             @McpToolParam(description = "Provider connector UUID.") String connectorUuid,
             @McpToolParam(
-                    description = "Optional content signature family: pades, xades, cades or jades; requires ILM 2.20+.",
+                    description = "Optional content signature family: pades, xades, cades or jades; requires ILM 2.21+.",
                     required = false) String family,
             @McpToolParam(
-                    description = "Optional content signature level: signed, timestamped, long_term or archival; requires ILM 2.20+.",
-                    required = false) String maxLevel,
+                    description = "Optional content signature level: signed, timestamped, long_term or archival; requires ILM 2.21+.",
+                    required = false) String level,
             @McpToolParam(
                     description = "Optional JSON object of schema attribute names and values for callback resolution.",
                     required = false) String values) {
-        return service.getSigningFormattingAttributes(connectorUuid, family, maxLevel, values);
+        return service.getSigningFormattingAttributes(connectorUuid, family, level, values);
     }
 
     @McpTool(name = "create_signing_profile",
-            description = "Create signing profile; ILM 2.18+. Configuration: name, signingScheme and workflow required; description, customAttributes, recordPolicy optional. Scheme uses managed/static_key certificateUuid, managed/one_time_key raProfileUuid/csrTemplateUuid/tokenProfileUuid, or delegated connectorUuid. Provider attributes are name-value objects. recordPolicy requires 2.19+; content family/maxLevel and timestampSource require 2.20+.",
+            description = "Create signing profile; ILM 2.18+. Configuration: name, signingScheme and workflow required; description, customAttributes, recordPolicy optional. Scheme uses managed/static_key certificateUuid, managed/one_time_key raProfileUuid/csrTemplateUuid/tokenProfileUuid, or delegated connectorUuid. Provider attributes are name-value objects. recordPolicy requires 2.19+; the content_signing workflow requires 2.21+.",
             annotations = @McpTool.McpAnnotations(destructiveHint = false))
     public String createSigningProfile(@McpToolParam(
             description = "JSON configuration using the documented fields; omitted update values retain readable existing data. Protected replacements require fresh explicit input.") String configuration) {

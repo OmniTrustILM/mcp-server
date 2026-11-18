@@ -11,7 +11,7 @@ final class SigningConfigurationInput {
     private static final String CONTENT_SIGNING = "content_signing";
     private static final String DEFAULT_POLICY_ID = "defaultPolicyId";
     private static final String FAMILY = "family";
-    private static final String MAX_LEVEL = "maxLevel";
+    private static final String LEVEL = "level";
     private static final String PERSISTENCE_MODE = "persistenceMode";
     private static final String RAW_SIGNING = "raw_signing";
     private static final String RECORD_SIGNED_DOCUMENT = "recordSignedDocument";
@@ -22,8 +22,8 @@ final class SigningConfigurationInput {
     private static final String TIME_QUALITY_CONFIGURATION_UUID = "timeQualityConfigurationUuid";
     private static final String TIMESTAMP_SOURCE = "timestampSource";
 
-    private static final Set<String> EXTENDED = Set
-            .of(FAMILY, MAX_LEVEL, TIMESTAMP_SOURCE, REQUIRE_NON_REPUDIATION, REQUIRED_EXTENDED_KEY_USAGE_OIDS);
+    private static final Set<String> CONTENT_SIGNING_OPTIONS = Set
+            .of(FAMILY, LEVEL, TIMESTAMP_SOURCE, REQUIRE_NON_REPUDIATION, REQUIRED_EXTENDED_KEY_USAGE_OIDS);
 
     private SigningConfigurationInput() {
     }
@@ -58,8 +58,12 @@ final class SigningConfigurationInput {
         choice(value, Set.of(RAW_SIGNING, CONTENT_SIGNING, "timestamping"), "Signing workflow type");
     }
 
-    static boolean extended(JsonNode workflow) {
-        for (String field : EXTENDED) {
+    /** Whether the workflow is content signing, by its type or by an option only content signing takes. */
+    static boolean contentSigning(JsonNode workflow) {
+        if (CONTENT_SIGNING.equals(workflow.path("type").asString(null))) {
+            return true;
+        }
+        for (String field : CONTENT_SIGNING_OPTIONS) {
             if (workflow.has(field)) {
                 return true;
             }
@@ -91,7 +95,7 @@ final class SigningConfigurationInput {
         validateDigests(workflow);
         if (CONTENT_SIGNING.equals(type) && "managed".equals(scheme) && workflow.has(FAMILY)) {
             family(workflow.path(FAMILY).asString());
-            level(workflow.path(MAX_LEVEL).asString());
+            level(workflow.path(LEVEL).asString());
             timestampSource(workflow);
         }
         if ("delegated".equals(scheme) && hasManagedFormatting(workflow)) {
@@ -104,7 +108,7 @@ final class SigningConfigurationInput {
             case RAW_SIGNING -> Set.of("type");
             case CONTENT_SIGNING -> Set
                     .of("type", SIGNATURE_FORMATTING_CONNECTOR_UUID, "signatureFormattingConnectorAttributes", FAMILY,
-                            MAX_LEVEL, TIMESTAMP_SOURCE, REQUIRE_NON_REPUDIATION, REQUIRED_EXTENDED_KEY_USAGE_OIDS);
+                            LEVEL, TIMESTAMP_SOURCE, REQUIRE_NON_REPUDIATION, REQUIRED_EXTENDED_KEY_USAGE_OIDS);
             default -> Set
                     .of("type", SIGNATURE_FORMATTING_CONNECTOR_UUID, "signatureFormattingConnectorAttributes",
                             "qualifiedTimestamp", TIME_QUALITY_CONFIGURATION_UUID, DEFAULT_POLICY_ID,
@@ -116,7 +120,7 @@ final class SigningConfigurationInput {
         CryptoInput.bool(workflow, "qualifiedTimestamp", "validateTokenSignature", REQUIRE_NON_REPUDIATION);
         CryptoInput
                 .text(workflow, "type", SIGNATURE_FORMATTING_CONNECTOR_UUID, TIME_QUALITY_CONFIGURATION_UUID,
-                        DEFAULT_POLICY_ID, FAMILY, MAX_LEVEL);
+                        DEFAULT_POLICY_ID, FAMILY, LEVEL);
         for (String field : new String[]{SIGNATURE_FORMATTING_CONNECTOR_UUID, TIME_QUALITY_CONFIGURATION_UUID}) {
             if (workflow.hasNonNull(field)) {
                 CryptoInput.uuid(workflow.path(field).asString());
@@ -155,14 +159,14 @@ final class SigningConfigurationInput {
 
     private static boolean hasManagedFormatting(ObjectNode workflow) {
         return workflow.hasNonNull(SIGNATURE_FORMATTING_CONNECTOR_UUID) || workflow.hasNonNull(FAMILY)
-                || workflow.hasNonNull(MAX_LEVEL) || workflow.hasNonNull(TIMESTAMP_SOURCE)
+                || workflow.hasNonNull(LEVEL) || workflow.hasNonNull(TIMESTAMP_SOURCE)
                 || workflow.path(REQUIRE_NON_REPUDIATION).asBoolean(false)
                 || !workflow.path(REQUIRED_EXTENDED_KEY_USAGE_OIDS).isEmpty();
     }
 
     private static void timestampSource(ObjectNode workflow) {
         JsonNode source = workflow.path(TIMESTAMP_SOURCE);
-        boolean signed = "signed".equals(workflow.path(MAX_LEVEL).asString());
+        boolean signed = "signed".equals(workflow.path(LEVEL).asString());
         if (signed && !source.isMissingNode() && !source.isNull()) {
             throw new IllegalArgumentException("Signed level must omit timestampSource.");
         }

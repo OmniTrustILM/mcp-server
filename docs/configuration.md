@@ -77,7 +77,8 @@ platform before use. If the version cannot be read, ILM answers the request dire
 |---------|--------------------|
 | 2.18 | Connector proxies, signing/TSP/time quality, trusted certificates and manual certificate lifecycle controls |
 | 2.19 | Certificate registration/capabilities, RA request settings and authority interfaces, TSP authentication/basic credentials, signing record policy, system OIDs and certificate-extension OIDs |
-| 2.20 | Key transfer and modern token schemas, extended certificate transfer/renewal/provider fields, extended discovery/enrollment/signing fields and CBOM synchronization settings |
+| 2.20 | Key transfer and modern token schemas, extended certificate transfer/renewal/provider fields, extended discovery/enrollment fields and CBOM synchronization settings |
+| 2.21 | Content-signing workflows with their signature family, level and timestamp source |
 
 Provider capabilities still determine whether an individual lifecycle operation is available. Key exports require an
 active, enabled, exportable private/secret key item and profile/provider support. Scheduler edits change the Quartz cron
