@@ -24,6 +24,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.put;
 import static com.github.tomakehurst.wiremock.client.WireMock.putRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlMatching;
 import static com.github.tomakehurst.wiremock.client.WireMock.verify;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -250,6 +251,28 @@ class SigningConfigurationTest {
                                 + CONNECTOR + "\"}}"))
                 .containsIgnoringCase("family");
         verify(0, putRequestedFor(urlEqualTo(BASE + "/" + PROFILE)));
+    }
+
+    @Test
+    void delegatedSigningRejectsEachManagedFormattingOptionBeforeMutation() {
+        String timestampSourceOnly = "\"timestampSource\":{\"type\":\"internal\",\"signingProfile\":{\"uuid\":\"" + TSP
+                + "\"}}";
+        for (String option : new String[]{SIGNED_LEVEL, timestampSourceOnly, "\"requireNonRepudiation\":true"}) {
+            assertThat(tool
+                    .createSigningProfile(
+                            "{\"name\":\"delegated\",\"signingScheme\":{\"signingScheme\":\"delegated\",\"connectorUuid\":\""
+                                    + CONNECTOR + "\"},\"workflow\":{\"type\":\"content_signing\"," + option + "}}"))
+                    .as(option)
+                    .contains("Delegated signing must omit managed formatting options.");
+        }
+        verify(0, postRequestedFor(urlEqualTo(BASE)));
+    }
+
+    @Test
+    void formattingDiscoveryRequiresFamilyWhenOnlyLevelIsSupplied() {
+        assertThat(tool.getSigningFormattingAttributes(CONNECTOR, null, "signed", null))
+                .contains("Signature family must use a supported code.");
+        verify(0, getRequestedFor(urlMatching(".*/contentSigningFormattingAttributes.*")));
     }
 
     @Test
