@@ -26,7 +26,7 @@ import com.otilm.api.model.core.cbom.CbomContributedAssetDto;
 import com.otilm.api.model.core.cbom.CbomDetailDto;
 import com.otilm.api.model.core.cbom.CbomDto;
 import com.otilm.api.model.core.certificate.CertificateChainResponseDto;
-import com.otilm.api.model.core.certificate.CertificateDetailDto;
+import com.otilm.api.model.core.certificate.CertificateDetail;
 import com.otilm.api.model.core.certificate.CertificateEventHistoryDto;
 import com.otilm.api.model.core.certificate.CertificateValidationResultDto;
 import com.otilm.api.model.core.certificate.group.GroupDto;
@@ -115,9 +115,9 @@ public class IlmApiClient {
         return restClient.post().uri("/v1/certificates").body(request).retrieve().body(CertificateResponseDto.class);
     }
 
-    public CertificateDetailDto getCertificate(String uuid) {
+    public CertificateDetail getCertificate(String uuid) {
         logger.debug("Fetching certificate {}", uuid);
-        return restClient.get().uri("/v1/certificates/{uuid}", uuid).retrieve().body(CertificateDetailDto.class);
+        return restClient.get().uri("/v1/certificates/{uuid}", uuid).retrieve().body(CertificateDetail.class);
     }
 
     public CertificateValidationResultDto validateCertificate(String uuid) {

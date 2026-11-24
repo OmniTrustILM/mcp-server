@@ -11,8 +11,8 @@ public class WorkflowTool {
 
     private static final String EVENT_CODES = "certificate_status_changed, certificate_action_performed, "
             + "certificate_discovered, certificate_expiring, certificate_not_compliant, certificate_uploaded, "
-            + "certificate_registered, discovery_finished, approval_requested, approval_closed, comment_created, "
-            + "comment_resolved, cbom_synced, crypto_asset_pqc_not_ready, scheduled_job_finished";
+            + "certificate_registered, certificate_renewal_due, discovery_finished, approval_requested, "
+            + "approval_closed, comment_created, comment_resolved, cbom_synced, crypto_asset_pqc_not_ready, scheduled_job_finished";
 
     private final WorkflowService workflowService;
 

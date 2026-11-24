@@ -10,11 +10,13 @@ import org.junit.jupiter.api.Test;
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.containing;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
+import static com.github.tomakehurst.wiremock.client.WireMock.okJson;
 import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.verify;
+import static com.otilm.mcp.IlmTestSupport.fixture;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @WireMockTest
@@ -107,11 +109,52 @@ class CertificateServiceTest {
     }
 
     @Test
+    void shouldShowTheRenewalWindow() {
+        stubFor(get(urlEqualTo("/v1/certificates/uuid-1")).willReturn(okJson(fixture("v2_21", "certificate-renewal"))));
+
+        assertThat(service.getCertificate("uuid-1"))
+                .contains("Renewal Window: ", " to ", "Renewal Window Source: authority",
+                        "Renewal Explanation URL: https://ca.example.test/renewal/explanation", "Renewal Due: yes",
+                        "Auto-Renewal: location", "Auto-Renewal Blocked: Location is not reachable");
+    }
+
+    @Test
+    void shouldOmitTheRenewalWindowWhenTheCertificateHasNone() {
+        stubFor(get(urlEqualTo("/v1/certificates/uuid-1")).willReturn(okJson(fixture("certificate"))));
+
+        assertThat(service.getCertificate("uuid-1")).doesNotContain("Renewal");
+    }
+
+    @Test
+    void shouldShowNotAvailableForMissingRenewalWindow() {
+        stubFor(get(urlEqualTo("/v1/certificates/uuid-1")).willReturn(okJson("""
+                {"uuid": "uuid-1", "certificateType": "X.509", "commonName": "server.example.com",
+                 "renewalInfo": {"source": "policy", "due": false}}
+                """)));
+
+        assertThat(service.getCertificate("uuid-1")).contains("Renewal Window: N/A to N/A").doesNotContain("null");
+    }
+
+    @Test
+    void shouldOmitUnsetRenewalDetails() {
+        stubFor(get(urlEqualTo("/v1/certificates/uuid-1")).willReturn(okJson("""
+                {"uuid": "uuid-1", "certificateType": "X.509", "commonName": "server.example.com",
+                 "renewalInfo": {"windowStart": "2026-11-01T10:00:00.000+00:00",
+                                 "windowEnd": "2026-11-08T10:00:00.000+00:00", "source": "policy", "due": false}}
+                """)));
+
+        assertThat(service.getCertificate("uuid-1"))
+                .contains("Renewal Window Source: policy", "Renewal Due: no")
+                .doesNotContain("Explanation", "Auto-Renewal");
+    }
+
+    @Test
     void shouldFormatCertificateDetail() {
         stubFor(get(urlEqualTo("/v1/certificates/uuid-1"))
                 .willReturn(aResponse().withHeader("Content-Type", "application/json").withBody("""
                         {
                             "uuid": "uuid-1",
+                            "certificateType": "X.509",
                             "commonName": "server.example.com",
                             "serialNumber": "FF1122334455",
                             "subjectDn": "CN=server.example.com,O=Example Corp,C=US",

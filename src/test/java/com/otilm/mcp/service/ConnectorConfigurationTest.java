@@ -196,6 +196,15 @@ class ConnectorConfigurationTest {
     }
 
     @Test
+    void frameworkTwoInfoSurvivesTheRenewalInformationFeatureFlag() {
+        stubFor(get(urlEqualTo("/v2/connectors/" + ID)).willReturn(okJson("{\"version\":\"v2\"}")));
+        stubFor(get(urlEqualTo("/v2/connectors/" + ID + "/info"))
+                .willReturn(okJson(
+                        "{\"id\":\"ConnectorSoftware\",\"name\":\"Provider\",\"version\":\"1.0\",\"featureFlags\":[\"certificateRenewalInfo\"]}")));
+        assertThat(tool.getConnectorInfo(ID)).contains("Provider", "ConnectorSoftware", "1.0");
+    }
+
+    @Test
     void probesReportConnectionFailureWithoutEchoingProviderErrors() {
         stubFor(post(urlEqualTo("/v2/connectors/connect"))
                 .willReturn(okJson("[{\"version\":\"v2\",\"errorMessage\":\"private-sentinel\"}]")));

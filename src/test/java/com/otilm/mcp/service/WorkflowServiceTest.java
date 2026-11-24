@@ -49,6 +49,16 @@ class WorkflowServiceTest {
     }
 
     @Test
+    void getTriggerExplainsARenewalTrigger() {
+        stubFor(get(urlEqualTo("/v1/workflows/triggers/" + SET_FIELD))
+                .willReturn(okJson(fixture("v2_21", "workflow-trigger-renewal"))));
+        stubEventsSettings();
+
+        assertThat(service.getTrigger(SET_FIELD))
+                .contains("Event: certificate_renewal_due (certificates)", "  - renew the certificate\n");
+    }
+
+    @Test
     void getTriggerExplainsANotificationTrigger() {
         stubTrigger(NOTIFY, "workflow-trigger-notification");
         stubEventsSettings();

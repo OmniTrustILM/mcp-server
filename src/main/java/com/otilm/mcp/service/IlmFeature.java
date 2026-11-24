@@ -20,6 +20,7 @@ public enum IlmFeature {
     TOKEN_PROFILE_CALLBACKS("Token profile callbacks", 2, 19),
     CERTIFICATE_MANUAL_OPERATIONS("Manual certificate operations", 2, 18),
     CERTIFICATE_REGISTRATION("Certificate registration and capabilities", 2, 19),
+    CERTIFICATE_RENEWAL_INFO("Certificate renewal information", 2, 21),
     CERTIFICATE_PROVIDER_EXTENSIONS("Extended certificate provider attributes", 2, 20),
     CERTIFICATE_TRANSFER("Certificate import and keystore export", 2, 20),
     RA_REQUEST_ATTRIBUTES("RA request attribute configuration", 2, 19),
