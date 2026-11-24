@@ -150,6 +150,21 @@ class RaProfileConfigurationTest {
     }
 
     @Test
+    void authorityInterfaceUuidMatchesTheConnectorInterfaceInAnyCase() {
+        String upper = "ABCDEF01-2345-4678-89AB-CDEF01234567";
+        stubFor(get(urlEqualTo("/v2/connectors/" + A))
+                .willReturn(okJson(
+                        "{\"interfaces\":[{\"uuid\":\"abcdef01-2345-4678-89ab-cdef01234567\",\"code\":\"authority\","
+                                + "\"version\":\"v3\"}]}")));
+        stubFor(get(urlPathEqualTo(SOLE_INTERFACE_SCHEMA)).willReturn(okJson("[]")));
+
+        assertThat(authorities.getAuthorityAttributes(A, upper, null, null))
+                .doesNotContain("not an interface of the connector");
+
+        verify(getRequestedFor(urlPathEqualTo(SOLE_INTERFACE_SCHEMA)).withQueryParam("interfaceUuid", equalTo(upper)));
+    }
+
+    @Test
     void authorityInterfaceOutsideTheConnectorIsRejected() {
         stubFor(get(urlEqualTo("/v2/connectors/" + A)).willReturn(okJson("{\"interfaces\":[]}")));
 

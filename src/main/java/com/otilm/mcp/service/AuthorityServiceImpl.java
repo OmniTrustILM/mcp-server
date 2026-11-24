@@ -151,7 +151,7 @@ public class AuthorityServiceImpl implements AuthorityService {
 
     private String interfaceVersion(String connector, String iface) {
         for (JsonNode candidate : client.get("/v2/connectors/{uuid}", connector).path("interfaces")) {
-            if (iface.equals(candidate.path("uuid").asString(null))) {
+            if (iface.equalsIgnoreCase(candidate.path("uuid").asString(null))) {
                 return candidate.path("version").asString(null);
             }
         }
