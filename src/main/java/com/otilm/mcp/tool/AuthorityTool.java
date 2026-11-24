@@ -28,7 +28,7 @@ public class AuthorityTool {
                     description = "Authority interface UUID; required when the connector has several authority interfaces or a v3 schema has callbacks",
                     required = false) String interfaceUuid,
             @McpToolParam(
-                    description = "Kind of a v1 or v2 Authority Provider interface, such as EJBCA; selects its provider schema",
+                    description = "Kind of a v1 or v2 Authority Provider interface, such as EJBCA; selects its provider schema and must be omitted for a v3 interface",
                     required = false) String kind,
             @McpToolParam(description = "Optional plain attribute-name to value JSON object for callback dependencies",
                     required = false) String values) {
@@ -36,7 +36,7 @@ public class AuthorityTool {
     }
 
     @McpTool(name = "create_authority",
-            description = "Create an authority using provider schema validation. JSON fields: name, connectorUuid, kind, interfaceUuid, attributes and customAttributes. A v1 or v2 Authority Provider interface requires its kind, and interfaceUuid is required when the connector has several authority interfaces or a v3 schema has callbacks. An interface UUID or a v3 interface requires ILM 2.19 or later.",
+            description = "Create an authority using provider schema validation. JSON fields: name, connectorUuid, kind, interfaceUuid, attributes and customAttributes. A v1 or v2 Authority Provider interface requires its kind, and a v3 interface takes none; interfaceUuid is required when the connector has several authority interfaces or a v3 schema has callbacks. An interface UUID or a v3 interface requires ILM 2.19 or later.",
             annotations = @McpTool.McpAnnotations(destructiveHint = false))
     public String createAuthority(@McpToolParam(
             description = "JSON object with the documented fields. attributes/customAttributes/operation attributes are plain schema attribute-name to value objects, never request envelopes.") String configuration) {

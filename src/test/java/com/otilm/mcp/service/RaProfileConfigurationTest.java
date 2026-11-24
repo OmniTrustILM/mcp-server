@@ -44,6 +44,7 @@ class RaProfileConfigurationTest {
     private static final String SOLE_INTERFACE_SCHEMA = "/v1/authorities/" + A + "/attributes";
     private static final String INTERFACE_SCHEMA = SOLE_INTERFACE_SCHEMA + "?interfaceUuid=" + I;
     private static final String KIND_CALLBACK = "/v1/connectors/" + A + "/authorityProvider/CA/callback";
+    private static final String INTERFACE_CALLBACK = "/v2/connectors/" + A + "/callback";
     private AuthorityTool authorities;
     private RaProfileTool profiles;
 
@@ -242,6 +243,22 @@ class RaProfileConfigurationTest {
                                 """)));
 
         assertThat(authorities.getAuthorityAttributes(A, null, null, "{}")).contains("interfaceUuid");
+    }
+
+    @Test
+    void authorityInterfaceSchemaCallbacksPostTheInterfaceUuid() {
+        stubInterface("v3");
+        stubFor(get(urlEqualTo(INTERFACE_SCHEMA)).willReturn(okJson("""
+                [{"name":"options","version":2,"type":"data","contentType":"string","properties":{"list":true},
+                  "attributeCallback":{"dependsOn":[]}}]
+                """)));
+        stubFor(post(urlEqualTo(INTERFACE_CALLBACK)).willReturn(okJson("[{\"data\":\"first\"}]")));
+
+        assertThat(authorities.getAuthorityAttributes(A, I, null, "{}")).contains("first");
+
+        verify(postRequestedFor(urlEqualTo(INTERFACE_CALLBACK))
+                .withRequestBody(matchingJsonPath("$.interfaceUuid", equalTo(I))));
+        verify(0, postRequestedFor(urlPathMatching("/v1/connectors/.*/callback")));
     }
 
     private static void stubInterface(String version) {
