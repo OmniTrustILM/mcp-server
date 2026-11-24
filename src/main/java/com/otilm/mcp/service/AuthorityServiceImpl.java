@@ -19,6 +19,7 @@ import static com.otilm.mcp.service.ConfigurationSupport.run;
 public class AuthorityServiceImpl implements AuthorityService {
     private static final String UUID_ENDPOINT = "/{uuid}";
     private static final String AUTHORITY = "Authority";
+    private static final String AUTHORITY_INTERFACE = "authority";
     private static final String CALLBACK_FREE_KIND = "Authority";
     private static final String ATTRIBUTES = "attributes";
     private static final String CONNECTOR_UUID = "connectorUuid";
@@ -151,11 +152,12 @@ public class AuthorityServiceImpl implements AuthorityService {
 
     private String interfaceVersion(String connector, String iface) {
         for (JsonNode candidate : client.get("/v2/connectors/{uuid}", connector).path("interfaces")) {
-            if (iface.equalsIgnoreCase(candidate.path("uuid").asString(null))) {
+            if (iface.equalsIgnoreCase(candidate.path("uuid").asString(null))
+                    && AUTHORITY_INTERFACE.equals(candidate.path("code").asString(null))) {
                 return candidate.path("version").asString(null);
             }
         }
-        throw new IllegalArgumentException("Authority interfaceUuid is not an interface of the connector.");
+        throw new IllegalArgumentException("Authority interfaceUuid is not an authority interface of the connector.");
     }
 
     private JsonNode providerDefinitions(Provider provider) {

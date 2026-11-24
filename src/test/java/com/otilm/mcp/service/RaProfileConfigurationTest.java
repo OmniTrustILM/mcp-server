@@ -159,16 +159,29 @@ class RaProfileConfigurationTest {
         stubFor(get(urlPathEqualTo(SOLE_INTERFACE_SCHEMA)).willReturn(okJson("[]")));
 
         assertThat(authorities.getAuthorityAttributes(A, upper, null, null))
-                .doesNotContain("not an interface of the connector");
+                .doesNotContain("not an authority interface of the connector");
 
         verify(getRequestedFor(urlPathEqualTo(SOLE_INTERFACE_SCHEMA)).withQueryParam("interfaceUuid", equalTo(upper)));
+    }
+
+    @Test
+    void authorityNonAuthorityInterfaceIsRejected() {
+        stubFor(get(urlEqualTo("/v2/connectors/" + A))
+                .willReturn(
+                        okJson("{\"interfaces\":[{\"uuid\":\"" + I + "\",\"code\":\"secret\",\"version\":\"v2\"}]}")));
+
+        assertThat(authorities.getAuthorityAttributes(A, I, "CA", null))
+                .contains("not an authority interface of the connector");
+
+        verify(0, getRequestedFor(urlEqualTo(KIND_SCHEMA)));
     }
 
     @Test
     void authorityInterfaceOutsideTheConnectorIsRejected() {
         stubFor(get(urlEqualTo("/v2/connectors/" + A)).willReturn(okJson("{\"interfaces\":[]}")));
 
-        assertThat(authorities.getAuthorityAttributes(A, I, "CA", null)).contains("not an interface of the connector");
+        assertThat(authorities.getAuthorityAttributes(A, I, "CA", null))
+                .contains("not an authority interface of the connector");
 
         verify(0, getRequestedFor(urlEqualTo(KIND_SCHEMA)));
     }
