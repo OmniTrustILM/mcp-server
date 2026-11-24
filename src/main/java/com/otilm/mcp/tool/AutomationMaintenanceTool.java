@@ -29,7 +29,7 @@ public class AutomationMaintenanceTool {
             @McpToolParam(description = "Scope resource: discoveries, raProfiles or groups") String resource,
             @McpToolParam(description = "Scoped resource object UUID") String objectUuid,
             @McpToolParam(
-                    description = "Supported event code; discovery certificate classification uses certificate_discovered, run completion uses discovery_finished") String event,
+                    description = "Supported event code; discovery certificate classification uses certificate_discovered, run completion uses discovery_finished; certificate_renewal_due requires ILM 2.21+") String event,
             @McpToolParam(description = "Trigger UUID") String triggerUuid,
             @McpToolParam(
                     description = "Optional one-based insertion position; default append. Ignore triggers must precede ordinary triggers.",
@@ -44,7 +44,7 @@ public class AutomationMaintenanceTool {
             @McpToolParam(description = "Scope resource: discoveries, raProfiles or groups") String resource,
             @McpToolParam(description = "Scoped resource object UUID") String objectUuid,
             @McpToolParam(
-                    description = "Supported event code; discovery certificate classification uses certificate_discovered, run completion uses discovery_finished") String event,
+                    description = "Supported event code; discovery certificate classification uses certificate_discovered, run completion uses discovery_finished; certificate_renewal_due requires ILM 2.21+") String event,
             @McpToolParam(description = "Trigger UUID") String triggerUuid) {
         return service.detachScopedTrigger(resource, objectUuid, event, triggerUuid);
     }
@@ -56,7 +56,7 @@ public class AutomationMaintenanceTool {
             @McpToolParam(description = "Scope resource: discoveries, raProfiles or groups") String resource,
             @McpToolParam(description = "Scoped resource object UUID") String objectUuid,
             @McpToolParam(
-                    description = "Supported event code; discovery certificate classification uses certificate_discovered, run completion uses discovery_finished") String event,
+                    description = "Supported event code; discovery certificate classification uses certificate_discovered, run completion uses discovery_finished; certificate_renewal_due requires ILM 2.21+") String event,
             @McpToolParam(
                     description = "Complete ordered JSON array of the current trigger UUIDs") String triggerUuids) {
         return service.reorderScopedTriggers(resource, objectUuid, event, triggerUuids);
