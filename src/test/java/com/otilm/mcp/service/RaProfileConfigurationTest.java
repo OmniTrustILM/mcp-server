@@ -12,11 +12,14 @@ import org.junit.jupiter.api.Test;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.anyUrl;
 import static com.github.tomakehurst.wiremock.client.WireMock.delete;
+import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalToJson;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.matching;
+import static com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath;
 import static com.github.tomakehurst.wiremock.client.WireMock.noContent;
+import static com.github.tomakehurst.wiremock.client.WireMock.notMatching;
 import static com.github.tomakehurst.wiremock.client.WireMock.okJson;
 import static com.github.tomakehurst.wiremock.client.WireMock.patch;
 import static com.github.tomakehurst.wiremock.client.WireMock.patchRequestedFor;
@@ -35,7 +38,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 class RaProfileConfigurationTest {
     private static final String A = "11111111-1111-4111-8111-111111111111";
     private static final String R = "22222222-2222-4222-8222-222222222222";
+    private static final String I = "33333333-3333-4333-8333-333333333333";
     private static final String BASE = "/v1/authorities/" + A + "/raProfiles/" + R;
+    private static final String KIND_SCHEMA = "/v1/connectors/" + A + "/attributes/authorityProvider/CA";
+    private static final String SOLE_INTERFACE_SCHEMA = "/v1/authorities/" + A + "/attributes";
+    private static final String INTERFACE_SCHEMA = SOLE_INTERFACE_SCHEMA + "?interfaceUuid=" + I;
+    private static final String KIND_CALLBACK = "/v1/connectors/" + A + "/authorityProvider/CA/callback";
+    private static final String INTERFACE_CALLBACK = "/v2/connectors/" + A + "/callback";
     private AuthorityTool authorities;
     private RaProfileTool profiles;
 
@@ -48,7 +57,8 @@ class RaProfileConfigurationTest {
         profiles = new RaProfileTool(new RaProfileServiceImpl(client, versions));
         IlmTestSupport.stubIlmVersion("2.20.0");
         stubFor(get(urlPathMatching("/v1/attributes/custom/resources/.*")).willReturn(okJson("[]")));
-        stubFor(get(urlEqualTo("/v1/authorities/" + A + "/attributes")).willReturn(okJson("[]")));
+        stubFor(get(urlEqualTo(SOLE_INTERFACE_SCHEMA)).willReturn(okJson("[]")));
+        stubFor(get(urlEqualTo(KIND_SCHEMA)).willReturn(okJson("[]")));
         stubFor(get(urlEqualTo("/v1/authorities/" + A + "/attributes/raProfile")).willReturn(okJson("[]")));
     }
 
@@ -65,6 +75,203 @@ class RaProfileConfigurationTest {
         assertThat(authorities.updateAuthority(R, "{}")).contains(R).doesNotContain("SENTINEL");
         verify(putRequestedFor(urlEqualTo("/v1/authorities/" + R))
                 .withRequestBody(equalToJson("{\"attributes\":[],\"customAttributes\":[]}")));
+        verify(2, getRequestedFor(urlEqualTo(KIND_SCHEMA)));
+        verify(0, getRequestedFor(urlPathEqualTo(SOLE_INTERFACE_SCHEMA)));
+    }
+
+    @Test
+    void authorityUpdateReadsTheKindSchemaForAV2Interface() {
+        stubAuthority("\"kind\":\"CA\",\"connectorInterface\":{\"uuid\":\"" + I + "\",\"version\":\"v2\"}");
+
+        assertThat(authorities.updateAuthority(R, "{}")).contains(R);
+
+        verify(getRequestedFor(urlEqualTo(KIND_SCHEMA)));
+        verify(0, getRequestedFor(urlPathEqualTo(SOLE_INTERFACE_SCHEMA)));
+    }
+
+    @Test
+    void authorityUpdateReadsTheInterfaceSchemaForAV3Interface() {
+        stubFor(get(urlEqualTo(INTERFACE_SCHEMA)).willReturn(okJson("[]")));
+        stubAuthority("\"connectorInterface\":{\"uuid\":\"" + I + "\",\"version\":\"v3\"}");
+
+        assertThat(authorities.updateAuthority(R, "{}")).contains(R);
+
+        verify(getRequestedFor(urlEqualTo(INTERFACE_SCHEMA)));
+        verify(0, getRequestedFor(urlPathMatching("/v1/connectors/.*")));
+    }
+
+    @Test
+    void authorityCreateWithoutKindReadsTheSoleInterfaceSchema() {
+        stubFor(post(urlEqualTo("/v1/authorities")).willReturn(okJson("{\"uuid\":\"" + R + "\",\"name\":\"CA\"}")));
+
+        assertThat(authorities.createAuthority("{\"name\":\"CA\",\"connectorUuid\":\"" + A + "\"}")).contains(R);
+
+        verify(getRequestedFor(urlEqualTo(SOLE_INTERFACE_SCHEMA)));
+        verify(0, getRequestedFor(urlPathMatching("/v1/connectors/.*")));
+    }
+
+    @Test
+    void authorityCreateWithKindBesideAV2InterfaceReadsTheKindSchemaAndSendsTrimmedSelectors() {
+        stubInterface("v2");
+        stubFor(post(urlEqualTo("/v1/authorities")).willReturn(okJson("{\"uuid\":\"" + R + "\",\"name\":\"CA\"}")));
+
+        assertThat(authorities
+                .createAuthority("{\"name\":\"CA\",\"connectorUuid\":\"" + A + "\",\"interfaceUuid\":\" " + I
+                        + " \",\"kind\":\" CA \"}"))
+                .contains(R);
+
+        verify(getRequestedFor(urlEqualTo(KIND_SCHEMA)));
+        verify(0, getRequestedFor(urlPathEqualTo(SOLE_INTERFACE_SCHEMA)));
+        verify(postRequestedFor(urlEqualTo("/v1/authorities"))
+                .withRequestBody(equalToJson("{\"interfaceUuid\":\"" + I + "\",\"kind\":\"CA\"}", true, true)));
+    }
+
+    @Test
+    void authorityCreateWithKindBesideAV3InterfaceReadsTheInterfaceSchema() {
+        stubInterface("v3");
+        stubFor(get(urlEqualTo(INTERFACE_SCHEMA)).willReturn(okJson("[]")));
+        stubFor(post(urlEqualTo("/v1/authorities")).willReturn(okJson("{\"uuid\":\"" + R + "\",\"name\":\"CA\"}")));
+
+        assertThat(authorities
+                .createAuthority("{\"name\":\"CA\",\"connectorUuid\":\"" + A + "\",\"interfaceUuid\":\"" + I
+                        + "\",\"kind\":\"CA\"}"))
+                .contains(R);
+
+        verify(getRequestedFor(urlEqualTo(INTERFACE_SCHEMA)));
+        verify(0, getRequestedFor(urlEqualTo(KIND_SCHEMA)));
+    }
+
+    @Test
+    void authorityV2InterfaceWithoutKindAsksForTheKind() {
+        stubInterface("v2");
+
+        assertThat(authorities.getAuthorityAttributes(A, I, null, null)).contains("kind is required");
+
+        verify(0, getRequestedFor(urlPathEqualTo(SOLE_INTERFACE_SCHEMA)));
+    }
+
+    @Test
+    void authorityInterfaceUuidMatchesTheConnectorInterfaceInAnyCase() {
+        String upper = "ABCDEF01-2345-4678-89AB-CDEF01234567";
+        stubFor(get(urlEqualTo("/v2/connectors/" + A))
+                .willReturn(okJson(
+                        "{\"interfaces\":[{\"uuid\":\"abcdef01-2345-4678-89ab-cdef01234567\",\"code\":\"authority\","
+                                + "\"version\":\"v3\"}]}")));
+        stubFor(get(urlPathEqualTo(SOLE_INTERFACE_SCHEMA)).willReturn(okJson("[]")));
+
+        assertThat(authorities.getAuthorityAttributes(A, upper, null, null))
+                .doesNotContain("not an authority interface of the connector");
+
+        verify(getRequestedFor(urlPathEqualTo(SOLE_INTERFACE_SCHEMA)).withQueryParam("interfaceUuid", equalTo(upper)));
+    }
+
+    @Test
+    void authorityNonAuthorityInterfaceIsRejected() {
+        stubFor(get(urlEqualTo("/v2/connectors/" + A))
+                .willReturn(
+                        okJson("{\"interfaces\":[{\"uuid\":\"" + I + "\",\"code\":\"secret\",\"version\":\"v2\"}]}")));
+
+        assertThat(authorities.getAuthorityAttributes(A, I, "CA", null))
+                .contains("not an authority interface of the connector");
+
+        verify(0, getRequestedFor(urlEqualTo(KIND_SCHEMA)));
+    }
+
+    @Test
+    void authorityInterfaceOutsideTheConnectorIsRejected() {
+        stubFor(get(urlEqualTo("/v2/connectors/" + A)).willReturn(okJson("{\"interfaces\":[]}")));
+
+        assertThat(authorities.getAuthorityAttributes(A, I, "CA", null))
+                .contains("not an authority interface of the connector");
+
+        verify(0, getRequestedFor(urlEqualTo(KIND_SCHEMA)));
+    }
+
+    @Test
+    void authorityCreateDropsABlankKind() {
+        stubFor(post(urlEqualTo("/v1/authorities")).willReturn(okJson("{\"uuid\":\"" + R + "\",\"name\":\"CA\"}")));
+
+        assertThat(authorities.createAuthority("{\"name\":\"CA\",\"connectorUuid\":\"" + A + "\",\"kind\":\" \"}"))
+                .contains(R);
+
+        verify(postRequestedFor(urlEqualTo("/v1/authorities")).withRequestBody(notMatching(".*\"kind\".*")));
+    }
+
+    @Test
+    void authorityCreateEncodesACallbackFreeSoleInterfaceSchema() {
+        stubFor(get(urlEqualTo(SOLE_INTERFACE_SCHEMA)).willReturn(okJson("""
+                [{"name":"url","version":2,"type":"data","contentType":"string","properties":{},
+                  "attributeCallback":{"mappings":[]}}]
+                """)));
+        stubFor(post(urlEqualTo("/v1/authorities")).willReturn(okJson("{\"uuid\":\"" + R + "\",\"name\":\"CA\"}")));
+
+        assertThat(authorities
+                .createAuthority("{\"name\":\"CA\",\"connectorUuid\":\"" + A
+                        + "\",\"attributes\":{\"url\":\"https://ca.example.invalid\"}}"))
+                .contains(R);
+
+        verify(postRequestedFor(urlEqualTo("/v1/authorities"))
+                .withRequestBody(
+                        matchingJsonPath("$.attributes[0].content[0].data", equalTo("https://ca.example.invalid"))));
+    }
+
+    @Test
+    void authorityInterfaceSchemaReadUsesTheTrimmedInterfaceUuid() {
+        stubInterface("v3");
+        stubFor(get(urlEqualTo(INTERFACE_SCHEMA)).willReturn(okJson("[]")));
+
+        assertThat(authorities.getAuthorityAttributes(A, " " + I + " ", " ", null)).contains("Authority settings");
+
+        verify(getRequestedFor(urlEqualTo(INTERFACE_SCHEMA)));
+    }
+
+    @Test
+    void authoritySoleInterfaceSchemaRequiresIlm219() {
+        IlmTestSupport.stubIlmVersion("2.18.0");
+
+        assertThat(authorities.getAuthorityAttributes(A, null, null, null)).contains("2.19");
+
+        verify(0, getRequestedFor(urlPathEqualTo(SOLE_INTERFACE_SCHEMA)));
+    }
+
+    @Test
+    void authoritySoleInterfaceCallbacksRequireTheInterfaceUuid() {
+        stubFor(get(urlEqualTo(SOLE_INTERFACE_SCHEMA))
+                .willReturn(
+                        okJson("""
+                                [{"name":"options","version":2,"type":"data","contentType":"string","properties":{"list":true},"attributeCallback":{"dependsOn":[]}}]
+                                """)));
+
+        assertThat(authorities.getAuthorityAttributes(A, null, null, "{}")).contains("interfaceUuid");
+    }
+
+    @Test
+    void authorityInterfaceSchemaCallbacksPostTheInterfaceUuid() {
+        stubInterface("v3");
+        stubFor(get(urlEqualTo(INTERFACE_SCHEMA)).willReturn(okJson("""
+                [{"name":"options","version":2,"type":"data","contentType":"string","properties":{"list":true},
+                  "attributeCallback":{"dependsOn":[]}}]
+                """)));
+        stubFor(post(urlEqualTo(INTERFACE_CALLBACK)).willReturn(okJson("[{\"data\":\"first\"}]")));
+
+        assertThat(authorities.getAuthorityAttributes(A, I, null, "{}")).contains("first");
+
+        verify(postRequestedFor(urlEqualTo(INTERFACE_CALLBACK))
+                .withRequestBody(matchingJsonPath("$.interfaceUuid", equalTo(I))));
+        verify(0, postRequestedFor(urlPathMatching("/v1/connectors/.*/callback")));
+    }
+
+    private static void stubInterface(String version) {
+        stubFor(get(urlEqualTo("/v2/connectors/" + A))
+                .willReturn(okJson("{\"interfaces\":[{\"uuid\":\"" + I + "\",\"code\":\"authority\",\"version\":\""
+                        + version + "\"}]}")));
+    }
+
+    private void stubAuthority(String connectorFields) {
+        stubFor(get(urlEqualTo("/v1/authorities/" + R))
+                .willReturn(okJson("{\"uuid\":\"" + R + "\",\"name\":\"CA\",\"connectorUuid\":\"" + A + "\","
+                        + connectorFields + ",\"attributes\":[],\"customAttributes\":[]}")));
+        stubFor(put(urlEqualTo("/v1/authorities/" + R)).willReturn(okJson("{\"uuid\":\"" + R + "\"}")));
     }
 
     @Test
@@ -192,15 +399,32 @@ class RaProfileConfigurationTest {
 
     @Test
     void authoritySchemaCallbacksUseTheSelectedProviderKind() {
-        stubFor(get(urlEqualTo("/v1/authorities/" + A + "/attributes"))
-                .willReturn(
-                        okJson("""
-                                [{"name":"options","version":2,"type":"data","contentType":"string","properties":{"list":true},"attributeCallback":{"dependsOn":[]}}]
-                                """)));
-        stubFor(post(urlEqualTo("/v1/connectors/" + A + "/authorityProvider/CA/callback"))
-                .willReturn(okJson("[{\"data\":\"RSA\"}]")));
-        assertThat(authorities.getAuthorityAttributes(A, null, "CA", "{}")).contains("RSA");
-        verify(postRequestedFor(urlEqualTo("/v1/connectors/" + A + "/authorityProvider/CA/callback")));
+        stubKindCallbackSchema();
+
+        assertThat(authorities.getAuthorityAttributes(A, null, "CA", "{}")).contains("credential");
+
+        verify(postRequestedFor(urlEqualTo(KIND_CALLBACK))
+                .withRequestBody(matchingJsonPath("$.pathVariable.credentialKind", equalTo("SoftKeyStore"))));
     }
 
+    @Test
+    void authorityKindSchemaAndCallbacksWorkBeforeIlm219() {
+        IlmTestSupport.stubIlmVersion("2.17.0");
+        stubKindCallbackSchema();
+
+        assertThat(authorities.getAuthorityAttributes(A, null, "CA", "{}")).contains("credential");
+
+        verify(getRequestedFor(urlEqualTo(KIND_SCHEMA)));
+        verify(postRequestedFor(urlEqualTo(KIND_CALLBACK)));
+    }
+
+    private static void stubKindCallbackSchema() {
+        stubFor(get(urlEqualTo(KIND_SCHEMA)).willReturn(okJson("""
+                [{"name":"credential","version":2,"type":"data","contentType":"credential","properties":{"list":true},
+                  "attributeCallback":{"callbackContext":"core/getCredentials","callbackMethod":"GET",
+                    "mappings":[{"to":"credentialKind","targets":["pathVariable"],"value":"SoftKeyStore"}]}}]
+                """)));
+        stubFor(post(urlEqualTo(KIND_CALLBACK))
+                .willReturn(okJson("[{\"reference\":\"RA credential\",\"data\":{\"uuid\":\"" + R + "\"}}]")));
+    }
 }
