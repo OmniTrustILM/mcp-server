@@ -140,7 +140,7 @@ public class CertificateServiceImpl implements CertificateService {
     }
 
     private static void renewalInfo(StringBuilder sb, CertificateRenewalInfoDto info) {
-        if (info == null) {
+        if (info == null || (info.getWindowStart() == null && info.getWindowEnd() == null)) {
             return;
         }
         field(sb, INDENT, "Renewal Window", orNa(info.getWindowStart()) + " to " + orNa(info.getWindowEnd()));

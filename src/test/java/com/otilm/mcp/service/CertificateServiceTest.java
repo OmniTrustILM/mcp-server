@@ -126,13 +126,23 @@ class CertificateServiceTest {
     }
 
     @Test
-    void shouldShowNotAvailableForMissingRenewalWindow() {
+    void shouldOmitRenewalWhenBothWindowBoundsMissing() {
         stubFor(get(urlEqualTo("/v1/certificates/uuid-1")).willReturn(okJson("""
                 {"uuid": "uuid-1", "certificateType": "X.509", "commonName": "server.example.com",
                  "renewalInfo": {"source": "policy", "due": false}}
                 """)));
 
-        assertThat(service.getCertificate("uuid-1")).contains("Renewal Window: N/A to N/A").doesNotContain("null");
+        assertThat(service.getCertificate("uuid-1")).doesNotContain("Renewal").doesNotContain("null");
+    }
+
+    @Test
+    void shouldShowNotAvailableForSingleMissingRenewalWindowBound() {
+        stubFor(get(urlEqualTo("/v1/certificates/uuid-1")).willReturn(okJson("""
+                {"uuid": "uuid-1", "certificateType": "X.509", "commonName": "server.example.com",
+                 "renewalInfo": {"windowStart": "2026-11-01T10:00:00.000+00:00", "source": "policy", "due": false}}
+                """)));
+
+        assertThat(service.getCertificate("uuid-1")).contains("Renewal Window: ", " to N/A").doesNotContain("null");
     }
 
     @Test
