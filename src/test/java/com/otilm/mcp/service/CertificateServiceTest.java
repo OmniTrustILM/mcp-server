@@ -119,6 +119,15 @@ class CertificateServiceTest {
     }
 
     @Test
+    void shouldReadCertificateWithConnectorMetadata() {
+        stubFor(get(urlEqualTo("/v1/certificates/uuid-1"))
+                .willReturn(okJson(fixture("v2_21", "certificate-connector-metadata"))));
+
+        assertThat(service.getCertificate("uuid-1"))
+                .contains("Certificate: acme-1.example.com", "0b6c8f2e-3d4a-4e5b-9c7d-1e2f3a4b5c6d");
+    }
+
+    @Test
     void shouldOmitTheRenewalWindowWhenTheCertificateHasNone() {
         stubFor(get(urlEqualTo("/v1/certificates/uuid-1")).willReturn(okJson(fixture("certificate"))));
 

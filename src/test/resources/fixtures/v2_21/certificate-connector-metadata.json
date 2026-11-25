@@ -1,0 +1,159 @@
+{
+  "uuid": "0b6c8f2e-3d4a-4e5b-9c7d-1e2f3a4b5c6d",
+  "displayName": "acme-1.example.com",
+  "commonName": "acme-1.example.com",
+  "serialNumber": "0000000000000000000000000000000000000004",
+  "issuerCommonName": "Example Issuing CA",
+  "issuerDn": "CN=Example Issuing CA,O=Example",
+  "subjectDn": "CN=acme-1.example.com",
+  "notBefore": "2026-11-25T12:10:05.000+00:00",
+  "notAfter": "2027-01-28T12:10:04.000+00:00",
+  "publicKeyAlgorithm": "ECDSA",
+  "signatureAlgorithm": "SHA384withECDSA",
+  "hybridCertificate": false,
+  "keySize": 256,
+  "state": "revoked",
+  "validationStatus": "invalid",
+  "raProfile": {
+    "uuid": "5d6e7f80-9a1b-4c2d-8e3f-4a5b6c7d8e9f",
+    "name": "acme-ra-profile",
+    "enabled": true,
+    "authorityInstanceUuid": "6e7f8091-ab2c-4d3e-9f40-5b6c7d8e9fa0"
+  },
+  "fingerprint": "0000000000000000000000000000000000000004",
+  "groups": [],
+  "owner": "admin",
+  "ownerUuid": "7f809102-bc3d-4e4f-a051-6c7d8e9fa0b1",
+  "certificateType": "X.509",
+  "issuerSerialNumber": "0000000000000000000000000000000000000005",
+  "complianceStatus": "not_checked",
+  "issuerCertificateUuid": "8091a213-cd4e-4f50-b162-7d8e9fa0b1c2",
+  "privateKeyAvailability": false,
+  "archived": false,
+  "metadata": [
+    {
+      "connectorUuid": "91a2b324-de5f-4061-8273-8e9fa0b1c2d3",
+      "connectorName": "ACME",
+      "items": [
+        {
+          "sourceObjects": [],
+          "uuid": "a2b3c435-ef60-4172-9384-9fa0b1c2d3e4",
+          "name": "acmeOrderUrl",
+          "label": "acmeOrderUrl",
+          "type": "meta",
+          "contentType": "string",
+          "content": [
+            {
+              "reference": null,
+              "data": "https://acme.example.com/order/1",
+              "contentType": "string"
+            }
+          ],
+          "version": "v3"
+        },
+        {
+          "sourceObjects": [],
+          "uuid": "b3c4d546-f071-4283-a495-a0b1c2d3e4f5",
+          "name": "acmeCertificateUrl",
+          "label": "acmeCertificateUrl",
+          "type": "meta",
+          "contentType": "string",
+          "content": [
+            {
+              "reference": null,
+              "data": "https://acme.example.com/cert/1",
+              "contentType": "string"
+            }
+          ],
+          "version": "v3"
+        }
+      ]
+    }
+  ],
+  "certificateContent": "",
+  "customAttributes": [],
+  "key": {
+    "uuid": "c4d5e657-0182-4394-b5a6-b1c2d3e4f506",
+    "name": "acme-1-key",
+    "creationTime": "2026-11-25T13:08:29.681838Z",
+    "items": [
+      {
+        "uuid": "d5e6f768-1293-44a5-86b7-c2d3e4f50617",
+        "name": "acme-1-key",
+        "creationTime": "2026-11-25T13:08:29.681838Z",
+        "keyWrapperUuid": "c4d5e657-0182-4394-b5a6-b1c2d3e4f506",
+        "groups": [],
+        "associations": 0,
+        "type": "Public",
+        "keyAlgorithm": "ECDSA",
+        "format": "SubjectPublicKeyInfo",
+        "length": 256,
+        "usage": [],
+        "enabled": true,
+        "state": "active",
+        "complianceStatus": "not_checked",
+        "parameterSet": "P-256"
+      }
+    ],
+    "associations": 2,
+    "complianceStatus": "not_checked"
+  },
+  "keystoreAvailable": false,
+  "certificateRequest": {
+    "uuid": "e6f70879-23a4-45b6-97c8-d3e4f5061728",
+    "certificateType": "X.509",
+    "certificateRequestFormat": "pkcs10",
+    "publicKeyAlgorithm": "ECDSA",
+    "signatureAlgorithm": "SHA256withECDSA",
+    "content": "",
+    "displayName": "acme-1.example.com",
+    "commonName": "acme-1.example.com",
+    "attributes": [],
+    "signatureAttributes": [],
+    "keyUuid": "c4d5e657-0182-4394-b5a6-b1c2d3e4f506",
+    "complianceStatus": "not_checked",
+    "subjectDn": "CN=acme-1.example.com",
+    "subjectAlternativeNames": {
+      "dNSName": [
+        "acme-1.example.com"
+      ],
+      "directoryName": [],
+      "ediPartyName": [],
+      "iPAddress": [],
+      "otherName": [],
+      "registeredID": [],
+      "rfc822Name": [],
+      "uniformResourceIdentifier": [],
+      "x400Address": []
+    },
+    "altSignatureAttributes": []
+  },
+  "issueAttributes": [],
+  "revokeAttributes": [],
+  "registerAttributes": [],
+  "renewAttributes": [],
+  "identifyAttributes": [],
+  "registrationRequestAttributes": [],
+  "relatedCertificates": [],
+  "supportedOperations": [],
+  "extendedKeyUsage": [
+    "TLS Web Server Authentication"
+  ],
+  "keyUsage": [
+    "digitalSignature"
+  ],
+  "subjectType": "endEntity",
+  "subjectAlternativeNames": {
+    "dNSName": [
+      "acme-1.example.com"
+    ],
+    "directoryName": [],
+    "ediPartyName": [],
+    "iPAddress": [],
+    "otherName": [],
+    "registeredID": [],
+    "rfc822Name": [],
+    "uniformResourceIdentifier": [],
+    "x400Address": []
+  }
+}
