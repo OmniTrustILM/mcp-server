@@ -2,7 +2,12 @@ package com.otilm.mcp.service;
 
 import com.otilm.api.model.core.auth.Resource;
 import com.otilm.api.model.core.other.ResourceEvent;
+import com.otilm.api.model.core.workflows.ActionDetailDto;
+import com.otilm.api.model.core.workflows.ExecutionDto;
+import com.otilm.api.model.core.workflows.ExecutionType;
 import com.otilm.api.model.core.workflows.TriggerDetailDto;
+import java.util.List;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
@@ -27,5 +32,24 @@ class WorkflowTextTest {
         WorkflowText.trigger(sb, trigger);
 
         assertThat(sb).contains(expected + "\n");
+    }
+
+    @Test
+    void renewalActionNeedsNoItems() {
+        ExecutionDto execution = new ExecutionDto();
+        execution.setType(ExecutionType.RENEW_CERTIFICATE);
+        execution.setItems(List.of());
+        ActionDetailDto action = new ActionDetailDto();
+        action.setExecutions(List.of(execution));
+        TriggerDetailDto trigger = new TriggerDetailDto();
+        trigger.setName("renew-test");
+        trigger.setResource(Resource.CERTIFICATE);
+        trigger.setEvent(ResourceEvent.CERTIFICATE_RENEWAL_DUE);
+        trigger.setActions(List.of(action));
+        StringBuilder sb = new StringBuilder();
+
+        WorkflowText.trigger(sb, trigger);
+
+        assertThat(sb).contains("Event: certificate_renewal_due (certificates)", "Then:\n  - renew the certificate\n");
     }
 }

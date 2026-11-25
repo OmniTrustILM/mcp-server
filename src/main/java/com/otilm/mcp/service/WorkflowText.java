@@ -5,7 +5,9 @@ import com.otilm.api.model.core.search.SearchFieldDataByGroupDto;
 import com.otilm.api.model.core.search.SearchFieldDataDto;
 import com.otilm.api.model.core.settings.EventsSettingsDto;
 import com.otilm.api.model.core.workflows.ConditionItemDto;
+import com.otilm.api.model.core.workflows.ExecutionDto;
 import com.otilm.api.model.core.workflows.ExecutionItemDto;
+import com.otilm.api.model.core.workflows.ExecutionType;
 import com.otilm.api.model.core.workflows.TriggerDetailDto;
 import com.otilm.api.model.core.workflows.TriggerDto;
 import java.util.Collection;
@@ -154,8 +156,15 @@ public final class WorkflowText {
         sb.append("Then:\n");
         stream(trigger.getActions())
                 .flatMap(action -> stream(action.getExecutions()))
-                .flatMap(execution -> stream(execution.getItems()))
-                .forEach(item -> sb.append(ITEM).append(execution(item)).append("\n"));
+                .flatMap(execution -> actions(execution).stream())
+                .forEach(action -> sb.append(ITEM).append(action).append("\n"));
+    }
+
+    private static List<String> actions(ExecutionDto execution) {
+        if (execution.getType() == ExecutionType.RENEW_CERTIFICATE) {
+            return List.of("renew the certificate");
+        }
+        return stream(execution.getItems()).map(WorkflowText::execution).toList();
     }
 
     private static String ignored(ResourceEvent event) {

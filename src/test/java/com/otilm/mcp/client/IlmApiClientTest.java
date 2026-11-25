@@ -18,7 +18,7 @@ import com.otilm.api.model.core.cbom.CbomAssetSyncState;
 import com.otilm.api.model.core.cbom.CbomContributedAssetDto;
 import com.otilm.api.model.core.cbom.CbomDetailDto;
 import com.otilm.api.model.core.cbom.CbomDto;
-import com.otilm.api.model.core.certificate.CertificateDetailDto;
+import com.otilm.api.model.core.certificate.CertificateDetail;
 import com.otilm.api.model.core.cryptoasset.CryptographicAssetDetailDto;
 import com.otilm.api.model.core.cryptoasset.CryptographicAssetDto;
 import com.otilm.api.model.core.cryptoasset.CryptographicAssetPqcExplanationDto;
@@ -153,6 +153,7 @@ class IlmApiClientTest {
                 .willReturn(aResponse().withHeader("Content-Type", "application/json").withBody("""
                         {
                             "uuid": "%s",
+                            "certificateType": "X.509",
                             "commonName": "test.example.com",
                             "serialNumber": "1234567890ABCDEF",
                             "issuerCommonName": "Test CA",
@@ -160,7 +161,7 @@ class IlmApiClientTest {
                         }
                         """.formatted(uuid))));
 
-        CertificateDetailDto detail = client.getCertificate(uuid);
+        CertificateDetail detail = client.getCertificate(uuid);
 
         assertThat(detail).isNotNull();
         assertThat(detail.getCommonName()).isEqualTo("test.example.com");

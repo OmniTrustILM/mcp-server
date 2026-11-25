@@ -108,4 +108,32 @@ class ScopedWorkflowTest {
                 .withRequestBody(matchingJsonPath("$.triggerUuids", equalToJson("[\"" + T + "\",\"" + U + "\"]"))));
     }
 
+    @Test
+    void renewalDueEventNeedsIlm221() {
+        stubFor(get(urlEqualTo("/v1/workflows/events/groups/" + O)).willReturn(okJson("{}")));
+        stubFor(get(urlEqualTo("/v1/workflows/triggers/" + T))
+                .willReturn(okJson("{\"uuid\":\"" + T
+                        + "\",\"resource\":\"certificates\",\"event\":\"certificate_renewal_due\"}")));
+
+        assertThat(tool.attachScopedTrigger("groups", O, "certificate_renewal_due", T, null))
+                .contains(IlmFeature.CERTIFICATE_RENEWAL_INFO.label(), "2.21");
+        verify(0, postRequestedFor(urlEqualTo("/v1/workflows/events")));
+
+        IlmTestSupport.stubIlmVersion("2.21.0");
+        assertThat(tool.attachScopedTrigger("groups", O, "certificate_renewal_due", T, null))
+                .contains("execution identity");
+        verify(postRequestedFor(urlEqualTo("/v1/workflows/events")));
+    }
+
+    @Test
+    void renewalDueEventGateIgnoresCaseAndWhitespace() {
+        stubFor(get(urlEqualTo("/v1/workflows/events/groups/" + O)).willReturn(okJson("{}")));
+        stubFor(get(urlEqualTo("/v1/workflows/triggers/" + T))
+                .willReturn(okJson("{\"uuid\":\"" + T
+                        + "\",\"resource\":\"certificates\",\"event\":\"certificate_renewal_due\"}")));
+
+        assertThat(tool.attachScopedTrigger("groups", O, " CERTIFICATE_RENEWAL_DUE", T, null))
+                .contains(IlmFeature.CERTIFICATE_RENEWAL_INFO.label(), "2.21");
+        verify(0, postRequestedFor(urlEqualTo("/v1/workflows/events")));
+    }
 }

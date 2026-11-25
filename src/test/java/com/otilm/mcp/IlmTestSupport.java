@@ -35,7 +35,11 @@ public final class IlmTestSupport {
     }
 
     public static String fixture(String name) {
-        String path = "/fixtures/v2_20/" + name + ".json";
+        return fixture("v2_20", name);
+    }
+
+    public static String fixture(String version, String name) {
+        String path = "/fixtures/" + version + "/" + name + ".json";
         try (InputStream stream = IlmTestSupport.class.getResourceAsStream(path)) {
             if (stream == null) {
                 throw new IllegalArgumentException("Missing test fixture " + path);

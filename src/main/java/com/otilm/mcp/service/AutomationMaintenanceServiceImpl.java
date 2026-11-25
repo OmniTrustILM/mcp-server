@@ -537,6 +537,9 @@ public class AutomationMaintenanceServiceImpl implements AutomationMaintenanceSe
         if ("certificate_registered".equals(event)) {
             require(IlmFeature.CERTIFICATE_REGISTRATION);
         }
+        if ("certificate_renewal_due".equals(checked.getCode())) {
+            require(IlmFeature.CERTIFICATE_RENEWAL_INFO);
+        }
         return checked;
     }
 

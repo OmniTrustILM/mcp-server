@@ -3,10 +3,12 @@ package com.otilm.mcp.service;
 import com.otilm.api.model.client.certificate.CertificateResponseDto;
 import com.otilm.api.model.client.certificate.CertificateSearchRequestDto;
 import com.otilm.api.model.client.dashboard.StatisticsDto;
+import com.otilm.api.model.core.certificate.CertificateAutoRenewalDto;
 import com.otilm.api.model.core.certificate.CertificateChainResponseDto;
-import com.otilm.api.model.core.certificate.CertificateDetailDto;
+import com.otilm.api.model.core.certificate.CertificateDetail;
 import com.otilm.api.model.core.certificate.CertificateDto;
 import com.otilm.api.model.core.certificate.CertificateEventHistoryDto;
+import com.otilm.api.model.core.certificate.CertificateRenewalInfoDto;
 import com.otilm.api.model.core.certificate.CertificateValidationResultDto;
 import com.otilm.mcp.client.IlmApiClient;
 import java.util.List;
@@ -114,7 +116,7 @@ public class CertificateServiceImpl implements CertificateService {
         field(sb, INDENT, "Expires", cert.getNotAfter());
     }
 
-    private static String formatCertificateDetail(CertificateDetailDto cert) {
+    private static String formatCertificateDetail(CertificateDetail cert) {
         StringBuilder sb = new StringBuilder();
         sb.append("Certificate: ").append(orNa(cert.getCommonName())).append("\n");
         field(sb, INDENT, "UUID", cert.getUuid());
@@ -133,7 +135,23 @@ public class CertificateServiceImpl implements CertificateService {
         field(sb, INDENT, "Fingerprint", cert.getFingerprint());
         field(sb, INDENT, "RA Profile", nameOf(cert.getRaProfile()));
         field(sb, INDENT, "Groups", names(cert.getGroups()));
+        renewalInfo(sb, cert.getRenewalInfo());
         return sb.toString();
+    }
+
+    private static void renewalInfo(StringBuilder sb, CertificateRenewalInfoDto info) {
+        if (info == null || (info.getWindowStart() == null && info.getWindowEnd() == null)) {
+            return;
+        }
+        field(sb, INDENT, "Renewal Window", orNa(info.getWindowStart()) + " to " + orNa(info.getWindowEnd()));
+        field(sb, INDENT, "Renewal Window Source", code(info.getSource()));
+        field(sb, INDENT, "Renewal Explanation URL", info.getExplanationUrl());
+        field(sb, INDENT, "Renewal Due", info.isDue() ? "yes" : "no");
+        CertificateAutoRenewalDto autoRenewal = info.getAutoRenewal();
+        if (autoRenewal != null) {
+            field(sb, INDENT, "Auto-Renewal", code(autoRenewal.getMode()));
+            field(sb, INDENT, "Auto-Renewal Blocked", autoRenewal.getBlockedReason());
+        }
     }
 
     private static String algorithm(String algorithm, Integer keySize) {
@@ -166,7 +184,7 @@ public class CertificateServiceImpl implements CertificateService {
         sb.append("Complete chain: ").append(chain.isCompleteChain()).append("\n\n");
         if (chain.getCertificates() != null) {
             int index = 0;
-            for (CertificateDetailDto cert : chain.getCertificates()) {
+            for (CertificateDetail cert : chain.getCertificates()) {
                 sb.append("[").append(index++).append("] ").append(orNa(cert.getCommonName())).append("\n");
                 field(sb, CHAIN_INDENT, "Subject", cert.getSubjectDn());
                 field(sb, CHAIN_INDENT, "Issuer", cert.getIssuerDn());

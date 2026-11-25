@@ -88,6 +88,7 @@ class CertificateToolTest {
                 .willReturn(aResponse().withHeader("Content-Type", "application/json").withBody("""
                         {
                             "uuid": "cert-uuid",
+                            "certificateType": "X.509",
                             "commonName": "detail.example.com",
                             "serialNumber": "112233",
                             "subjectDn": "CN=detail.example.com",
