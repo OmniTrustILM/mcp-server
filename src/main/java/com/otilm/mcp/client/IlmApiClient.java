@@ -91,7 +91,8 @@ public class IlmApiClient {
                 .builder()
                 .findAndAddModules()
                 .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES,
-                        DeserializationFeature.FAIL_ON_NULL_FOR_PRIMITIVES)
+                        DeserializationFeature.FAIL_ON_NULL_FOR_PRIMITIVES,
+                        DeserializationFeature.FAIL_ON_INVALID_SUBTYPE)
                 .build();
         return RestClient
                 .builder()
