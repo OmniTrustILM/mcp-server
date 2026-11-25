@@ -19,12 +19,18 @@ import static com.otilm.mcp.service.ConfigurationSupport.run;
 public class AuthorityServiceImpl implements AuthorityService {
     private static final String UUID_ENDPOINT = "/{uuid}";
     private static final String AUTHORITY = "Authority";
+    private static final String AUTHORITY_INTERFACE = "authority";
+    private static final String CALLBACK_FREE_KIND = "Authority";
     private static final String ATTRIBUTES = "attributes";
     private static final String CONNECTOR_UUID = "connectorUuid";
     private static final String CUSTOM_ATTRIBUTES = "customAttributes";
     private static final String INTERFACE_UUID = "interfaceUuid";
 
     private static final String BASE = "/v1/authorities";
+    private static final String KIND_SCHEMA = "/v1/connectors/{connector}/attributes/authorityProvider/{kind}";
+    private static final String INTERFACE_SCHEMA = BASE + "/{connector}/attributes?interfaceUuid={interface}";
+    private static final String SOLE_INTERFACE_SCHEMA = BASE + "/{connector}/attributes";
+    private static final String V3 = "v3";
     private final CertificateConfiguration support;
     private final ConfigurationApiClient client;
 
@@ -42,23 +48,11 @@ public class AuthorityServiceImpl implements AuthorityService {
     @Override
     public String getAuthorityAttributes(String connectorUuid, String interfaceUuid, String kind, String values) {
         return run("reading authority settings", () -> {
-            id(connectorUuid);
-            String path = schemaPath(interfaceUuid);
-            JsonNode definitions = interfaceUuid == null
-                    ? client.get(path, connectorUuid)
-                    : client.get(path, connectorUuid, id(interfaceUuid));
-            String selectedKind = kind;
-            if (interfaceUuid == null && selectedKind == null) {
-                for (JsonNode definition : definitions) {
-                    if (definition.hasNonNull("attributeCallback")) {
-                        throw new IllegalArgumentException("Authority kind is required to resolve provider callbacks.");
-                    }
-                }
-                selectedKind = AUTHORITY;
-            }
+            Provider provider = provider(id(connectorUuid), optionalId(interfaceUuid), optionalKind(kind));
+            JsonNode definitions = providerDefinitions(provider);
             return ConfigurationAttributes
                     .settings("Authority settings", ConfigurationAttributes
-                            .resolve(client, context(connectorUuid, interfaceUuid, selectedKind), definitions, values));
+                            .resolve(client, context(provider, definitions), definitions, values));
         });
     }
 
@@ -70,13 +64,21 @@ public class AuthorityServiceImpl implements AuthorityService {
             text(body, "name", CONNECTOR_UUID, INTERFACE_UUID, "kind");
             required(body.path("name").asString(null), "name");
             String connector = id(body.path(CONNECTOR_UUID).asString(null));
-            String iface = body.path(INTERFACE_UUID).asString(null);
-            String kind = iface == null ? required(body.path("kind").asString(null), "kind") : AUTHORITY;
-            String path = schemaPath(iface);
-            JsonNode definitions = iface == null ? client.get(path, connector) : client.get(path, connector, id(iface));
+            String kind = optionalKind(body.path("kind").asString(null));
+            if (kind == null) {
+                body.remove("kind");
+            } else {
+                body.put("kind", kind);
+            }
+            String iface = optionalId(body.path(INTERFACE_UUID).asString(null));
+            if (iface != null) {
+                body.put(INTERFACE_UUID, iface);
+            }
+            Provider provider = provider(connector, iface, kind);
+            JsonNode definitions = providerDefinitions(provider);
             body
                     .set(ATTRIBUTES, ConfigurationAttributes
-                            .encode(client, context(connector, iface, kind), definitions,
+                            .encode(client, context(provider, definitions), definitions,
                                     body.path(ATTRIBUTES).isMissingNode() ? "{}" : body.path(ATTRIBUTES).toString()));
             body.set(CUSTOM_ATTRIBUTES, support.custom("authorities", null, body.path(CUSTOM_ATTRIBUTES)));
             return describe("Created authority", client.post(BASE, body), CertificateConfiguration.META);
@@ -91,14 +93,14 @@ public class AuthorityServiceImpl implements AuthorityService {
             JsonNode current = client.get(BASE + UUID_ENDPOINT, uuid);
             String connector = id(
                     current.path(CONNECTOR_UUID).asString(current.path("connector").path("uuid").asString(null)));
-            String iface = current.path("connectorInterface").path("uuid").asString(null);
-            String kind = current.path("kind").asString(AUTHORITY);
-            JsonNode definitions = iface == null
-                    ? client.get(schemaPath(null), connector)
-                    : client.get(schemaPath(iface), connector, id(iface));
+            String iface = v3InterfaceUuid(current);
+            Provider provider = iface == null
+                    ? Provider.ofKind(connector, required(current.path("kind").asString(null), "Authority kind"))
+                    : Provider.ofInterface(connector, iface);
+            JsonNode definitions = providerDefinitions(provider);
             String input = changes.has(ATTRIBUTES) ? changes.path(ATTRIBUTES).toString() : "{}";
             JsonNode resolved = ConfigurationAttributes
-                    .resolveReplacement(client, context(connector, iface, kind), definitions,
+                    .resolveReplacement(client, context(provider, definitions), definitions,
                             CertificateConfiguration.array(current.path(ATTRIBUTES)), input);
             ObjectNode body = JSON.createObjectNode();
             body
@@ -137,18 +139,79 @@ public class AuthorityServiceImpl implements AuthorityService {
         });
     }
 
-    private String schemaPath(String iface) {
-        if (iface != null) {
-            id(iface);
-            support.require(IlmFeature.AUTHORITY_INTERFACES);
-            return BASE + "/{connector}/attributes?interfaceUuid={interface}";
+    /** An interface UUID selects the schema route by its version. Core validates the attributes by that version. */
+    private Provider provider(String connector, String iface, String kind) {
+        if (iface == null) {
+            return kind == null ? Provider.ofSoleInterface(connector) : Provider.ofKind(connector, kind);
         }
-        return BASE + "/{connector}/attributes";
+        support.require(IlmFeature.AUTHORITY_INTERFACES);
+        return V3.equals(interfaceVersion(connector, iface))
+                ? Provider.ofInterface(connector, iface)
+                : Provider.ofKind(connector, required(kind, "Authority kind"));
     }
 
-    private static ConfigurationAttributes.CallbackContext context(String connector, String iface, String kind) {
-        return iface == null
-                ? new ConfigurationAttributes.ConnectorContext(connector, FunctionGroupCode.AUTHORITY_PROVIDER, kind)
-                : new ConfigurationAttributes.ConnectorInterfaceContext(connector, iface);
+    private String interfaceVersion(String connector, String iface) {
+        for (JsonNode candidate : client.get("/v2/connectors/{uuid}", connector).path("interfaces")) {
+            if (iface.equalsIgnoreCase(candidate.path("uuid").asString(null))
+                    && AUTHORITY_INTERFACE.equals(candidate.path("code").asString(null))) {
+                return candidate.path("version").asString(null);
+            }
+        }
+        throw new IllegalArgumentException("Authority interfaceUuid is not an authority interface of the connector.");
+    }
+
+    private JsonNode providerDefinitions(Provider provider) {
+        if (provider.kind() != null) {
+            return client.get(KIND_SCHEMA, provider.connector(), provider.kind());
+        }
+        if (provider.iface() != null) {
+            return client.get(INTERFACE_SCHEMA, provider.connector(), provider.iface());
+        }
+        support.require(IlmFeature.AUTHORITY_INTERFACES);
+        return client.get(SOLE_INTERFACE_SCHEMA, provider.connector());
+    }
+
+    private static String optionalId(String uuid) {
+        return uuid == null ? null : id(uuid);
+    }
+
+    private static String optionalKind(String kind) {
+        return kind == null || kind.isBlank() ? null : kind.trim();
+    }
+
+    /** Core serves the interface schema route for v3 interfaces only. */
+    private static String v3InterfaceUuid(JsonNode authority) {
+        JsonNode iface = authority.path("connectorInterface");
+        return V3.equals(iface.path("version").asString(null)) ? iface.path("uuid").asString(null) : null;
+    }
+
+    private static ConfigurationAttributes.CallbackContext context(Provider provider, JsonNode definitions) {
+        if (provider.kind() != null) {
+            return new ConfigurationAttributes.ConnectorContext(provider.connector(),
+                    FunctionGroupCode.AUTHORITY_PROVIDER, provider.kind());
+        }
+        if (provider.iface() != null) {
+            return new ConfigurationAttributes.ConnectorInterfaceContext(provider.connector(), provider.iface());
+        }
+        if (AttributeCallbacks.hasActiveCallback(definitions)) {
+            throw new IllegalArgumentException("Authority interfaceUuid is required to resolve provider callbacks.");
+        }
+        return new ConfigurationAttributes.ConnectorContext(provider.connector(), FunctionGroupCode.AUTHORITY_PROVIDER,
+                CALLBACK_FREE_KIND);
+    }
+
+    /** The provider schema of a connector, selected by a v3 interface UUID, a v1 or v2 kind, or neither. */
+    private record Provider(String connector, String iface, String kind) {
+        static Provider ofInterface(String connector, String iface) {
+            return new Provider(connector, iface, null);
+        }
+
+        static Provider ofKind(String connector, String kind) {
+            return new Provider(connector, null, kind);
+        }
+
+        static Provider ofSoleInterface(String connector) {
+            return new Provider(connector, null, null);
+        }
     }
 }

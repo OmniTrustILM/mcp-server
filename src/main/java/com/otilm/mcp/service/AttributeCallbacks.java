@@ -36,6 +36,17 @@ final class AttributeCallbacks {
         return new Resolution(client, context, definitions, values).resolve();
     }
 
+    /**
+     * Whether any definition has a callback that resolution would call; an inert callback object needs no callback
+     * context.
+     */
+    static boolean hasActiveCallback(JsonNode definitions) {
+        return definitions
+                .valueStream()
+                .map(definition -> definition.path(ATTRIBUTE_CALLBACK))
+                .anyMatch(callback -> callback.isObject() && Resolution.active(callback));
+    }
+
     private static final class Resolution {
         private final ConfigurationApiClient client;
         private final CallbackContext context;

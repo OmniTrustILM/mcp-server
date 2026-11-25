@@ -21,13 +21,14 @@ public class AuthorityTool {
     }
 
     @McpTool(name = "get_authority_attributes",
-            description = "Discover authority provider fields/defaults and resolve callbacks from supplied values. interfaceUuid selection requires ILM 2.19 or later.",
+            description = "Discover authority provider fields/defaults and resolve callbacks from supplied values. A v1 or v2 Authority Provider interface publishes them per kind, a v3 interface per interface UUID. An interface UUID or a v3 interface requires ILM 2.19 or later.",
             annotations = @McpTool.McpAnnotations(readOnlyHint = true))
     public String getAuthorityAttributes(@McpToolParam(description = "Authority connector UUID") String connectorUuid,
-            @McpToolParam(description = "Optional authority interface UUID; requires ILM 2.19",
+            @McpToolParam(
+                    description = "Authority interface UUID; required when the connector has several authority interfaces or a v3 schema has callbacks",
                     required = false) String interfaceUuid,
             @McpToolParam(
-                    description = "Authority provider kind; required for connector callbacks when interfaceUuid is omitted",
+                    description = "Kind of a v1 or v2 Authority Provider interface, such as EJBCA; selects its provider schema and must be omitted for a v3 interface",
                     required = false) String kind,
             @McpToolParam(description = "Optional plain attribute-name to value JSON object for callback dependencies",
                     required = false) String values) {
@@ -35,7 +36,7 @@ public class AuthorityTool {
     }
 
     @McpTool(name = "create_authority",
-            description = "Create an authority using provider schema validation. JSON fields: name, connectorUuid, kind, optional interfaceUuid (ILM 2.19+), attributes and customAttributes.",
+            description = "Create an authority using provider schema validation. JSON fields: name, connectorUuid, kind, interfaceUuid, attributes and customAttributes. A v1 or v2 Authority Provider interface requires its kind, and a v3 interface takes none; interfaceUuid is required when the connector has several authority interfaces or a v3 schema has callbacks. An interface UUID or a v3 interface requires ILM 2.19 or later.",
             annotations = @McpTool.McpAnnotations(destructiveHint = false))
     public String createAuthority(@McpToolParam(
             description = "JSON object with the documented fields. attributes/customAttributes/operation attributes are plain schema attribute-name to value objects, never request envelopes.") String configuration) {
