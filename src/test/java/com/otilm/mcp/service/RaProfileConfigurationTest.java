@@ -108,6 +108,36 @@ class RaProfileConfigurationTest {
     }
 
     @Test
+    void authorityMetadataSanitizesUrlsByContentAndKeepsEveryItem() {
+        stubFor(get(urlEqualTo("/v1/authorities/" + R)).willReturn(okJson("""
+                {"uuid":"%s","name":"ACME","metadata":[{"items":[
+                 {"name":"home","label":"Home","contentType":"string",
+                  "content":[{"data":"HTTP://u:p@h.example.com/a?q=QSECRET#fr"}]},
+                 {"name":"bad","label":"Bad","contentType":"string","content":[{"data":"https://[broken"}]},
+                 {"name":"text","label":"Text","contentType":"string","content":[{"data":"see http docs?x=1"}]},
+                 {"name":"empty","label":"Empty","contentType":"string","content":[]},
+                 {"name":"nulls","label":"Nulls","contentType":"string","content":[{"data":null}]},
+                 {"name":"blank","label":"Blank","contentType":"string","content":[{"data":"  "}]},
+                 {"name":"nullLevel","label":"Null level","contentType":"string","protectionLevel":null,
+                  "content":[{"data":"LEVELSECRET"}]},
+                 {"name":"itemLevel","label":"Item level","contentType":"string","protectionLevel":"encrypted",
+                  "content":[{"data":"ITEMSECRET"}]},
+                 {"name":"dataLevel","label":"Data level","contentType":"string",
+                  "content":[{"data":"DATASECRET","protectionLevel":"encrypted"}]},
+                 {"name":"plain","label":"Plain","contentType":"string","protectionLevel":"none",
+                  "content":[{"data":"shown"}]}]}]}
+                """.formatted(R))));
+
+        assertThat(authorities.getAuthority(R))
+                .contains("  Home [home]: http://h.example.com/a\n", "  Bad [bad]: URL omitted\n",
+                        "  Text [text]: see http docs?x=1\n", "  Empty [empty]: value omitted\n",
+                        "  Nulls [nulls]: value omitted\n", "  Blank [blank]: value omitted\n",
+                        "  Null level [nullLevel]: value omitted\n", "  Item level [itemLevel]: value omitted\n",
+                        "  Data level [dataLevel]: value omitted\n", "  Plain [plain]: shown\n")
+                .doesNotContain("QSECRET", "u:p@", "#fr", "LEVELSECRET", "ITEMSECRET", "DATASECRET");
+    }
+
+    @Test
     void authorityDetailWithoutMetadataHasNoMetadataSection() {
         stubFor(get(urlEqualTo("/v1/authorities/" + R))
                 .willReturn(okJson("{\"uuid\":\"" + R + "\",\"name\":\"CA\",\"metadata\":[]}")));

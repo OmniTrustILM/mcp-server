@@ -32,6 +32,7 @@ public class AuthorityServiceImpl implements AuthorityService {
     private static final String INTERFACE_SCHEMA = BASE + "/{connector}/attributes?interfaceUuid={interface}";
     private static final String SOLE_INTERFACE_SCHEMA = BASE + "/{connector}/attributes";
     private static final String V3 = "v3";
+    private static final String PROTECTION_LEVEL = "protectionLevel";
     private static final String VALUE_OMITTED = "value omitted";
     private final CertificateConfiguration support;
     private final ConfigurationApiClient client;
@@ -65,25 +66,40 @@ public class AuthorityServiceImpl implements AuthorityService {
         return output.toString();
     }
 
+    /**
+     * Core's metadata response carries no protection level: it decrypts encrypted content for authorized callers and
+     * returns it as plain data. A value is shown only when it is a plain scalar type and no protection marker, which a
+     * future Core may add, says anything but none. Every other shape is omitted.
+     */
     private static String metadataValue(JsonNode item) {
-        if (AttributeContentValues.protectedValue(item)
+        if (protectionMarked(item) || AttributeContentValues.protectedValue(item)
                 || !ConfigurationAttributes.DISPLAYABLE.contains(item.path("contentType").asString(""))) {
             return VALUE_OMITTED;
         }
         StringJoiner values = new StringJoiner(", ");
         for (JsonNode content : item.path("content")) {
             JsonNode data = content.path("data");
-            if (!data.isValueNode() || AttributeContentValues.masked(data)) {
+            if (!data.isValueNode() || AttributeContentValues.masked(data) || protectionMarked(content)
+                    || protectionMarked(data)) {
                 return VALUE_OMITTED;
             }
-            if (!data.isNull()) {
-                values
-                        .add(TextFormat
-                                .metadataValue(item.path("label").asString(""),
-                                        TextFormat.metadataValue(item.path("name").asString(""), data.asString())));
+            if (!data.isNull() && !data.asString().isBlank()) {
+                values.add(TextFormat.sanitizeUrl(data.asString()));
             }
         }
-        return values.toString();
+        return values.length() == 0 ? VALUE_OMITTED : values.toString();
+    }
+
+    /** A protection marker anywhere on the node, even an empty or unknown one, means the value is not plain. */
+    private static boolean protectionMarked(JsonNode node) {
+        for (JsonNode marker : new JsonNode[]{
+                node.path(PROTECTION_LEVEL),
+                node.path("properties").path(PROTECTION_LEVEL)}) {
+            if (!marker.isMissingNode() && !"none".equalsIgnoreCase(marker.asString(""))) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override
