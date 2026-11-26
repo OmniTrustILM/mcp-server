@@ -2,6 +2,7 @@ package com.otilm.mcp.service;
 
 import com.otilm.api.model.core.connector.FunctionGroupCode;
 import com.otilm.mcp.client.ConfigurationApiClient;
+import java.util.StringJoiner;
 import org.springframework.stereotype.Service;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.node.ObjectNode;
@@ -31,6 +32,7 @@ public class AuthorityServiceImpl implements AuthorityService {
     private static final String INTERFACE_SCHEMA = BASE + "/{connector}/attributes?interfaceUuid={interface}";
     private static final String SOLE_INTERFACE_SCHEMA = BASE + "/{connector}/attributes";
     private static final String V3 = "v3";
+    private static final String VALUE_OMITTED = "value omitted";
     private final CertificateConfiguration support;
     private final ConfigurationApiClient client;
 
@@ -41,8 +43,47 @@ public class AuthorityServiceImpl implements AuthorityService {
 
     @Override
     public String getAuthority(String uuid) {
-        return run("reading authority",
-                () -> describe(AUTHORITY, client.get(BASE + UUID_ENDPOINT, id(uuid)), CertificateConfiguration.META));
+        return run("reading authority", () -> {
+            JsonNode authority = client.get(BASE + UUID_ENDPOINT, id(uuid));
+            return describe(AUTHORITY, authority, CertificateConfiguration.META) + metadata(authority.path("metadata"));
+        });
+    }
+
+    private static String metadata(JsonNode groups) {
+        StringBuilder output = new StringBuilder();
+        for (JsonNode group : groups) {
+            for (JsonNode item : group.path("items")) {
+                if (output.isEmpty()) {
+                    output.append("metadata:\n");
+                }
+                TextFormat
+                        .field(output, "  ",
+                                item.path("label").asString("") + " [" + item.path("name").asString("") + "]",
+                                metadataValue(item));
+            }
+        }
+        return output.toString();
+    }
+
+    private static String metadataValue(JsonNode item) {
+        if (AttributeContentValues.protectedValue(item)
+                || !ConfigurationAttributes.DISPLAYABLE.contains(item.path("contentType").asString(""))) {
+            return VALUE_OMITTED;
+        }
+        StringJoiner values = new StringJoiner(", ");
+        for (JsonNode content : item.path("content")) {
+            JsonNode data = content.path("data");
+            if (!data.isValueNode() || AttributeContentValues.masked(data)) {
+                return VALUE_OMITTED;
+            }
+            if (!data.isNull()) {
+                values
+                        .add(TextFormat
+                                .metadataValue(item.path("label").asString(""),
+                                        TextFormat.metadataValue(item.path("name").asString(""), data.asString())));
+            }
+        }
+        return values.toString();
     }
 
     @Override

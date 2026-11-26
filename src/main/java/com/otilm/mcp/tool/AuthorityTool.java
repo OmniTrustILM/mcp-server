@@ -14,7 +14,7 @@ public class AuthorityTool {
     }
 
     @McpTool(name = "get_authority",
-            description = "Inspect authority instance metadata and provider identity without attribute values.",
+            description = "Inspect an authority instance: identity, provider and the metadata its connector returned (label, name and readable value). Attribute values are omitted.",
             annotations = @McpTool.McpAnnotations(readOnlyHint = true))
     public String getAuthority(@McpToolParam(description = "Canonical object UUID") String uuid) {
         return service.getAuthority(uuid);

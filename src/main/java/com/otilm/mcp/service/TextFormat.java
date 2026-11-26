@@ -71,7 +71,7 @@ public final class TextFormat {
         sb.append(indent).append(label).append(": ").append(metadataValue(label, value.toString())).append("\n");
     }
 
-    private static String metadataValue(String label, String value) {
+    static String metadataValue(String label, String value) {
         String key = label.toLowerCase(Locale.ROOT);
         if (!key.endsWith("url") && !key.endsWith("uri")) {
             return value;
