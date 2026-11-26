@@ -71,18 +71,25 @@ public final class TextFormat {
         sb.append(indent).append(label).append(": ").append(metadataValue(label, value.toString())).append("\n");
     }
 
-    private static String metadataValue(String label, String value) {
+    static String metadataValue(String label, String value) {
         String key = label.toLowerCase(Locale.ROOT);
-        if (!key.endsWith("url") && !key.endsWith("uri")) {
-            return value;
-        }
+        return key.endsWith("url") || key.endsWith("uri") ? stripUrl(value) : value;
+    }
+
+    /** Strips user info, query and fragment from a value that is an HTTP(S) URL, whatever its label. */
+    static String sanitizeUrl(String value) {
+        String lower = value.stripLeading().toLowerCase(Locale.ROOT);
+        return lower.startsWith("http://") || lower.startsWith("https://") ? stripUrl(value.strip()) : value;
+    }
+
+    private static String stripUrl(String value) {
         try {
             URI uri = URI.create(value);
-            if (uri.getHost() == null || uri.getScheme() == null
-                    || !Set.of("https", "http").contains(uri.getScheme())) {
+            String scheme = uri.getScheme() == null ? "" : uri.getScheme().toLowerCase(Locale.ROOT);
+            if (uri.getHost() == null || !Set.of("https", "http").contains(scheme)) {
                 return "URL omitted";
             }
-            URI authority = new URI(uri.getScheme(), null, uri.getHost(), uri.getPort(), null, null, null);
+            URI authority = new URI(scheme, null, uri.getHost(), uri.getPort(), null, null, null);
             return URI.create(authority + uri.getRawPath()).toASCIIString();
         } catch (IllegalArgumentException | URISyntaxException invalid) {
             return "URL omitted";

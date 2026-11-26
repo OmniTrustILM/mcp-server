@@ -24,7 +24,7 @@ public final class ConfigurationAttributes {
 
     static final JsonMapper JSON = JsonMapper.builder().build();
     private static final Set<String> EDITABLE = Set.of("data", "custom");
-    private static final Set<String> DISPLAYABLE = Set
+    static final Set<String> DISPLAYABLE = Set
             .of("string", "text", "integer", "float", "boolean", "date", "time", "datetime");
 
     private ConfigurationAttributes() {

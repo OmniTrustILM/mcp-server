@@ -80,6 +80,74 @@ class RaProfileConfigurationTest {
     }
 
     @Test
+    void authorityDetailShowsReadableConnectorMetadata() {
+        stubFor(get(urlEqualTo("/v1/authorities/" + R)).willReturn(okJson("""
+                {"uuid":"%s","name":"ACME","attributes":[{"secret":"SENTINEL"}],"metadata":[
+                 {"connectorUuid":"%s","connectorName":"ACME","items":[
+                  {"name":"acmeAccountUrl","label":"Account URL","contentType":"string",
+                   "content":[{"data":"https://user:pass@acme.example.com:8443/acct/1?token=SECRETQ#frag"}]},
+                  {"name":"accountEndpoint","label":"Endpoint URL","contentType":"string",
+                   "content":[{"data":"https://u:p@ep.example.com/x?k=LABELQ#lf"}]},
+                  {"name":"keyThumbprint","label":"Account key thumbprint","contentType":"string",
+                   "content":[{"data":"abc123"},{"data":null}]},
+                  {"name":"notes","label":"Notes","contentType":"codeblock","content":[{"data":{"code":"SENTINEL"}}]},
+                  {"name":"token","label":"Token","contentType":"string",
+                   "properties":{"protectionLevel":"encrypted"},"content":[{"data":"SENTINEL"}]},
+                  {"name":"masked","label":"Masked","contentType":"string","content":[{"data":"*****"}]},
+                  {"name":"nested","label":"Nested","contentType":"string","content":[{"data":{"v":"SENTINEL"}}]}]}]}
+                """.formatted(R, A))));
+
+        assertThat(authorities.getAuthority(R))
+                .contains("name: ACME", "metadata:\n",
+                        "  Account URL [acmeAccountUrl]: https://acme.example.com:8443/acct/1\n",
+                        "  Endpoint URL [accountEndpoint]: https://ep.example.com/x\n",
+                        "  Account key thumbprint [keyThumbprint]: abc123\n", "  Notes [notes]: value omitted",
+                        "  Token [token]: value omitted", "  Masked [masked]: value omitted",
+                        "  Nested [nested]: value omitted")
+                .doesNotContain("SENTINEL", "*****", "user:pass", "SECRETQ", "frag", "u:p@", "LABELQ", "#lf");
+    }
+
+    @Test
+    void authorityMetadataSanitizesUrlsByContentAndKeepsEveryItem() {
+        stubFor(get(urlEqualTo("/v1/authorities/" + R)).willReturn(okJson("""
+                {"uuid":"%s","name":"ACME","metadata":[{"items":[
+                 {"name":"home","label":"Home","contentType":"string",
+                  "content":[{"data":"HTTP://u:p@h.example.com/a?q=QSECRET#fr"}]},
+                 {"name":"bad","label":"Bad","contentType":"string","content":[{"data":"https://[broken"}]},
+                 {"name":"text","label":"Text","contentType":"string","content":[{"data":"see http docs?x=1"}]},
+                 {"name":"empty","label":"Empty","contentType":"string","content":[]},
+                 {"name":"nulls","label":"Nulls","contentType":"string","content":[{"data":null}]},
+                 {"name":"blank","label":"Blank","contentType":"string","content":[{"data":"  "}]},
+                 {"name":"nullLevel","label":"Null level","contentType":"string","protectionLevel":null,
+                  "content":[{"data":"LEVELSECRET"}]},
+                 {"name":"itemLevel","label":"Item level","contentType":"string","protectionLevel":"encrypted",
+                  "content":[{"data":"ITEMSECRET"}]},
+                 {"name":"dataLevel","label":"Data level","contentType":"string",
+                  "content":[{"data":"DATASECRET","protectionLevel":"encrypted"}]},
+                 {"name":"plain","label":"Plain","contentType":"string","protectionLevel":"none",
+                  "content":[{"data":"shown"}]}]}]}
+                """.formatted(R))));
+
+        assertThat(authorities.getAuthority(R))
+                .contains("  Home [home]: http://h.example.com/a\n", "  Bad [bad]: URL omitted\n",
+                        "  Text [text]: see http docs?x=1\n", "  Empty [empty]: value omitted\n",
+                        "  Nulls [nulls]: value omitted\n", "  Blank [blank]: value omitted\n",
+                        "  Null level [nullLevel]: value omitted\n", "  Item level [itemLevel]: value omitted\n",
+                        "  Data level [dataLevel]: value omitted\n", "  Plain [plain]: shown\n")
+                .doesNotContain("QSECRET", "u:p@", "#fr", "LEVELSECRET", "ITEMSECRET", "DATASECRET");
+    }
+
+    @Test
+    void authorityDetailWithoutMetadataHasNoMetadataSection() {
+        stubFor(get(urlEqualTo("/v1/authorities/" + R))
+                .willReturn(okJson("{\"uuid\":\"" + R + "\",\"name\":\"CA\",\"metadata\":[]}")));
+        stubFor(get(urlEqualTo("/v1/authorities/" + A)).willReturn(okJson("{\"uuid\":\"" + A + "\",\"name\":\"CA\"}")));
+
+        assertThat(authorities.getAuthority(R)).contains("name: CA").doesNotContain("metadata");
+        assertThat(authorities.getAuthority(A)).contains("name: CA").doesNotContain("metadata");
+    }
+
+    @Test
     void authorityUpdateReadsTheKindSchemaForAV2Interface() {
         stubAuthority("\"kind\":\"CA\",\"connectorInterface\":{\"uuid\":\"" + I + "\",\"version\":\"v2\"}");
 
