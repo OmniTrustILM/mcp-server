@@ -309,13 +309,13 @@ class ConfigurationAttributesTest {
         JsonNode definitions = json(
                 """
                         [{"name":"secret","type":"data","version":2,"contentType":"secret","properties":{"required":true},"content":[{"data":{"secret":"SENTINEL_SECRET"}}]},
-                         {"name":"object","type":"data","version":3,"contentType":"object","properties":{},"content":[{"data":{"password":"SENTINEL_NESTED"}}]},
+                         {"name":"object","type":"data","version":3,"contentType":"object","properties":{},"content":[{"data":{"password":"SENTINEL_NESTED"},"reference":"SENTINEL_REF"}]},
                          {"name":"file","type":"data","contentType":"file","properties":{},"content":[{"data":{"content":"SENTINEL_FILE"}}]},
                          {"name":"choice","type":"data","contentType":"string","properties":{"list":true},"content":[{"reference":"safe-ref","data":"RSA"}]}]
                         """);
         assertThat(ConfigurationAttributes.settings("Provider settings", definitions))
                 .contains("Provider settings", "secret", "required", "version 3", "RSA")
-                .doesNotContain("SENTINEL_SECRET", "SENTINEL_NESTED", "SENTINEL_FILE");
+                .doesNotContain("SENTINEL_SECRET", "SENTINEL_NESTED", "SENTINEL_FILE", "SENTINEL_REF", "reference");
     }
 
     @Test

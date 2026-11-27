@@ -60,7 +60,7 @@ public class RaProfileServiceImpl implements RaProfileService {
             JsonNode definitions = client.get("/v1/authorities/{authority}/attributes/raProfile", authorityUuid);
             return ConfigurationAttributes
                     .settings("RA profile settings", ConfigurationAttributes
-                            .resolve(client,
+                            .resolveAvailable(client,
                                     new ConfigurationAttributes.ResourceContext(Resource.RA_PROFILE, authorityUuid),
                                     definitions, values));
         });

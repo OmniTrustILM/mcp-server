@@ -98,6 +98,12 @@ public final class ConfigurationAttributes {
                 .resolve(client, context, definitions, ConfigurationSupport.object(valuesJson, ATTRIBUTES));
     }
 
+    public static ArrayNode resolveAvailable(ConfigurationApiClient client, CallbackContext context,
+            JsonNode definitions, String valuesJson) {
+        return AttributeCallbacks
+                .resolveAvailable(client, context, definitions, ConfigurationSupport.object(valuesJson, ATTRIBUTES));
+    }
+
     public static ArrayNode encode(ConfigurationApiClient client, CallbackContext context, JsonNode definitions,
             String valuesJson) {
         return encode(resolve(client, context, definitions, valuesJson), valuesJson);
@@ -185,18 +191,28 @@ public final class ConfigurationAttributes {
     }
 
     private static void appendSafeContent(StringBuilder output, JsonNode field) {
-        if (AttributeContentValues.protectedValue(field)
-                || !DISPLAYABLE.contains(field.path(CONTENT_TYPE).asString(""))) {
+        if (AttributeContentValues.protectedValue(field)) {
+            return;
+        }
+        boolean displayable = DISPLAYABLE.contains(field.path(CONTENT_TYPE).asString(""));
+        if (!displayable && !property(field, "list")) {
             return;
         }
         boolean first = true;
         for (JsonNode entry : field.path(CONTENT)) {
-            JsonNode data = entry.path("data");
-            if (data.isValueNode() && !data.isNull() && !AttributeContentValues.masked(data)) {
-                output.append(contentLabel(field, first)).append(data.asString());
+            String shown = displayable ? displayableData(entry.path("data")) : entry.path(REFERENCE).asString(null);
+            if (shown != null) {
+                output.append(contentLabel(field, first)).append(shown);
                 first = false;
             }
         }
+        if (!displayable && !first) {
+            output.append(" (choose with {\"reference\": name})");
+        }
+    }
+
+    private static String displayableData(JsonNode data) {
+        return data.isValueNode() && !data.isNull() && !AttributeContentValues.masked(data) ? data.asString() : null;
     }
 
     private static String contentLabel(JsonNode field, boolean first) {

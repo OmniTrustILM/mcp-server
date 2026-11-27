@@ -1,0 +1,45 @@
+[
+  {
+    "uuid": "44444444-4444-4444-8444-444444444441",
+    "name": "certificateProfile",
+    "type": "data",
+    "version": 2,
+    "contentType": "object",
+    "description": "Available certificate profiles for selected end entity profile",
+    "properties": {"label": "Certificate Profile", "visible": true, "required": true, "readOnly": false,
+      "list": true, "multiSelect": false, "extensibleList": false},
+    "attributeCallback": {
+      "callbackContext": "/v1/authorityProvider/authorities/{authorityId}/endEntityProfiles/{endEntityProfileId}/certificateprofiles",
+      "callbackMethod": "GET",
+      "mappings": [
+        {"from": "endEntityProfile.data.id", "targets": ["pathVariable"], "to": "endEntityProfileId"},
+        {"targets": ["pathVariable"], "to": "authorityId", "value": "55555555-5555-4555-8555-555555555555"}
+      ]
+    }
+  },
+  {
+    "uuid": "44444444-4444-4444-8444-444444444442",
+    "name": "usernameGenMethod",
+    "type": "data",
+    "version": 2,
+    "contentType": "string",
+    "description": "Method to generate username of the end entity",
+    "properties": {"label": "Username Generation Method", "visible": true, "required": true, "readOnly": false,
+      "list": true, "multiSelect": false, "extensibleList": false},
+    "content": [{"data": "CN", "reference": null}, {"data": "RANDOM", "reference": null}]
+  },
+  {
+    "uuid": "44444444-4444-4444-8444-444444444443",
+    "name": "endEntityProfile",
+    "type": "data",
+    "version": 2,
+    "contentType": "object",
+    "description": "Available end entity profiles",
+    "properties": {"label": "End Entity Profile", "visible": true, "required": true, "readOnly": false,
+      "list": true, "multiSelect": false, "extensibleList": false},
+    "content": [
+      {"data": {"id": 1, "name": "EMPTY"}, "reference": "EMPTY"},
+      {"data": {"id": 2, "name": "TLS Server"}, "reference": "TLS Server"}
+    ]
+  }
+]

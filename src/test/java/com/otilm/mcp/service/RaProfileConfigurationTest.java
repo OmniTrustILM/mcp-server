@@ -329,6 +329,31 @@ class RaProfileConfigurationTest {
         verify(0, postRequestedFor(urlPathMatching("/v1/connectors/.*/callback")));
     }
 
+    @Test
+    void raProfileAttributesListChoicesAndNameTheInputADependentFieldNeeds() {
+        stubFor(get(urlEqualTo("/v1/authorities/" + A + "/attributes/raProfile"))
+                .willReturn(okJson(IlmTestSupport.fixture("ra-profile-attributes-ejbca"))));
+
+        assertThat(profiles.getRaProfileAttributes(A, null))
+                .contains("RA profile settings", "Choices: EMPTY, TLS Server", "Choices: CN, RANDOM",
+                        "certificateProfile", "needs endEntityProfile.data.id")
+                .doesNotContain("Unresolved");
+        verify(0, postRequestedFor(urlPathMatching(".*/callback")));
+    }
+
+    @Test
+    void raProfileAttributesResolveDependentChoicesFromAChosenReference() {
+        stubFor(get(urlEqualTo("/v1/authorities/" + A + "/attributes/raProfile"))
+                .willReturn(okJson(IlmTestSupport.fixture("ra-profile-attributes-ejbca"))));
+        stubFor(post(urlPathMatching("/v1/.*/" + A + "/callback"))
+                .willReturn(okJson("[{\"data\":{\"id\":7,\"name\":\"Server\"},\"reference\":\"Server\"}]")));
+
+        assertThat(profiles.getRaProfileAttributes(A, "{\"endEntityProfile\":{\"reference\":\"TLS Server\"}}"))
+                .contains("Choices: Server");
+        verify(postRequestedFor(urlPathMatching("/v1/.*/" + A + "/callback"))
+                .withRequestBody(matchingJsonPath("$.pathVariable.endEntityProfileId", equalTo("2"))));
+    }
+
     private static void stubInterface(String version) {
         stubFor(get(urlEqualTo("/v2/connectors/" + A))
                 .willReturn(okJson("{\"interfaces\":[{\"uuid\":\"" + I + "\",\"code\":\"authority\",\"version\":\""
