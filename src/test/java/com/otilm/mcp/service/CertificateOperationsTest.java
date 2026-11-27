@@ -40,6 +40,7 @@ class CertificateOperationsTest {
     private static final String R = "22222222-2222-4222-8222-222222222222";
     private static final String C = "33333333-3333-4333-8333-333333333333";
     private static final String BASE = "/v2/operations/authorities/" + A + "/raProfiles/" + R;
+    private static final String RA_PROFILE_SCHEMA = "/v1/authorities/" + A + "/attributes/raProfile";
     private CertificateOperationsTool tool;
 
     @BeforeEach
@@ -88,6 +89,35 @@ class CertificateOperationsTest {
                 .doesNotContain("synthetic-registration-secret");
         verify(postRequestedFor(urlEqualTo(BASE + "/certificates/" + C + "/issue"))
                 .withRequestBody(matchingJsonPath("$.authorizationSecret", equalTo("synthetic-registration-secret"))));
+    }
+
+    @Test
+    void registrationWithoutRaProfileAttributesSendsNoneAndSkipsTheProfileSchema() {
+        stubFor(get(urlEqualTo(RA_PROFILE_SCHEMA))
+                .willReturn(okJson(IlmTestSupport.fixture("ra-profile-attributes-ejbca"))));
+        stubFor(post(urlEqualTo(BASE + "/certificates/register")).willReturn(okJson("{\"uuid\":\"" + C + "\"}")));
+        assertThat(tool.registerCertificate(A, R, "{\"subjectDn\":\"CN=synthetic.test\"}")).contains(C);
+        verify(postRequestedFor(urlEqualTo(BASE + "/certificates/register"))
+                .withRequestBody(notMatching(".*raProfileAttributes.*")));
+        verify(0, getRequestedFor(urlEqualTo(RA_PROFILE_SCHEMA)));
+    }
+
+    @Test
+    void registrationWithRaProfileAttributesResolvesThemAgainstTheSchema() {
+        stubFor(get(urlEqualTo(RA_PROFILE_SCHEMA))
+                .willReturn(okJson(IlmTestSupport.fixture("ra-profile-attributes-ejbca"))));
+        stubFor(post(urlPathMatching("/v1/.*/" + A + "/callback"))
+                .willReturn(okJson("[{\"data\":{\"id\":7,\"name\":\"Server\"},\"reference\":\"Server\"}]")));
+        stubFor(post(urlEqualTo(BASE + "/certificates/register")).willReturn(okJson("{\"uuid\":\"" + C + "\"}")));
+        assertThat(tool
+                .registerCertificate(A, R,
+                        "{\"subjectDn\":\"CN=synthetic.test\",\"raProfileAttributes\":{"
+                                + "\"endEntityProfile\":{\"reference\":\"TLS Server\"},"
+                                + "\"certificateProfile\":{\"reference\":\"Server\"},\"usernameGenMethod\":\"CN\"}}"))
+                .contains(C);
+        verify(postRequestedFor(urlEqualTo(BASE + "/certificates/register"))
+                .withRequestBody(matchingJsonPath(
+                        "$.raProfileAttributes[?(@.name == 'certificateProfile')].content[0].data.id", equalTo("7"))));
     }
 
     @Test

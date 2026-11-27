@@ -33,7 +33,16 @@ final class AttributeCallbacks {
         if (client == null || context == null) {
             throw new IllegalArgumentException("A client and typed callback context are required.");
         }
-        return new Resolution(client, context, definitions, values).resolve();
+        return new Resolution(client, context, definitions, values, false).resolve();
+    }
+
+    /** Resolves what the given values allow and leaves callbacks that still need input unresolved. */
+    static ArrayNode resolveAvailable(ConfigurationApiClient client, CallbackContext context, JsonNode definitions,
+            ObjectNode values) {
+        if (client == null || context == null) {
+            throw new IllegalArgumentException("A client and typed callback context are required.");
+        }
+        return new Resolution(client, context, definitions, values, true).resolve();
     }
 
     /**
@@ -51,6 +60,7 @@ final class AttributeCallbacks {
         private final ConfigurationApiClient client;
         private final CallbackContext context;
         private final ObjectNode values;
+        private final boolean partial;
         private final Map<String, JsonNode> fields = new LinkedHashMap<>();
         private final Set<String> completed = new HashSet<>();
         private final Map<String, String> latest = new HashMap<>();
@@ -59,10 +69,11 @@ final class AttributeCallbacks {
         private Boolean modernRequestFields;
 
         private Resolution(ConfigurationApiClient client, CallbackContext context, JsonNode definitions,
-                ObjectNode values) {
+                ObjectNode values, boolean partial) {
             this.client = client;
             this.context = context;
             this.values = values;
+            this.partial = partial;
             ConfigurationAttributes
                     .definitions(definitions)
                     .forEach((name, definition) -> fields.put(name, definition.deepCopy()));
@@ -72,7 +83,7 @@ final class AttributeCallbacks {
             while (true) {
                 List<String> unresolved = new ArrayList<>();
                 if (!resolvePass(unresolved)) {
-                    if (!unresolved.isEmpty()) {
+                    if (!unresolved.isEmpty() && !partial) {
                         throw new IllegalArgumentException(
                                 "Unresolved attribute callbacks: " + String.join("; ", unresolved)
                                         + ". Supply missing inputs; dependency cycles cannot be resolved.");

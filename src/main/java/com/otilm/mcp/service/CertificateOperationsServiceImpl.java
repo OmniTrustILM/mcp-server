@@ -185,12 +185,13 @@ public class CertificateOperationsServiceImpl implements CertificateOperationsSe
                                 .encode(csrDefinitions(profile), body.path(CSR_ATTRIBUTES).toString()));
             }
             body.set(ATTRIBUTES, providerAttributes(authority, profile, REGISTER, body.path(ATTRIBUTES)));
-            body
-                    .set(RA_PROFILE_ATTRIBUTES,
-                            support
-                                    .attributes("/v1/authorities/{authority}/attributes/raProfile",
-                                            new ConfigurationAttributes.ResourceContext(Resource.RA_PROFILE, authority),
-                                            null, body.path(RA_PROFILE_ATTRIBUTES), authority));
+            if (body.has(RA_PROFILE_ATTRIBUTES)) {
+                body
+                        .set(RA_PROFILE_ATTRIBUTES, support
+                                .attributes("/v1/authorities/{authority}/attributes/raProfile",
+                                        new ConfigurationAttributes.ResourceContext(Resource.RA_PROFILE, authority),
+                                        null, body.path(RA_PROFILE_ATTRIBUTES), authority));
+            }
             body.set(CUSTOM_ATTRIBUTES, support.custom(CERTIFICATES, null, body.path(CUSTOM_ATTRIBUTES)));
             return accepted(client.post(OPS + "/certificates/register", body, authority, profile), null,
                     "Certificate registration request accepted");
